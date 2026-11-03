@@ -4,7 +4,6 @@ from __future__ import annotations
 import io
 import shutil
 import zipfile
-from pathlib import Path
 
 import pytest
 
@@ -548,3 +547,15 @@ def test_secrets_in_skipped_dirs_are_ignored(repo: GitRepo) -> None:
     repo.write("site/node_modules/pkg/index.js", FAKE_SECRETS["an npm token"] + "\n")
     repo.commit("Vendored by mistake")
     assert problems("secrets", tree(repo)) == []
+
+
+def test_problems_print_on_one_line_each(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, repo: GitRepo) -> None:
+    # A tracked path may hold a newline. Printed as is, the text after it would start a log
+    # line, and a line starting with "::" is a workflow command (security review F-08).
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    spoofed = "x.jar\n::error::spoofed annotation\r\n::add-mask::y: JVM archives and class files are never committed"
+    monkeypatch.setattr(pr_ready, "run", lambda ctx, only=None: {"artifacts": [spoofed]})
+    assert pr_ready.main(["--all", "--repo", str(repo.root)]) == 1
+    out = capsys.readouterr().out
+    assert not [line for line in out.splitlines() if line.startswith("::")]
+    assert "x.jar\\n::error::spoofed annotation\\r\\n::add-mask::y" in out

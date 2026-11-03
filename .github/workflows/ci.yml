@@ -90,6 +90,8 @@ jobs:
           cache: pip
           cache-dependency-path: tools/requirements-dev.txt
       - run: python -m pip install --require-hashes -r tools/requirements-dev.txt
+      - name: Lint (ruff, rules in ruff.toml)
+        run: python -m ruff check --no-cache
       - run: python -m pytest tools/tests -p no:cacheprovider
       - name: research-lock.json is well formed (offline)
         run: python tools/research_lock.py --check
@@ -170,6 +172,30 @@ jobs:
           done
           exit "$status"
 
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ACTIONLINT_VERSION: "1.7.12"
+      # SHA-256 of actionlint_1.7.12_linux_amd64.tar.gz, from the release's checksums file.
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Lint every workflow (docs/coding-standards.md)
+        run: |
+          set -euo pipefail
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$archive"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+          # Workflow syntax, expressions, contexts, permissions and action inputs. The shellcheck
+          # and pyflakes passes are off until the existing scripts are cleaned up for them.
+          "$RUNNER_TEMP/actionlint" -color -shellcheck= -pyflakes=
+
   pr-ready:
     name: pr-ready
     runs-on: ubuntu-latest
@@ -195,7 +221,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [fmt, rust, deny, python, site, wasm, pr-ready]
+    needs: [fmt, rust, deny, python, site, wasm, actionlint, pr-ready]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

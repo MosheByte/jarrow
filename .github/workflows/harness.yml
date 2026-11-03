@@ -8,7 +8,7 @@
 # of crates/, harness/, rules/ or this file.
 #
 # Secrets: only MINECRAFT_EULA_ACCEPTED, read through env by the baseline step, never echoed.
-# Pull requests from forks and Dependabot get no secrets, so the baseline job skips for them.
+# Pull requests from forks and from bots get no secrets, so the baseline job skips for them.
 name: harness
 
 on:
@@ -126,10 +126,11 @@ jobs:
   baseline:
     name: baseline
     needs: [changes, probes]
-    # Secrets are needed, so never for fork pull requests or Dependabot.
+    # Secrets are needed, so never for fork pull requests or pull requests from a bot
+    # (Dependabot, Renovate or another GitHub App; security review F-01).
     if: >-
       needs.changes.outputs.run == 'true' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !endsWith(github.actor, '[bot]') && !endsWith(github.event.pull_request.user.login, '[bot]'))) &&
       github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 90

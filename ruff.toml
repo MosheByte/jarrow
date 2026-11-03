@@ -1,0 +1,10 @@
+# Python lint rules for tools/ (docs/coding-standards.md). CI runs `python -m ruff check` in the
+# python job of ci.yml; locally: py -3.12 -m ruff check (after installing tools/requirements-dev.txt).
+target-version = "py312"
+line-length = 120
+extend-exclude = ["site", "target", "fuzz", "harness/probe"]
+
+[lint]
+# Pyflakes (F: unused names, undefined names, shadowing) and the pycodestyle errors and
+# warnings that do not depend on line length (E4 imports, E7 statements, E9 syntax, W).
+select = ["E4", "E7", "E9", "F", "W"]

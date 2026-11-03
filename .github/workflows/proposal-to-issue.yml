@@ -46,6 +46,7 @@ jobs:
           # jarrow:proposal-to-issue (docs/community-automation.md)
           import json
           import os
+          import re
           import subprocess
           import sys
 
@@ -119,6 +120,16 @@ jobs:
               return f"<!-- jarrow:proposal-discussion={number} -->"
 
 
+          def defuse(text):
+              """Text the proposer wrote: no hidden markers, no mentions (security review F-06).
+
+              A copied marker would make another discussion's dedup check find this issue, and a
+              copied mention would make the bot ping people.
+              """
+              text = text.replace("<!--", "&lt;!--").replace("-->", "--&gt;")
+              return re.sub(r"@(?=[A-Za-z0-9_-])", "@\u200b", text)
+
+
           def issue_body(discussion):
               author = (discussion.get("author") or {}).get("login")
               by = f" by @{author}" if author else ""
@@ -128,7 +139,7 @@ jobs:
                   "",
                   "---",
                   "",
-                  (discussion.get("body") or "").strip() or "(The discussion has no body.)",
+                  defuse((discussion.get("body") or "").strip()) or "(The discussion has no body.)",
               ]
               return "\n".join(lines) + "\n"
 

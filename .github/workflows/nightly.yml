@@ -116,13 +116,19 @@ jobs:
           rustup target add "$TARGET"
           rustc --version
       # No build cache: release artefacts are built from a clean tree every night.
+      # The reproducible-build recipe (reproducible.yml, docs/releases.md): the commit time as
+      # SOURCE_DATE_EPOCH, and no build path in the binary.
       - name: Build the CLI
         run: |
           set -euo pipefail
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          export SOURCE_DATE_EPOCH
+          flags="--remap-path-prefix=$GITHUB_WORKSPACE=/jarrow --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
           if [ "$TARGET" = x86_64-pc-windows-msvc ]; then
             # Link the C runtime statically, so jarrow.exe needs no Visual C++ redistributable.
-            export RUSTFLAGS="-C target-feature=+crt-static"
+            flags="$flags -C target-feature=+crt-static"
           fi
+          export RUSTFLAGS="$flags"
           cargo build --release -p jarrow --locked --target "$TARGET"
       - name: Smoke-test the binary
         env:

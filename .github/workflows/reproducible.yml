@@ -1,0 +1,93 @@
+# Reproducible build check for the jarrow CLI (docs/releases.md, "Reproducible builds").
+#
+# Builds the CLI twice on ubuntu-latest from the same commit, each time from a clean target
+# directory, the second time from a copy of the source tree at a different path, and fails when
+# the two binaries' SHA-256 differ. Both builds use the recipe the nightly release uses:
+#   SOURCE_DATE_EPOCH = the commit time, CARGO_INCREMENTAL=0, and RUSTFLAGS with
+#   --remap-path-prefix for the source tree and CARGO_HOME, so no build path reaches the binary.
+# The release profile (Cargo.toml) already fixes codegen-units = 1 and thin LTO.
+#
+# Runs on pull requests that change the Rust code or the toolchain, every Monday, and by hand.
+# Only the built-in token is used, read-only.
+name: reproducible
+
+on:
+  pull_request:
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/reproducible.yml"
+  schedule:
+    - cron: "11 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reproducible-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # The nightly Linux target, built the way nightly.yml builds it.
+  TARGET: x86_64-unknown-linux-gnu
+
+jobs:
+  build-twice:
+    name: build-twice
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the toolchain from rust-toolchain.toml
+        run: rustup toolchain install && rustc --version --verbose
+      # No build cache on purpose: both builds start from nothing.
+      - name: Build the CLI twice and compare
+        run: |
+          set -euo pipefail
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          export SOURCE_DATE_EPOCH
+          cargo_home=${CARGO_HOME:-$HOME/.cargo}
+          # The second build runs from a copy at another path, so a leaked path would show.
+          copy="$RUNNER_TEMP/elsewhere/jarrow"
+          mkdir -p "$copy"
+          git ls-files -z | xargs -0 cp --parents -t "$copy"
+          build() { # build <source dir> <target dir>
+            (cd "$1" && RUSTFLAGS="--remap-path-prefix=$1=/jarrow --remap-path-prefix=$cargo_home=/cargo" \
+              cargo build --release --locked -p jarrow --target "$TARGET" --target-dir "$2")
+          }
+          build "$GITHUB_WORKSPACE" "$RUNNER_TEMP/target-a"
+          build "$copy" "$RUNNER_TEMP/target-b"
+          a=$(sha256sum "$RUNNER_TEMP/target-a/$TARGET/release/jarrow" | cut -d' ' -f1)
+          b=$(sha256sum "$RUNNER_TEMP/target-b/$TARGET/release/jarrow" | cut -d' ' -f1)
+          {
+            echo "### Reproducible build of the jarrow CLI"
+            echo ""
+            echo "Commit \`$GITHUB_SHA\`, target $TARGET, SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH, $(rustc --version)."
+            echo ""
+            echo "| Build | Source path | SHA-256 |"
+            echo "| --- | --- | --- |"
+            echo "| A | \`$GITHUB_WORKSPACE\` | \`$a\` |"
+            echo "| B | \`$copy\` | \`$b\` |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          for path in "$GITHUB_WORKSPACE" "$copy" "$cargo_home"; do
+            if grep -qaF "$path" "$RUNNER_TEMP/target-a/$TARGET/release/jarrow"; then
+              echo "::error::the binary contains the build path $path"
+              exit 1
+            fi
+          done
+          if [ "$a" != "$b" ]; then
+            echo "Not reproducible: the two builds differ." >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::the two builds differ: $a vs $b"
+            cmp -l "$RUNNER_TEMP/target-a/$TARGET/release/jarrow" "$RUNNER_TEMP/target-b/$TARGET/release/jarrow" | head -20 || true
+            exit 1
+          fi
+          echo "Reproducible: both builds are byte for byte identical." >> "$GITHUB_STEP_SUMMARY"
+          echo "Both builds are identical: $a"

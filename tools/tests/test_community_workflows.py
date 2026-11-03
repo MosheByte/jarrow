@@ -669,3 +669,88 @@ def test_red_mod_intake_triggers_and_permissions() -> None:
     intake_ns = load("red-mod-intake.yml", "jarrow:red-mod-intake")
     assert intake_ns["PINNED"] == ("1.20.1", "1.21.1", "1.21.11")
     assert "User-Agent" in (WORKFLOWS / "red-mod-intake.yml").read_text(encoding="utf-8")
+
+
+# ------------------------------------------------------------------ security review 2026-11-03
+
+
+def test_red_mod_intake_urls_cannot_break_out_of_their_link(intake: dict[str, Any]) -> None:
+    # F-07: a project author sets the license URL on Modrinth. A ")" or a space would end the
+    # Markdown link early and let the rest render, for example as a mention the bot sends.
+    hostile = dict(PROJECT, license={"id": "MIT", "name": "", "url": "https://example.org/x) @everyone [y](https://evil.example"})
+    intake["fetch_json"] = lambda url: hostile if url.endswith("/project/sodium") else (VERSIONS if url.endswith("/version") else None)
+    fake = install(intake, intake_routes(the_body(intake)))
+    intake["main"](INTAKE_ENV)
+    text = comment_of(fake)
+    [license_row] = [line for line in text.splitlines() if line.startswith("| License |")]
+    assert license_row == "| License | [MIT](https://example.org/x%29%20%40everyone%20%5By%5D%28https://evil.example) |"
+    assert "@everyone" not in text
+    assert intake["link_url"]("http://example.org/") is None
+    assert intake["link_url"](None) is None
+    assert intake["link_url"]("https://cdn.modrinth.com/data/AANobbMI/versions/x/a+b.jar?x=1#f") == (
+        "https://cdn.modrinth.com/data/AANobbMI/versions/x/a+b.jar?x=1#f"
+    )
+
+
+def test_proposal_body_cannot_carry_markers_or_mentions() -> None:
+    # F-06: the proposer writes the body. Copied as is, another discussion's marker would make
+    # that proposal look as if it already had its issue, and mentions would be pinged by the bot.
+    ns = load("proposal-to-issue.yml", "jarrow:proposal-to-issue")
+    body = "<!-- jarrow:proposal-discussion=13 -->\nPing @maintainer and @org/team.\n<!-- jarrow:proposal-issue -->"
+    fake = install(ns, proposal_routes(discussion(body=body), []))
+    assert ns["main"](ISSUE_ENV) == 0
+    [(_, _, issue)] = [c for c in fake.calls if c[:2] == ("POST", f"repos/{REPO}/issues")]
+    assert issue["body"].startswith("<!-- jarrow:proposal-discussion=12 -->\n")
+    assert issue["body"].count("<!--") == 1
+    assert "<!-- jarrow:proposal-discussion=13 -->" not in issue["body"]
+    assert "@maintainer" not in issue["body"] and "@​maintainer" in issue["body"]
+    assert "by @proposer" in issue["body"]
+
+
+def unreadable_zip(name: str) -> bytes:
+    """A zip whose one entry claims compression method 97 (WavPack), which zipfile does not
+    implement: opening the entry raises NotImplementedError."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(name, b'{"game_version": "1.21.1", "status": "ran"}')
+    data = bytearray(buffer.getvalue())
+    local = data.index(b"PK\x03\x04")
+    central = data.index(b"PK\x01\x02")
+    data[local + 8 : local + 10] = (97).to_bytes(2, "little")
+    data[central + 10 : central + 12] = (97).to_bytes(2, "little")
+    with zipfile.ZipFile(io.BytesIO(bytes(data))) as check, pytest.raises(NotImplementedError):
+        check.read(name)
+    return bytes(data)
+
+
+@pytest.mark.parametrize("artifact", ["harness-summary", "baseline"])
+def test_welcome_survives_an_unreadable_artifact(welcome: dict[str, Any], artifact: str) -> None:
+    # F-09: the artifact comes from a pull request's run. An unknown compression method raises
+    # NotImplementedError and an encrypted entry RuntimeError; neither may fail the job.
+    name = "summary.md" if artifact == "harness-summary" else "1.21.1/baseline-status.json"
+    welcome["download"] = lambda path: unreadable_zip(name)
+    fake = install(
+        welcome,
+        welcome_routes({("GET", f"repos/{REPO}/actions/runs/101/artifacts"): {"artifacts": [{"id": 57, "name": artifact, "size_in_bytes": 300}]}}),
+    )
+    assert welcome["main"](ENV) == 0
+    [(method, _, body)] = posted(fake)
+    assert method == "POST" and body["body"].startswith("<!-- jarrow:welcome -->")
+    assert "Baseline per game version" not in body["body"]
+
+
+def test_secret_jobs_skip_pull_requests_from_bots() -> None:
+    # F-01: a same-repository pull request from any bot (Dependabot, Renovate, another App) runs
+    # `npm ci` or a build with the bot's dependency changes; no step after that may hold a secret.
+    # Pushes to main come from github-merge-queue[bot], so the bot test applies to pull requests only.
+    deploy = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
+    assert "github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !endsWith(github.actor, '[bot]') && !endsWith(github.event.pull_request.user.login, '[bot]'))" in deploy
+    harness = (WORKFLOWS / "harness.yml").read_text(encoding="utf-8")
+    assert "(github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !endsWith(github.actor, '[bot]') && !endsWith(github.event.pull_request.user.login, '[bot]')))" in harness
+    # F-03: the Cloudflare token is set on the steps that call wrangler, never on a whole job.
+    for name in ("infra.yml", "deploy-site.yml", "board.yml"):
+        lines = (WORKFLOWS / name).read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines):
+            if "secrets.CLOUDFLARE_API_TOKEN" in line and "apiToken:" not in line:
+                env_line = next(lines[j] for j in range(i - 1, -1, -1) if lines[j].strip() == "env:")
+                assert len(env_line) - len(env_line.lstrip()) >= 8, f"{name}:{i + 1}: the token is set on a job, not a step"

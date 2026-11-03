@@ -29,8 +29,10 @@ concurrency:
 jobs:
   deploy:
     name: deploy-site
-    # Fork PRs and Dependabot PRs get no secrets, so they never deploy.
-    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    # Fork PRs get no secrets, so they never deploy. Neither do pull requests from any bot
+    # (Dependabot, Renovate or another GitHub App): their dependency updates run `npm ci` in
+    # this job, and a later step holds the Cloudflare token (security review F-01).
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && !endsWith(github.actor, '[bot]') && !endsWith(github.event.pull_request.user.login, '[bot]'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
