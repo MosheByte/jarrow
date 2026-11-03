@@ -409,6 +409,13 @@ CHECKS: tuple[Check, ...] = (
 )
 
 
+def _one_line(text: str) -> str:
+    """A problem as one log line. A path may hold CR or LF (git allows both), and a line that
+    starts with "::" is a workflow command to the Actions runner, so both are shown escaped
+    (security review F-08)."""
+    return text.replace("\r", "\\r").replace("\n", "\\n")
+
+
 def _annotate(check: str, message: str) -> None:
     if os.environ.get("GITHUB_ACTIONS") == "true":
         escaped = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
@@ -473,7 +480,7 @@ def main(argv: list[str] | None = None) -> int:
             failed += 1
             print(f"  FAIL  {name}")
             for problem in problems:
-                print(f"        - {problem}")
+                print(f"        - {_one_line(problem)}")
                 _annotate(name, problem)
     print("pr_ready: all checks passed" if not failed else f"pr_ready: {failed} check(s) failed")
     return 1 if failed else 0

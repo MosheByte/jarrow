@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/pages-assemble.mjs && node scripts/check-colors.mjs",
+    "build": "astro build && node scripts/pages-assemble.mjs && node scripts/check-colors.mjs && node scripts/csp-check.mjs",
     "preview": "wrangler pages dev ./dist --port 8788",
     "check": "astro check",
     "test": "node --test \"src/**/*.test.ts\" \"scripts/**/*.test.mjs\"",

@@ -51,7 +51,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 
 If you are a person contributing by hand, do not add that trailer to your own work. If an AI tool helped you, say which one in the pull request description. Honesty about who wrote what is a project rule.
 
-A Developer Certificate of Origin (DCO) sign-off is not required.
+Every commit made from 2026-11-03 18:30 UTC carries a Developer Certificate of Origin sign-off: a `Signed-off-by: Your Name <you@example.com>` trailer whose e-mail matches the commit's author, which says you agree to the [DCO 1.1](https://developercertificate.org/). `git commit -s` adds it, and `git rebase --signoff main` adds it to commits you already made. The `dco` check on every pull request runs `tools/dco_check.py`; bot commits and merge commits are exempt.
 
 ## Contributing a rule
 

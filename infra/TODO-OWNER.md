@@ -24,6 +24,17 @@ The owner set `CLOUDFLARE_API_TOKEN` as an Actions secret on 2026-11-03 at 14:27
 Evidence, 2026-11-03: after the force-push, `gh api repos/MosheByte/jarrow/commits/03b5d9a --jq .sha` still returned `03b5d9ad4e73710988781ecefffa657af821dfb0`.
 No REST or GraphQL endpoint, and no `gh` command, deletes cached commits or garbage-collects a repository. Only GitHub Support can do it, and only for the account owner. Open a request at https://support.github.com/request → "Remove sensitive data". Name the repository `MosheByte/jarrow` and the old commits `884864c`, `e8d672f`, `ba958d2`, `9e28d6c` and `03b5d9a`.
 
+### Keys in a lockbox and a will (OpenSSF silver `access_continuity`)
+
+Only the owner can do this: it is a legal document and the owner's own credentials, so no API, CLI or agent route exists. The criterion allows a project run by one person to meet it with "keys in a lockbox and a will". Put in a sealed lockbox (a password manager's emergency kit counts), by name only:
+
+- the GitHub organization `jarrow-dev` owner login and its 2FA recovery codes;
+- the Cloudflare account that holds the Pages project `jarrow`, D1, KV and R2;
+- the crates.io and npm accounts, once the names are claimed;
+- the OpenSSF Best Practices entry 16297 and the GitLab mirror account.
+
+Then record in a will who receives the lockbox and the rights to continue the project. Fallback until then: the badge entry marks `access_continuity` as not met ([GOVERNANCE.md](../GOVERNANCE.md#access-continuity-and-bus-factor)). When both exist, say so in any session and the entry is changed to met.
+
 ## M4 — Deep
 
 ### GitHub OAuth app (sign-in and author mode)

@@ -225,3 +225,19 @@ Every default the build agent takes is logged here. The project requires this lo
 **Why:** People are shown by GitHub login only, and the project owner is always listed. Agents have no account here, so they are counted from the Co-Authored-By trailers of the commits they wrote. A bot or app is listed only when something shows that it acts on the repository: a check run or a non-empty check suite, a pull request, a commit, the deploy key, or its config in `.github/`. Listing installed apps directly (`gh api repos/MosheByte/jarrow/installations`, then `user/installations`) needs a GitHub App token and fails with 404 and 403 for a user token, so check suites stand in. GitHub creates an empty check suite for every installed app on each push, so an empty suite does not count: on 2026-11-03 the Claude GitHub App was installed but had no check run, pull request or comment here, so it is not listed. Renovate is not enabled (D-014), release-please is not used, and the stale sweep is a GitHub Actions workflow. Refresh commits carry the trailer `Jarrow-Generated: contributors` and are not counted, so a refresh never causes another one.
 **Reversal cost:** Low: delete the workflow, the script and the four generated files.
 **Links:** tools/contributors.py, .github/workflows/contributors.yml, docs/team.md, .all-contributorsrc, site/src/pages/about.astro
+
+## D-029 — DCO sign-off is required from 2026-11-03 18:30 UTC
+
+**Date:** 2026-11-03
+**Decision:** Every commit made from 2026-11-03T18:30:00Z carries a `Signed-off-by` trailer for its author (DCO 1.1). The `dco` workflow runs `tools/dco_check.py` on pull requests and in the merge queue; bot commits, merge commits and commits made before the cutoff are exempt. Commits the agent writes through the owner's account carry the owner's sign-off, added by a local `prepare-commit-msg` hook.
+**Why:** OpenSSF Best Practices silver `dco`. The owner consented on 2026-11-03 to sign-off on commits made through their account.
+**Reversal cost:** Low: delete `dco.yml` and the CONTRIBUTING paragraph.
+**Links:** .github/workflows/dco.yml, tools/dco_check.py, CONTRIBUTING.md
+
+## D-030 — Access continuity by lockbox and will; bus factor stays 1
+
+**Date:** 2026-11-03
+**Decision:** With one human on the project, `access_continuity` is met the way the criterion allows for a single maintainer: the owner keeps the access the project needs in a lockbox and grants the rights in a will. The badge entry marks it met only once the owner confirms both exist. `bus_factor`, gold `contributors_unassociated` and gold `two_person_review` stay not met, with a justification, until people from outside the project contribute; the agent, the bots and any second account of the owner never count as another person.
+**Why:** The owner has no second person to add and asked for the highest level that can be reached honestly.
+**Reversal cost:** None: it records what the project claims.
+**Links:** GOVERNANCE.md, infra/TODO-OWNER.md

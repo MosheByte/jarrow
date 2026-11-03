@@ -195,6 +195,17 @@ jobs:
               return re.sub(r"@(?=[A-Za-z0-9_-])", "@​", text)
 
 
+          def link_url(value):
+              """An https URL that is safe inside a Markdown link, or None (security review F-07).
+
+              Modrinth URLs are set by project authors. Whitespace, brackets, parentheses, quotes and
+              @ are percent-encoded, so a URL cannot end the link early and add Markdown or a mention.
+              """
+              if not isinstance(value, str) or not value.startswith("https://"):
+                  return None
+              return urllib.parse.quote(value, safe=":/?#!$&*+,;=%-._~")
+
+
           def code(text):
               return "`" + str(text).replace("`", "'").replace("\n", " ") + "`"
 
@@ -249,8 +260,8 @@ jobs:
               lines = [f"Board: [the row for {title}]({anchor}), board generated {md(generated)}.", "", "| | |", "| --- | --- |"]
               lines += [f"| {k} | {md(v)} |" for k, v in details if v not in (None, "")]
               report = row.get("report_url")
-              if isinstance(report, str) and report.startswith("https://"):
-                  lines.append(f"| Report | [report]({report}) |")
+              if link_url(report):
+                  lines.append(f"| Report | [report]({link_url(report)}) |")
               return lines
 
 
@@ -261,8 +272,8 @@ jobs:
               license_text = md(lic.get("id") or "unknown")
               if lic.get("name") and lic.get("name") != lic.get("id"):
                   license_text += f" ({md(lic['name'])})"
-              if isinstance(lic.get("url"), str) and lic["url"].startswith("https://"):
-                  license_text = f"[{license_text}]({lic['url']})"
+              if link_url(lic.get("url")):
+                  license_text = f"[{license_text}]({link_url(lic['url'])})"
               game_versions = project.get("game_versions") or []
               pinned_listed = [gv for gv in PINNED if gv in game_versions]
               neo = neoforge_versions(versions)
@@ -305,7 +316,7 @@ jobs:
                       continue
                   f = primary_file(version) or {}
                   name = md(f.get("filename") or version.get("version_number") or "file")
-                  url = f.get("url") if isinstance(f.get("url"), str) and f["url"].startswith("https://") else None
+                  url = link_url(f.get("url"))
                   label = f"[{name}]({url})" if url else name
                   label += f" ({code(version.get('version_number'))}, {md(version.get('version_type') or 'release')})"
                   published = md((version.get("date_published") or "")[:10])

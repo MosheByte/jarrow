@@ -67,6 +67,10 @@ jobs:
           MAX_SUMMARY_BYTES = 256 * 1024
           MAX_ARTIFACT_BYTES = 50 * 1024 * 1024
           BOT_LOGIN = "github-actions[bot]"
+          # What reading a pull request's artifact can raise: a bad archive or CRC, an unsupported
+          # compression method (NotImplementedError), an encrypted entry (RuntimeError), a truncated
+          # stream (EOFError). Any of them means no quote, never a failed job (security review F-09).
+          ZIP_ERRORS = (zipfile.BadZipFile, NotImplementedError, RuntimeError, EOFError, OSError)
 
 
           class GhError(RuntimeError):
@@ -184,7 +188,7 @@ jobs:
                       continue
                   try:
                       data = json.loads(archive.read(info).decode("utf-8"))
-                  except (ValueError, UnicodeDecodeError):
+                  except (ValueError, UnicodeDecodeError, *ZIP_ERRORS):
                       continue
                   if isinstance(data, dict):
                       rows.append(tuple(str(data.get(k) or "") for k in ("game_version", "status", "reason", "detail")))
@@ -221,7 +225,7 @@ jobs:
                               if info.file_size <= MAX_SUMMARY_BYTES:
                                   return clip(archive.read(info).decode("utf-8", "replace"))
                               print(f"welcome: {SUMMARY_FILE} is {info.file_size} bytes; not quoted")
-                  except (GhError, KeyError, zipfile.BadZipFile) as err:
+                  except (GhError, KeyError, *ZIP_ERRORS) as err:
                       print(f"welcome: reading the {SUMMARY_ARTIFACT} artifact failed: {err}")
               if BASELINE_ARTIFACT in artifacts:
                   try:
@@ -231,7 +235,7 @@ jobs:
                               table = baseline_table(archive)
                           if table:
                               return table
-                  except (GhError, zipfile.BadZipFile) as err:
+                  except (GhError, *ZIP_ERRORS) as err:
                       print(f"welcome: reading the {BASELINE_ARTIFACT} artifact failed: {err}")
               for job in jobs:
                   try:
