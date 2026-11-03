@@ -307,8 +307,10 @@ def test_every_member_shows_its_commit_count_next_to_its_name(bot_repo: GitRepo)
         for m in group["members"]:
             n = m["commits"]
             text = f"{n} commit" if n == 1 else f"{n} commits"
-            # README: the count is the line right under the name, before the role.
-            assert f"<sub><b>{contributors.esc(m['name'])}</b></sub></a><br /><sub>{text}</sub><br /><sub>" in block, m["login"]
+            # README: name, the short role, then the count.
+            start = block.index(f"<b>{contributors.esc(m['name'])}</b>")
+            cell = block[start : block.index("</td>", start)]
+            assert cell.endswith(f"<br><sub>{contributors.esc(m['short_role'])}</sub><br><sub>{text}</sub>"), m["login"]
             # docs/team.md: the column next to the name.
             row = next(line for line in team_md.splitlines() if f"[{m['name']}](" in line)
             assert row.split(" | ")[2] == str(n), row
@@ -435,11 +437,16 @@ def test_readme_changes_only_between_the_markers(team_repo: GitRepo) -> None:
     _, old_tail = old_rest.split(contributors.END_MARKER)
     assert (head, tail) == (old_head, old_tail)
     assert "stale text" not in block
-    assert block.index("### People") < block.index("### Agents") < block.index("### Bots and automation")
-    assert '<img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=80" width="80px;" alt="MosheByte"/>' in block
-    assert f"<sub>{contributors.OWNER_ROLE}</sub>" in block.replace("&#x27;", "'")
-    assert '<img src="docs/assets/key.svg"' in block
-    assert 'width="14.28%"' in block
+    assert block.index("### People") < block.index("> Agents") < block.index("> Bots and automation")
+    assert '<img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=96" width="48" height="48" alt="">' in block
+    assert f"<sub>{contributors.OWNER_SHORT}</sub>" in block
+    # No key.svg and no account avatars for agents or bots: one shared icon per group heading.
+    assert "key.svg" not in block
+    assert block.count(contributors.GROUP_ICONS["agents"]) == 1
+    assert block.count(contributors.GROUP_ICONS["bots"]) == 1
+    assert block[block.index("> Agents") :].count("<img") == 1
+    assert 'width="33%"' in block
+    assert all(row.count("<td") <= contributors.README_PER_LINE for row in block.split("<tr>"))
     # Running again on the generated README gives the same README.
     (team_repo.root / "README.md").write_text(readme, encoding="utf-8", newline="\n")
     assert offline(team_repo.root)[contributors.README_PATH] == readme
@@ -765,3 +772,65 @@ def test_as_of_needs_ledger_and_a_date(team_repo: GitRepo, capsys: pytest.Captur
             contributors.main(argv)
         assert exit_info.value.code == 2
     capsys.readouterr()
+
+
+def test_every_readme_role_is_five_words_at_most_and_has_no_emoji(team_repo: GitRepo) -> None:
+    team = json.loads(offline(team_repo.root)[contributors.TEAM_JSON_PATH])
+    for group in team["groups"]:
+        for member in group["members"]:
+            assert member["short_role"], member["login"]
+            assert len(member["short_role"].split()) <= 5, member["short_role"]
+    for bot in contributors.KNOWN_BOTS:
+        assert bot.short and len(bot.short.split()) <= 5, bot.login
+    readme = offline(team_repo.root)[contributors.README_PATH]
+    block = readme.split(contributors.START_MARKER)[1].split(contributors.END_MARKER)[0]
+    assert all(ord(ch) < 0x2000 for ch in block)
+
+
+def test_agent_stats_count_commits_pull_requests_and_tests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = GitRepo(tmp_path / "stats")
+    readme = README.replace(
+        "## After",
+        f"## Built by an agent\n\n{contributors.STATS_START_MARKER}\nold\n{contributors.STATS_END_MARKER}\n\n## After",
+    )
+    commit(
+        repo,
+        monkeypatch,
+        message("First (#1)", OPUS),
+        author=OWNER,
+        date="2026-01-01T10:00:00+02:00",
+        files={
+            "README.md": readme,
+            "crates/a/src/lib.rs": "#[test]\nfn a() {}\n\n    #[test]\nfn b() {}\n// #[test] in a comment\n",
+        },
+    )
+    commit(
+        repo,
+        monkeypatch,
+        message("Human tests (#2)"),
+        author=JANE,
+        date="2026-01-02T10:00:00+02:00",
+        files={"tools/tests/test_h.py": "def test_h():\n    pass\n"},
+    )
+    commit(
+        repo,
+        monkeypatch,
+        message("Direct", OPUS),
+        author=OWNER,
+        date="2026-01-03T10:00:00+02:00",
+        files={
+            "site/src/x.test.ts": "test('x', () => {});\nit(\"y\", () => {});\n",
+            "tools/tests/test_h.py": "def test_h():\n    pass\n\n\nasync def test_i():\n    pass\n",
+        },
+    )
+    stats = contributors.agent_stats(repo.root, "HEAD", contributors.read_history(repo.root, "HEAD"))
+    # Rust a and b, TypeScript x and y, Python test_i; test_h is Jane's.
+    assert (stats.commits, stats.total_commits, stats.pull_requests, stats.tests) == (2, 3, 1, 5)
+    out = offline(repo.root)[contributors.README_PATH]
+    line = out.split(contributors.STATS_START_MARKER)[1].split(contributors.STATS_END_MARKER)[0]
+    assert line == (
+        "\n2 of 3 commits, 1 pull requests and 5 tests written by Claude Opus 5.5, "
+        "disclosed in every commit trailer.\n"
+    )

@@ -271,3 +271,25 @@ export const RESULT_LABEL: Record<Result, string> = {
   red: 'red',
   'not-run': 'not run',
 };
+
+/** A shields.io endpoint badge: https://shields.io/badges/endpoint-badge */
+export interface ShieldsBadge {
+  schemaVersion: 1;
+  label: string;
+  message: string;
+  color: string;
+  isError?: boolean;
+}
+
+/**
+ * The README "parity" badge: the share of board mods that are green. It reads 0% until the first
+ * green result, before the first nightly too, and "unavailable" when the stored board is unreadable.
+ */
+export function parityBadge(load: BoardLoad): ShieldsBadge {
+  if (load.status === 'invalid' || load.status === 'error') {
+    return { schemaVersion: 1, label: 'parity', message: 'unavailable', color: 'lightgrey', isError: true };
+  }
+  const pct = greenPercent(load.board.totals) ?? 0;
+  const color = pct >= 60 ? 'brightgreen' : pct >= 50 ? 'yellow' : pct > 0 ? 'orange' : 'lightgrey';
+  return { schemaVersion: 1, label: 'parity', message: `${pct}%`, color };
+}
