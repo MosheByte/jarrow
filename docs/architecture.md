@@ -2,7 +2,7 @@
 
 One Rust workspace is the product. The website, the CLI and the GitHub Actions jobs are thin shells around it. Nothing conversion-related is written in TypeScript. This page is the map; the decisions behind it are logged in [DECISIONS.md](../DECISIONS.md).
 
-Status on 2026-11-03: `crates/report` and `crates/cli` exist as M0 skeletons, and `crates/jar`, `crates/classfile`, `crates/mappings` and `crates/board` exist from M1 (see the table). Nothing converts yet, in any direction. The nightly board measures one direction, Fabric → NeoForge, with conversion stubbed, so every mod in that column is red; no other direction has a board column. Everything below marked "planned" is a design, not code.
+Status on 2026-11-03: `crates/report` and `crates/cli` exist as M0 skeletons, and `crates/jar`, `crates/classfile`, `crates/mappings`, `crates/harness` (Fabric and NeoForge only) and `crates/board` exist from M1 (see the table). Nothing converts yet, in any direction. The nightly board measures one direction, Fabric → NeoForge, with conversion stubbed, so every mod in that column is red; no other direction has a board column. Everything below marked "planned" is a design, not code.
 
 ## One engine, four loader profiles
 
@@ -34,7 +34,7 @@ Every package is named `jarrow-<crate>` (library `jarrow_<crate>`), except the C
 | `crates/engine` | Orchestrates the crates above into `convert(jar, source, target, game version)` | The one public API, the same for every direction | Planned (M2) |
 | `crates/wasm` | `wasm-bindgen` surface for the browser: `classify`, `convert`, streaming progress | Budget: 4 MB gzipped | Planned (M3) |
 | `crates/cli` | The `jarrow` binary: `convert`, `check`, `report`, `board-run` | Released with cargo-dist | Exists (M0 skeleton: `--version` and `tokens` only; `check` in M1, `convert` in M2) |
-| `crates/harness` | Starts headless servers for all four loaders as their profiles describe, dumps registries, recipes, tags, loot and worldgen, diffs and scores; also scores round trips | Needs a JDK; runs in Actions and locally ([harness.md](harness.md)) | Planned (M1) |
+| `crates/harness` | Starts headless servers for all four loaders as their profiles describe, dumps registries, recipes, tags, loot and worldgen, diffs and scores; also scores round trips | Needs a JDK; runs in Actions and locally ([harness.md](harness.md)) | Exists (M1: dump schema and validation, hash-verified Fabric and NeoForge provisioning, EULA-gated runner, baseline noise, diff and score; Forge and Quilt not built yet) |
 | `crates/board` | Fetches each source loader's top-1,000 list from Modrinth, runs classify, convert and harness per direction column, writes results | Nightly job ([board.md](board.md)) | Exists (M1 wave 1: `list`, `shard`, `merge` and `board.yml`, running the Fabric → NeoForge column only; classify, convert and the harness are not wired yet, so every mod is red with "no converter yet"; [board-pipeline.md](board-pipeline.md)) |
 
 ### Dependency direction
