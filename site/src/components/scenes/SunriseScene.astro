@@ -1,0 +1,28 @@
+---
+/**
+ * The sunrise (BUILD-BOOK 8.3) for / and /releases. Put it first inside a hero that is
+ * position: relative; overflow: hidden; isolation: isolate. On wide screens it fills the hero and
+ * the landscape sits in the bottom band; under 1024 px it is a strip on the hero's bottom edge.
+ * Without JavaScript the CSS sky shows. riseSunrise() from src/scenes/boot.ts lifts the sun one step.
+ */
+import './scene.css';
+
+interface Props {
+  /** "releases" draws the larger, higher sun of the releases hero. */
+  variant?: 'home' | 'releases';
+}
+
+const { variant = 'home' } = Astro.props;
+---
+
+<div class="jw-scene jw-scene-sunrise" data-scene="sunrise" data-variant={variant} aria-hidden="true">
+  <canvas class="jw-scene-smooth" data-layer="smooth" aria-hidden="true"></canvas>
+  <canvas class="jw-scene-pixels" data-layer="pixels" aria-hidden="true"></canvas>
+</div>
+
+<script>
+  import { mountAll } from '../../scenes/boot.ts';
+  import { sunrise } from '../../scenes/sunrise.ts';
+
+  mountAll('sunrise', sunrise);
+</script>
