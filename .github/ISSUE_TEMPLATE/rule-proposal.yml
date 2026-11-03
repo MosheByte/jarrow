@@ -1,29 +1,51 @@
 name: Rule proposal
-description: Propose a rule that maps a Fabric API symbol to its NeoForge counterpart.
+description: Propose a rule that maps an API symbol of one loader to its counterpart on another loader.
 title: "[rule] "
 labels: ["rule"]
 body:
   - type: markdown
     attributes:
       value: |
-        A rule describes how one Fabric API shape becomes a NeoForge shape. The format is in [docs/rules.md](https://github.com/MosheByte/jarrow/blob/main/docs/rules.md) (draft, implemented in M2).
+        A rule describes how one API shape of the source loader becomes a shape of the target loader, for one direction. Rule tables come in inverse pairs (A → B and B → A), so a proposal may name the inverse too. The format is in [docs/rules.md](https://github.com/MosheByte/jarrow/blob/main/docs/rules.md) (draft, implemented in M2).
+
+        Directions are built in a fixed order, starting with Fabric → NeoForge ([ROADMAP.md](https://github.com/MosheByte/jarrow/blob/main/ROADMAP.md)). Proposals for later directions are welcome and are kept until that direction's turn.
 
         **Clean room.** Describe API shapes only: class, method and field names, descriptors, timing, cancellation, return values. Use public documentation and the open-source API repositories. Never paste code from a mod, and never code from Sinytra Connector, Architectury or Forgified Fabric API. Their public issue trackers may be cited as sources.
 
         Rule tables are CC0-1.0. By proposing a rule you agree that what you write here may be used in them under that license.
-  - type: input
-    id: fabric-symbol
+  - type: dropdown
+    id: direction
     attributes:
-      label: Fabric API symbol
-      description: Fully qualified class, field or method, with the Fabric API module.
+      label: Direction
+      description: The loader the symbol comes from, and the loader the rule targets.
+      options:
+        - Fabric → NeoForge
+        - NeoForge → Fabric
+        - Fabric → Quilt
+        - Quilt → Fabric
+        - Forge → NeoForge
+        - NeoForge → Forge
+        - Fabric → Forge
+        - Forge → Fabric
+        - Quilt → Forge
+        - Forge → Quilt
+        - Quilt → NeoForge
+        - NeoForge → Quilt
+    validations:
+      required: true
+  - type: input
+    id: source-symbol
+    attributes:
+      label: Source loader symbol
+      description: Fully qualified class, field or method on the source loader, with its API module (for example the Fabric API module).
       placeholder: net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK (fabric-lifecycle-events-v1)
     validations:
       required: true
   - type: input
-    id: neoforge-counterpart
+    id: target-counterpart
     attributes:
-      label: NeoForge counterpart
-      description: The NeoForge class, event or method it maps to, or "none" if there is no clean counterpart.
+      label: Target loader counterpart
+      description: The class, event or method on the target loader it maps to, or "none" if there is no clean counterpart.
       placeholder: net.neoforged.neoforge.event.tick.ServerTickEvent.Post on NeoForge.EVENT_BUS
     validations:
       required: true
@@ -33,6 +55,7 @@ body:
       label: Game versions
       multiple: true
       options:
+        - "1.20.1"
         - "1.21.1"
         - "1.21.11"
     validations:
@@ -55,7 +78,7 @@ body:
     id: mods-affected
     attributes:
       label: Mods affected
-      description: Modrinth links to mods that use this symbol, or a board reason that points at it. Links only, no code.
+      description: Links to the public pages (Modrinth or CurseForge) of mods that use this symbol, or a board reason that points at it. Links only, no code.
   - type: checkboxes
     id: clean-room
     attributes:

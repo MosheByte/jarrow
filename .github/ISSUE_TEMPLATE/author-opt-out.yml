@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Opt-out is absolute. If you choose "Do not port", the converter refuses your mod, the board hides it, and the refusal says why. This is honoured even if your license would allow conversion.
+        Opt-out is absolute. If you choose "Do not port", the converter refuses your mod in every direction, the board hides it, and the refusal says why. This is honoured even if your license would allow conversion.
 
         Signing in on the site to opt out in one click is not built yet (milestone M4), so this form is the way to opt out today. Opt-outs filed before the board exists are applied from its first run.
 
@@ -40,7 +40,7 @@ body:
     id: official-port
     attributes:
       label: Link to the official port
-      description: Required if you chose "Official port exists". The board will link here.
+      description: Required if you chose "Official port exists". Link the port for each loader you publish for; the board will link there.
       placeholder: https://modrinth.com/mod/<slug>
   - type: textarea
     id: notes

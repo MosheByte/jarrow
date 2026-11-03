@@ -21,6 +21,25 @@ body:
         - Something else
     validations:
       required: true
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Direction
+      description: If the problem happened while converting, the loader the mod was built for and the loader it was converted to. No direction is available yet.
+      options:
+        - Not about a conversion
+        - Fabric → NeoForge
+        - NeoForge → Fabric
+        - Fabric → Quilt
+        - Quilt → Fabric
+        - Forge → NeoForge
+        - NeoForge → Forge
+        - Fabric → Forge
+        - Forge → Fabric
+        - Quilt → Forge
+        - Forge → Quilt
+        - Quilt → NeoForge
+        - NeoForge → Quilt
   - type: textarea
     id: what-happened
     attributes:

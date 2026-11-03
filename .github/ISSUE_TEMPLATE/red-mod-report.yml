@@ -8,15 +8,35 @@ body:
       value: |
         Use this form when a conversion looks wrong: the mod crashes, something is missing, or the board result does not match what you see.
 
-        Jarrow does not convert anything yet (pre-alpha, milestone M0). Reports and report hashes exist only once the converter and the harness ship. Reports filed before then cannot be checked.
+        Jarrow does not convert anything yet (pre-alpha, milestone M0). No direction is available yet: Fabric → NeoForge comes first, and the other directions follow in the order on the [roadmap](https://github.com/MosheByte/jarrow/blob/main/ROADMAP.md). Reports and report hashes exist only once the converter and the harness ship. Reports filed before then cannot be checked.
 
-        **Never attach a JAR, original or converted, and never paste decompiled code.** Link to the mod's public Modrinth page instead. Jarrow does not redistribute mods, and issues are public.
+        **Never attach a JAR, original or converted, and never paste decompiled code.** Link to the original mod's public page instead. Jarrow does not redistribute mods, and issues are public.
   - type: input
-    id: mod-url
+    id: source-mod-url
     attributes:
-      label: Modrinth mod URL
-      description: The mod's public page on Modrinth.
+      label: Source mod URL
+      description: The public page of the original mod, the one you converted from, on Modrinth or CurseForge.
       placeholder: https://modrinth.com/mod/<slug>
+    validations:
+      required: true
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Direction
+      description: The loader the mod was built for, and the loader it was converted to.
+      options:
+        - Fabric → NeoForge
+        - NeoForge → Fabric
+        - Fabric → Quilt
+        - Quilt → Fabric
+        - Forge → NeoForge
+        - NeoForge → Forge
+        - Fabric → Forge
+        - Forge → Fabric
+        - Quilt → Forge
+        - Forge → Quilt
+        - Quilt → NeoForge
+        - NeoForge → Quilt
     validations:
       required: true
   - type: input
@@ -31,6 +51,7 @@ body:
     attributes:
       label: Game version
       options:
+        - "1.20.1"
         - "1.21.1"
         - "1.21.11"
     validations:

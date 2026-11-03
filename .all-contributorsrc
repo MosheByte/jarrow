@@ -82,7 +82,7 @@
       "login": "jarrow-bot",
       "name": "jarrow-bot (deploy key)",
       "avatar_url": "docs/assets/key.svg",
-      "profile": "https://github.com/MosheByte/jarrow/blob/main/.github/workflows/contributors.yml",
+      "profile": "https://github.com/jarrow-dev/jarrow/blob/main/.github/workflows/board.yml",
       "contributions": [
         "bot"
       ]

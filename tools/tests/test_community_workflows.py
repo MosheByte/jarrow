@@ -594,15 +594,27 @@ def the_body(intake: dict[str, Any]) -> str:
     return form_body(label, "https://modrinth.com/mod/sodium")
 
 
+def schema2_row(direction: str = "fabric-neoforge", **fields: Any) -> dict[str, Any]:
+    """A board.json schema 2 row (docs/board.md), trimmed to what the intake reads."""
+    row = {"direction": direction, "project_id": "AANobbMI", "slug": "sodium", "title": "Sodium", "outcome": "red",
+           "tier": None, "reason_kind": "no_converter", "reason": "No converter yet (milestone M2)",
+           "primary_game_version": "1.21.11", "last_run": "2026-11-04T03:55:00Z", "report_url": None}
+    row.update(fields)
+    return row
+
+
+def schema2_board(*rows: dict[str, Any], columns: tuple[str, ...] = ("fabric-neoforge",)) -> dict[str, Any]:
+    directions = [
+        {"id": d, "column": d in columns}
+        for d in ("fabric-neoforge", "neoforge-fabric", "fabric-quilt", "quilt-fabric", "forge-neoforge",
+                  "neoforge-forge", "fabric-forge", "forge-fabric", "quilt-forge", "forge-quilt",
+                  "quilt-neoforge", "neoforge-quilt")
+    ]
+    return {"schema": 2, "generated_at": "2026-11-04T04:12:00Z", "directions": directions, "rows": list(rows)}
+
+
 def test_red_mod_intake_comment_has_modrinth_and_board_data(intake: dict[str, Any]) -> None:
-    board = {
-        "generated_at": "2026-11-04T04:12:00Z",
-        "rows": [
-            {"project_id": "AANobbMI", "slug": "sodium", "title": "Sodium", "outcome": "red", "tier": "b",
-             "reason": "No converter yet (milestone M2)", "primary_game_version": "1.21.11", "last_run": "2026-11-04T03:55:00Z",
-             "report_url": None}
-        ],
-    }
+    board = schema2_board(schema2_row(tier="b"))
     intake["fetch_json"] = fake_http(board)
     fake = install(intake, intake_routes(the_body(intake)))
     assert intake["main"](INTAKE_ENV) == 0
@@ -624,14 +636,40 @@ def test_red_mod_intake_comment_has_modrinth_and_board_data(intake: dict[str, An
     # The board row, with a link to it.
     assert "[the row for Sodium](https://jarrow.pages.dev/board/#mod-AANobbMI)" in text
     assert "| Result | red |" in text and "| Reason | No converter yet (milestone M2) |" in text
+    assert "| Direction | Fabric → NeoForge |" in text
+
+
+def test_red_mod_intake_reads_the_row_of_the_forms_direction(intake: dict[str, Any]) -> None:
+    labels = intake["form_labels"](TEMPLATE.read_text(encoding="utf-8"))
+    url = form_body(labels.get("source-mod-url") or labels["mod-url"], "https://modrinth.com/mod/sodium")
+    assert intake["form_direction"](form_body(labels["direction"], "Fabric → Quilt"), labels) == "fabric-quilt"
+    assert intake["form_direction"](form_body(labels["direction"], "Fabric → Fabric"), labels) is None
+    assert intake["form_direction"]("nothing", labels) is None
+    two = schema2_board(
+        schema2_row(),
+        schema2_row("fabric-quilt", outcome="yellow", reason_kind="client_only_not_measured", reason="client only"),
+        columns=("fabric-neoforge", "fabric-quilt"),
+    )
+    for direction, expected in (("Fabric → Quilt", "| Result | yellow |"), ("Fabric → NeoForge", "| Result | red |")):
+        intake["fetch_json"] = fake_http(two)
+        fake = install(intake, intake_routes(url + "\n\n" + form_body(labels["direction"], direction)))
+        intake["main"](INTAKE_ENV)
+        assert expected in comment_of(fake), direction
+    # A direction without a board column is said so, never filled in from another column.
+    intake["fetch_json"] = fake_http(schema2_board(schema2_row()))
+    fake = install(intake, intake_routes(url + "\n\n" + form_body(labels["direction"], "Forge → Quilt")))
+    intake["main"](INTAKE_ENV)
+    text = comment_of(fake)
+    assert "Board: Forge → Quilt has no column on [the board](https://jarrow.pages.dev/board/) yet" in text
+    assert "| Result |" not in text
 
 
 def test_red_mod_intake_board_states(intake: dict[str, Any]) -> None:
     for board, expected in (
         ({"generated_at": None, "rows": []}, "Board: no rows yet"),
         (None, "Board: no rows yet"),
-        ({"generated_at": "2026-11-04T04:12:00Z", "rows": [{"mod_id": "other", "name": "Other"}]}, "Sodium is not on [the board]"),
-        ({"rows": [{"mod_id": "AANobbMI", "name": "Sodium", "result": "green", "tier": "a"}]}, "| Result | green |"),
+        (schema2_board(schema2_row(project_id="P7dR8mSH", slug="other")), "Sodium is not on [the board]"),
+        (schema2_board(schema2_row(outcome="green", tier="a", reason_kind=None, reason=None)), "| Result | green |"),
         (intake["FetchError"]("HTTP 503"), "could not be read (HTTP 503)"),
     ):
         intake["fetch_json"] = fake_http(board)

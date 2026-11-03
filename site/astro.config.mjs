@@ -59,7 +59,7 @@ export default defineConfig({
       },
       head: [{ tag: 'meta', attrs: { name: 'theme-color', content: '#0b0d12' } }],
       sidebar: [
-        { label: 'Start here', items: ['docs', 'docs/status', 'docs/tiers', 'docs/install'] },
+        { label: 'Start here', items: ['docs', 'docs/status', 'docs/directions', 'docs/tiers', 'docs/install'] },
         { label: 'Policy', items: ['docs/legal', 'docs/telemetry'] },
         { label: 'Help', items: ['docs/faq', 'docs/contributing'] },
       ],

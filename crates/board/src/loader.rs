@@ -4,7 +4,12 @@
 //! which Modrinth projects and files the board tests; the target loader names what the
 //! converter will produce. Every pair of distinct loaders is a valid direction, so nothing in
 //! the pipeline assumes Fabric or NeoForge.
+//!
+//! The twelve directions have a fixed build order and a v1 bar each (decision D-029,
+//! `docs/directions/README.md`). [`Direction::all`] lists them in that order, and directions
+//! sort by it.
 
+use std::cmp::Ordering;
 use std::fmt;
 use std::str::FromStr;
 
@@ -55,23 +60,15 @@ impl Loader {
         }
     }
 
-    /// The loader tag Modrinth uses in `categories` facets and in version `loaders`.
-    pub const fn modrinth_tag(self) -> &'static str {
-        // Modrinth's tags are the same lowercase ids today; kept separate so a rename on
-        // Modrinth's side touches one function.
-        self.id()
-    }
-
-    /// The manifest a JAR for this loader carries, as a path inside the JAR.
-    ///
-    /// Forge and NeoForge before 20.5 share `META-INF/mods.toml`; NeoForge 20.5 and later
-    /// (all pinned versions) use `META-INF/neoforge.mods.toml`.
-    pub const fn manifest_path(self) -> &'static str {
+    /// The loader tag Modrinth uses in `categories` facets and in version `loaders`, as the
+    /// loader's profile records it (`modrinth_loader` in `loaders/<id>.toml`), or `None` while
+    /// the profile says `"unknown"`. A loader without a researched tag gets no source list:
+    /// code that meets `"unknown"` stops (decision D-038). A test keeps this function in step
+    /// with the profiles.
+    pub const fn modrinth_tag(self) -> Option<&'static str> {
         match self {
-            Loader::Fabric => "fabric.mod.json",
-            Loader::NeoForge => "META-INF/neoforge.mods.toml",
-            Loader::Forge => "META-INF/mods.toml",
-            Loader::Quilt => "quilt.mod.json",
+            Loader::Fabric => Some("fabric"),
+            Loader::NeoForge | Loader::Forge | Loader::Quilt => None,
         }
     }
 }
@@ -97,8 +94,26 @@ impl FromStr for Loader {
     }
 }
 
-/// A conversion direction: from one loader's JAR to another's.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+/// The twelve directions in the fixed build order: source, target, build step, and the share
+/// of the direction's board column that must be green for v1 (`docs/board.md`, D-029).
+const BUILD_ORDER: [(Loader, Loader, u8, u8); 12] = [
+    (Loader::Fabric, Loader::NeoForge, 1, 60),
+    (Loader::NeoForge, Loader::Fabric, 2, 50),
+    (Loader::Fabric, Loader::Quilt, 3, 50),
+    (Loader::Quilt, Loader::Fabric, 3, 50),
+    (Loader::Forge, Loader::NeoForge, 4, 50),
+    (Loader::NeoForge, Loader::Forge, 4, 50),
+    (Loader::Fabric, Loader::Forge, 5, 50),
+    (Loader::Forge, Loader::Fabric, 5, 50),
+    (Loader::Quilt, Loader::Forge, 6, 50),
+    (Loader::Forge, Loader::Quilt, 6, 50),
+    (Loader::Quilt, Loader::NeoForge, 6, 50),
+    (Loader::NeoForge, Loader::Quilt, 6, 50),
+];
+
+/// A conversion direction: from one loader's JAR to another's. Directions compare by their
+/// place in the build order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Direction {
     /// The loader the original mod is built for.
     pub source: Loader,
@@ -117,17 +132,38 @@ impl Direction {
         Ok(Self { source, target })
     }
 
-    /// Every valid direction (twelve in v1).
+    /// Every valid direction (twelve in v1), in the build order.
     pub fn all() -> Vec<Direction> {
-        let mut out = Vec::new();
-        for source in Loader::ALL {
-            for target in Loader::ALL {
-                if source != target {
-                    out.push(Direction { source, target });
-                }
-            }
-        }
-        out
+        BUILD_ORDER
+            .iter()
+            .map(|&(source, target, _, _)| Direction { source, target })
+            .collect()
+    }
+
+    /// `(index in the build order, build step, bar)`. Every valid direction is in the table.
+    fn entry(self) -> (usize, u8, u8) {
+        BUILD_ORDER
+            .iter()
+            .enumerate()
+            .find(|(_, (s, t, _, _))| *s == self.source && *t == self.target)
+            .map_or((usize::MAX, 0, 0), |(i, &(_, _, order, bar))| {
+                (i, order, bar)
+            })
+    }
+
+    /// The direction's index in [`Direction::all`], 0 to 11.
+    pub fn position(self) -> usize {
+        self.entry().0
+    }
+
+    /// Its step in the build order, 1 to 6.
+    pub fn order(self) -> u8 {
+        self.entry().1
+    }
+
+    /// The share of its board column that must be green for v1, in percent.
+    pub fn bar_percent(self) -> u8 {
+        self.entry().2
     }
 
     /// The id, `<source>-<target>`.
@@ -138,6 +174,18 @@ impl Direction {
     /// Human label, "Fabric to NeoForge".
     pub fn label(self) -> String {
         format!("{} to {}", self.source.name(), self.target.name())
+    }
+}
+
+impl PartialOrd for Direction {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Direction {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.position().cmp(&other.position())
     }
 }
 
@@ -211,9 +259,50 @@ mod tests {
     fn every_direction_is_valid_and_distinct() {
         let all = Direction::all();
         assert_eq!(all.len(), 12);
-        for d in &all {
+        for (i, d) in all.iter().enumerate() {
             assert_eq!(d.id().parse::<Direction>().unwrap(), *d);
+            assert_eq!(d.position(), i);
         }
+        for source in Loader::ALL {
+            for target in Loader::ALL {
+                if source != target {
+                    assert!(all.contains(&Direction::new(source, target).unwrap()));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn build_order_and_bars_follow_d029() {
+        let all = Direction::all();
+        let ids: Vec<String> = all.iter().map(|d| d.id()).collect();
+        assert_eq!(
+            ids,
+            [
+                "fabric-neoforge",
+                "neoforge-fabric",
+                "fabric-quilt",
+                "quilt-fabric",
+                "forge-neoforge",
+                "neoforge-forge",
+                "fabric-forge",
+                "forge-fabric",
+                "quilt-forge",
+                "forge-quilt",
+                "quilt-neoforge",
+                "neoforge-quilt",
+            ]
+        );
+        let orders: Vec<u8> = all.iter().map(|d| d.order()).collect();
+        assert_eq!(orders, [1, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 6]);
+        for d in &all {
+            let bar = if d.id() == "fabric-neoforge" { 60 } else { 50 };
+            assert_eq!(d.bar_percent(), bar, "{d}");
+        }
+        let mut sorted = all.clone();
+        sorted.reverse();
+        sorted.sort();
+        assert_eq!(sorted, all);
     }
 
     #[test]
@@ -231,11 +320,25 @@ mod tests {
         assert!(serde_json::from_str::<Direction>("\"forge-forge\"").is_err());
     }
 
+    /// `modrinth_tag` says what `loaders/<id>.toml` records: the tag, or `None` for
+    /// `"unknown"`.
     #[test]
-    fn manifests_are_distinct() {
-        let mut paths: Vec<_> = Loader::ALL.iter().map(|l| l.manifest_path()).collect();
-        paths.sort_unstable();
-        paths.dedup();
-        assert_eq!(paths.len(), 4);
+    fn modrinth_tags_match_the_loader_profiles() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../loaders");
+        for loader in Loader::ALL {
+            let path = root.join(format!("{}.toml", loader.id()));
+            let text = std::fs::read_to_string(&path).unwrap();
+            let recorded = text
+                .lines()
+                .find_map(|line| {
+                    let rest = line.trim().strip_prefix("modrinth_loader")?;
+                    let value = rest.trim_start().strip_prefix('=')?.trim_start();
+                    let value = value.strip_prefix('"')?;
+                    Some(value[..value.find('"')?].to_owned())
+                })
+                .unwrap_or_else(|| panic!("{} has no modrinth_loader", path.display()));
+            let expected = (recorded != "unknown").then_some(recorded.as_str());
+            assert_eq!(loader.modrinth_tag(), expected, "{}", path.display());
+        }
     }
 }

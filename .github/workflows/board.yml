@@ -3,9 +3,14 @@
 #   build -> list -> shard x10 -> merge -> publish-cloudflare, publish-release, publish-ledger
 #                \-> list-release (only when the list was refetched)      -> publish-discussion
 #
-# One direction per run for now: DIRECTION below (Fabric to NeoForge first). Milestone M1, wave
-# 1: no converter exists, so every mod is red with "No converter yet (milestone M2)"; nothing
-# is green without a harness result.
+# One direction per run for now: DIRECTION below, Fabric to NeoForge, the board's only column.
+# Its source loader's list (board-list-<loader>.json) is shared by every direction from that
+# loader. The other 11 directions get no column until they are added here, in the build order.
+# Milestone M1, wave 1: no converter exists, so every file is not-run and every mod red with
+# "No converter yet (milestone M2)"; nothing is green without a harness score.
+#
+# Writes board.json schema 2 (docs/board.md). The D1 rows follow
+# infra/d1/migrations/0002_directions.sql, which infra.yml applies.
 #
 # Secrets reach only their own service and only the step that needs them:
 #   CLOUDFLARE_API_TOKEN  wrangler (Cloudflare API) in publish-cloudflare; never echoed (D-021)
@@ -26,7 +31,7 @@ on:
         type: string
         default: "1000"
       refresh_list:
-        description: "Refetch board-list.json from Modrinth even if the cached one is younger than 7 days"
+        description: "Refetch board-list-<loader>.json from Modrinth even if the cached one is younger than 7 days"
         type: boolean
         default: false
 
@@ -39,7 +44,10 @@ concurrency:
 
 env:
   DIRECTION: fabric-neoforge
-  GAME_VERSIONS: "1.21.1,1.21.11"
+  # The direction's source loader: its list is board-list-<SOURCE_LOADER>.json.
+  SOURCE_LOADER: fabric
+  # The pinned game versions (research-lock.json, D-029), oldest first.
+  GAME_VERSIONS: "1.20.1,1.21.1,1.21.11"
   # Must equal the length of the shard matrix below.
   SHARDS: "10"
   CARGO_TERM_COLOR: always
@@ -94,6 +102,11 @@ jobs:
           name: jarrow-board
           path: bin
       - run: chmod +x bin/jarrow-board
+      - name: Check that SOURCE_LOADER is the direction's source
+        run: |
+          if [ "${DIRECTION%%-*}" != "$SOURCE_LOADER" ]; then
+            echo "::error::DIRECTION $DIRECTION does not start with SOURCE_LOADER $SOURCE_LOADER"; exit 1
+          fi
       - name: Reuse the cached list when it is younger than 7 days
         id: cached
         env:
@@ -107,15 +120,16 @@ jobs:
             echo "::error::top must be a whole number from 1 to 10000"; exit 1
           fi
           fresh=false
+          list="board-list-$SOURCE_LOADER.json"
           if [ "$REFRESH" != "true" ] && gh release download board-list --repo "$REPO" \
-              --pattern board-list.json --dir cached 2>/dev/null; then
-            fetched=$(jq -r '.fetched_at' cached/board-list.json)
+              --pattern "$list" --dir cached 2>/dev/null; then
+            fetched=$(jq -r '.fetched_at' "cached/$list")
             age=$(( $(date -u +%s) - $(date -u -d "$fetched" +%s) ))
-            same=$(jq -r --arg d "$DIRECTION" --arg v "$GAME_VERSIONS" --argjson t "$TOP" \
-              '(.direction == $d) and ((.game_versions | join(",")) == $v) and (.top == $t)' \
-              cached/board-list.json)
+            same=$(jq -r --arg l "$SOURCE_LOADER" --arg v "$GAME_VERSIONS" --argjson t "$TOP" \
+              '(.schema == 2) and (.loader == $l) and ((.game_versions | join(",")) == $v) and (.top == $t)' \
+              "cached/$list")
             if [ "$age" -lt 604800 ] && [ "$same" = "true" ]; then
-              cp cached/board-list.json board-list.json
+              cp "cached/$list" "$list"
               fresh=true
               echo "Using the cached list fetched at $fetched."
             else
@@ -130,12 +144,12 @@ jobs:
         env:
           TOP: ${{ inputs.top || '1000' }}
         run: |
-          bin/jarrow-board list --direction "$DIRECTION" --top "$TOP" \
-            --game-versions "$GAME_VERSIONS" --out board-list.json
+          bin/jarrow-board list --loader "$SOURCE_LOADER" --top "$TOP" \
+            --game-versions "$GAME_VERSIONS" --out "board-list-$SOURCE_LOADER.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: board-list
-          path: board-list.json
+          path: board-list-${{ env.SOURCE_LOADER }}.json
           if-no-files-found: error
           retention-days: 7
 
@@ -160,10 +174,10 @@ jobs:
           set -euo pipefail
           if ! gh release view board-list --repo "$REPO" > /dev/null 2>&1; then
             gh release create board-list --repo "$REPO" --target "$GITHUB_SHA" --latest=false \
-              --title "Board mod list" \
-              --notes "board-list.json for the nightly board (docs/board.md): the mods and files the board tests, fetched from Modrinth at most once a week. Metadata only: no JAR."
+              --title "Board mod lists" \
+              --notes "board-list-<loader>.json for the nightly board (docs/board.md): per source loader, the mods and files the board tests, fetched from Modrinth at most once a week. Metadata only: no JAR."
           fi
-          gh release upload board-list list/board-list.json --repo "$REPO" --clobber
+          gh release upload board-list "list/board-list-$SOURCE_LOADER.json" --repo "$REPO" --clobber
 
   shard:
     name: shard (${{ matrix.shard }}/10)
@@ -197,9 +211,9 @@ jobs:
           set -euo pipefail
           chmod +x bin/jarrow-board
           # JARs go to a temporary directory and are deleted right after each one is processed.
-          bin/jarrow-board shard --list list/board-list.json --shard "$SHARD/$SHARDS" \
-            --out "shard-$SHARD.json" --reports-dir reports --run-id "$RUN_ID" \
-            --git-sha "$GITHUB_SHA" --rules-dir rules --work-dir "$RUNNER_TEMP/jars"
+          bin/jarrow-board shard --list "list/board-list-$SOURCE_LOADER.json" --direction "$DIRECTION" \
+            --shard "$SHARD/$SHARDS" --out "shard-$DIRECTION-$SHARD.json" --reports-dir reports \
+            --run-id "$RUN_ID" --git-sha "$GITHUB_SHA" --rules-dir rules --work-dir "$RUNNER_TEMP/jars"
           if find "$RUNNER_TEMP/jars" -name '*.jar' | grep -q .; then
             echo "::error::a JAR was left behind"; exit 1
           fi
@@ -207,7 +221,7 @@ jobs:
         with:
           name: shard-${{ matrix.shard }}
           path: |
-            shard-${{ matrix.shard }}.json
+            shard-${{ env.DIRECTION }}-${{ matrix.shard }}.json
             reports/
           if-no-files-found: error
           retention-days: 7
@@ -239,7 +253,7 @@ jobs:
             echo ""
             echo "| Direction | Mods | Green | Yellow | Red | Top reason |"
             echo "| --- | --- | --- | --- | --- | --- |"
-            jq -r '.directions[] | "| \(.direction) | \(.totals.mods) | \(.totals.green) | \(.totals.yellow) | \(.totals.red) | \(.top_reasons[0].label // "none") |"' out/board.json
+            jq -r '.directions[] | select(.column) | "| \(.id) | \(.totals.mods) | \(.totals.green) | \(.totals.yellow) | \(.totals.red) | \(.top_reasons[0].label // "none") |"' out/board.json
             echo ""
             jq -r '"\(.stats.files) files, \(.stats.downloaded_bytes) bytes downloaded, \(.stats.download_failures) download failures; slowest shard \(.stats.max_shard_wall_ms / 1000 | floor) s."' out/board.json
           } >> "$GITHUB_STEP_SUMMARY"
@@ -292,6 +306,8 @@ jobs:
             exit 1
           fi
           rm -f "$out"
+      # Schema: infra/d1/migrations/0002_directions.sql (applied by infra.yml), one board_rows
+      # row per mod, direction and game version.
       - name: D1 board_runs and board_rows
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

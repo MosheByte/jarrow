@@ -1,7 +1,6 @@
 """Tests for tools/board_summary.py: titles, bodies, idempotent posting. Offline: gh is faked."""
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -11,6 +10,9 @@ import pytest
 import board_summary
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
+ROOT = Path(__file__).resolve().parents[2]
+# The board.json `jarrow-board merge` writes, kept current by crates/board/tests/sample.rs.
+CRATE_SAMPLE = ROOT / "crates" / "board" / "tests" / "fixtures" / "board-sample.json"
 
 REASON_KINDS = [
     "no_converter",
@@ -29,14 +31,16 @@ REASON_KINDS = [
 
 
 def direction(name: str = "fabric-neoforge", mods: int = 1000, reasons: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """A direction with a column, as in board.json schema 2."""
     if reasons is None:
         reasons = [{"kind": "no_converter", "label": "No converter yet (milestone M2)", "count": mods}]
     source, target = name.split("-")
     return {
-        "direction": name,
-        "source_loader": source,
-        "target_loader": target,
-        "game_versions": ["1.21.1", "1.21.11"],
+        "id": name,
+        "from": source,
+        "to": target,
+        "column": True,
+        "game_versions": ["1.20.1", "1.21.1", "1.21.11"],
         "list_fetched_at": "2026-11-01T02:00:00Z",
         "rules_version": "none",
         "totals": {"mods": mods, "green": 0, "yellow": 0, "red": mods},
@@ -44,19 +48,34 @@ def direction(name: str = "fabric-neoforge", mods: int = 1000, reasons: list[dic
     }
 
 
-def board(*directions: dict[str, Any]) -> dict[str, Any]:
-    directions = directions or (direction(),)
+def no_column(name: str) -> dict[str, Any]:
+    source, target = name.split("-")
     return {
-        "schema": 1,
+        "id": name,
+        "from": source,
+        "to": target,
+        "column": False,
+        "game_versions": [],
+        "list_fetched_at": None,
+        "rules_version": None,
+        "totals": {"mods": 0, "green": 0, "yellow": 0, "red": 0},
+        "top_reasons": [],
+    }
+
+
+def board(*columns: dict[str, Any]) -> dict[str, Any]:
+    """All 12 directions in build order; the given ones have a column."""
+    columns = columns or (direction(),)
+    by_id = {c["id"]: c for c in columns}
+    return {
+        "schema": 2,
         "generated_at": "2026-11-04T03:10:00Z",
         "started_at": "2026-11-04T02:20:00Z",
         "run_id": "nightly-20261104",
         "engine": {"version": "0.1.0", "git_sha": SHA},
-        "rules_version": "none",
-        "game_versions": ["1.21.1", "1.21.11"],
+        "game_versions": ["1.20.1", "1.21.1", "1.21.11"],
         "totals": {"mods": 0, "green": 0, "yellow": 0, "red": 0},
-        "top_reasons": [],
-        "directions": list(directions),
+        "directions": [by_id.get(d, no_column(d)) for d in board_summary.DIRECTIONS],
         "stats": {"shards": 10, "files": 1800, "max_shard_wall_ms": 1_260_000},
         "rows": [],
     }
@@ -99,7 +118,7 @@ def test_body_has_totals_links_marker_and_the_honest_note() -> None:
     assert "| Red | 1,000 | 100.0% |" in body
     assert "| Green | 0 | 0.0% |" in body
     assert "| Total | 1,000 | |" in body
-    assert "**Fabric to NeoForge** on Minecraft 1.21.1, 1.21.11, run `nightly-20261104`" in body
+    assert "**Fabric to NeoForge** on Minecraft 1.20.1, 1.21.1, 1.21.11, run `nightly-20261104`" in body
     assert f"- Workflow run: {RUN_URL}" in body
     assert "- Board: https://jarrow.pages.dev/board" in body
     assert "https://github.com/MosheByte/jarrow/releases/tag/board-latest" in body
@@ -140,18 +159,42 @@ def test_table_cells_are_escaped() -> None:
     assert "| a \\| b | `crash` | 1 |" in body
 
 
+def test_directions_without_a_column_get_no_post() -> None:
+    summary = board_summary.read_board(board())
+    assert [c.direction for c in summary.columns] == ["fabric-neoforge"]
+    assert [p.direction for p in board_summary.posts(summary, None, "o/r")] == ["fabric-neoforge"]
+
+
+def test_the_board_crates_board_writes_gives_one_post() -> None:
+    data = json.loads(CRATE_SAMPLE.read_text(encoding="utf-8"))
+    summary = board_summary.read_board(data)
+    [post] = board_summary.posts(summary, RUN_URL, "MosheByte/jarrow")
+    column = data["directions"][0]
+    totals = column["totals"]
+    assert post.direction == "fabric-neoforge"
+    assert post.title == f"Nightly 2026-11-04: 0 green, 0 yellow, {totals['red']} red"
+    assert "**No converter exists yet** (milestone M2)" in post.body
+    assert "`no_converter`" in post.body and "`download_failed`" in post.body
+    assert f"**Fabric to NeoForge** on Minecraft {', '.join(column['game_versions'])}" in post.body
+
+
 @pytest.mark.parametrize(
     "mutate",
     [
-        lambda b: b.update(schema=2),
+        lambda b: b.update(schema=1),
         lambda b: b.update(started_at="yesterday"),
         lambda b: b.update(directions=[]),
-        lambda b: b["directions"][0].update(direction="fabric-fabric"),
-        lambda b: b["directions"][0].update(direction="rift-neoforge"),
+        lambda b: b["directions"].pop(),
+        lambda b: b["directions"].reverse(),
+        lambda b: b["directions"][0].update(id="fabric-fabric"),
+        lambda b: b["directions"][0].update(id="rift-neoforge"),
+        lambda b: b["directions"][0].update({"from": "quilt"}),
+        lambda b: b["directions"][0].update(column="yes"),
         lambda b: b["directions"][0]["totals"].update(red=-1),
         lambda b: b["directions"][0]["totals"].update(red=999),
         lambda b: b["directions"][0]["top_reasons"][0].update(count="many"),
-        lambda b: b["directions"].append(copy.deepcopy(b["directions"][0])),
+        lambda b: b["directions"][1]["totals"].update(mods=3, red=3),
+        lambda b: b["directions"][0].update(column=False),
         lambda b: b.pop("engine"),
     ],
 )

@@ -2,9 +2,15 @@
 //! closed reason vocabulary.
 //!
 //! `crates/report` owns the report model ([`jarrow_report::ReportEntry`], `Tier`,
-//! `Outcome`), and the report entries here are its type. It has no whole-report struct and
-//! no `reason_kind` vocabulary yet, so both live here for now ([`Report`], [`ReasonKind`]),
-//! with the strings `docs/board.md` fixes. They move to `crates/report` when it grows them.
+//! `Outcome`), and the report entries, tiers and outcomes here are its types (D-024). It has
+//! no whole-report struct and no `reason_kind` vocabulary yet, so both live here for now
+//! ([`Report`], [`ReasonKind`]), with the strings `docs/board.md` fixes. They move to
+//! `crates/report` when it grows them.
+//!
+//! A result's outcome follows `crates/report`: only a harness score makes it green, yellow
+//! or red, and a file the harness did not measure is `not-run`. The board row built from it
+//! counts `not-run` as red (or yellow for `client_only_not_measured`), never green
+//! ([`board_outcome`]).
 //!
 //! A report is deterministic: it holds no clock time and no duration, so the same input file,
 //! engine version and pipeline give byte-identical JSON. Its SHA-256 is the `report_hash` on
@@ -16,7 +22,7 @@ use jarrow_report::{Confidence, EntryKind, Location, Outcome, ReportEntry, Tier}
 use serde::{Deserialize, Serialize};
 
 use crate::hash;
-use crate::loader::{Direction, Loader};
+use crate::loader::Direction;
 use crate::{Error, SCHEMA};
 
 /// Why a mod is red or yellow on the board: the closed vocabulary of `docs/board.md`.
@@ -134,64 +140,66 @@ impl fmt::Display for ReasonKind {
     }
 }
 
-/// A tier as the board records it: one of `crates/report`'s tiers, or `unknown` while the
-/// classifier is not built (milestone M1, wave 2).
-///
-/// Serialised as `"a"`, `"b"`, `"unsupported"` or `"unknown"`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum BoardTier {
-    /// Tier A.
-    A,
-    /// Tier B.
-    B,
-    /// Unsupported.
-    Unsupported,
-    /// Not classified: the classifier has not run on this file.
-    Unknown,
-}
-
-impl BoardTier {
-    /// Stable machine id, identical to the serialised form.
-    pub const fn id(self) -> &'static str {
-        match self {
-            BoardTier::A => "a",
-            BoardTier::B => "b",
-            BoardTier::Unsupported => "unsupported",
-            BoardTier::Unknown => "unknown",
-        }
-    }
-
-    /// The value the D1 `board_rows.tier` column accepts (`infra/d1/migrations/0001_init.sql`
-    /// spells Tier A and B in capitals).
-    pub const fn d1_value(self) -> &'static str {
-        match self {
-            BoardTier::A => "A",
-            BoardTier::B => "B",
-            BoardTier::Unsupported => "unsupported",
-            BoardTier::Unknown => "unknown",
-        }
+/// The outcome a harness score maps to (decision D-024): 1.0 and 0.75 are green, 0.5 is
+/// yellow, 0.25 and 0 are red. Any other value is not a harness score.
+pub fn outcome_for_score(score: f64) -> Option<Outcome> {
+    if score == 1.0 || score == 0.75 {
+        Some(Outcome::Green)
+    } else if score == 0.5 {
+        Some(Outcome::Yellow)
+    } else if score == 0.25 || score == 0.0 {
+        Some(Outcome::Red)
+    } else {
+        None
     }
 }
 
-impl From<Tier> for BoardTier {
-    fn from(tier: Tier) -> Self {
-        match tier {
-            Tier::A => BoardTier::A,
-            Tier::B => BoardTier::B,
-            Tier::Unsupported => BoardTier::Unsupported,
-        }
-    }
-}
-
-/// The value the D1 `board_rows.outcome` column accepts (`not_run` with an underscore).
-pub const fn outcome_d1_value(outcome: Outcome) -> &'static str {
+/// A row's outcome on the board, from its primary result: green, yellow and red stay as they
+/// are; a result the harness did not measure (`not-run`) is red, or yellow when the reason is
+/// `client_only_not_measured` (D-024). Never `not-run`, never green without a score.
+pub fn board_outcome(outcome: Outcome, reason_kind: Option<ReasonKind>) -> Outcome {
     match outcome {
-        Outcome::Green => "green",
-        Outcome::Yellow => "yellow",
-        Outcome::Red => "red",
-        Outcome::NotRun => "not_run",
+        Outcome::NotRun if reason_kind == Some(ReasonKind::ClientOnlyNotMeasured) => {
+            Outcome::Yellow
+        }
+        Outcome::NotRun => Outcome::Red,
+        other => other,
     }
+}
+
+/// Checks a result's outcome, score and reason against each other: a score decides the
+/// outcome, no score means `not-run`, and anything but green carries a reason. `what` names
+/// the result in the error.
+pub fn check_verdict(
+    outcome: Outcome,
+    score: Option<f64>,
+    reason_kind: Option<ReasonKind>,
+    reason: Option<&str>,
+    what: &str,
+) -> Result<(), Error> {
+    let bad = |msg: &str| Err(Error::invalid(format!("{what}: {msg}")));
+    match score {
+        Some(s) => match outcome_for_score(s) {
+            None => return bad("the score is not a harness score (0, 0.25, 0.5, 0.75 or 1.0)"),
+            Some(o) if o != outcome => {
+                return bad("the outcome is not the one its harness score maps to (D-024)");
+            }
+            Some(_) => {}
+        },
+        None if outcome == Outcome::Green => {
+            return bad("green needs a harness score of 1.0 or 0.75");
+        }
+        None if outcome != Outcome::NotRun => {
+            return bad(
+                "only a harness score makes a result yellow or red; without one it is not-run",
+            );
+        }
+        None => {}
+    }
+    if outcome != Outcome::Green && (reason_kind.is_none() || reason.is_none_or(str::is_empty)) {
+        return bad("a result that is not green needs a reason_kind and a reason");
+    }
+    Ok(())
 }
 
 /// How a pipeline step ended.
@@ -220,7 +228,9 @@ pub struct DownloadStep {
     pub error: Option<String>,
 }
 
-/// Which loader manifests the JAR carries (wave 1 reads only the zip central directory).
+/// Which manifest files the JAR carries (wave 1 reads only the zip central directory). Which
+/// loader reads which file, on which game version, is a loader-profile fact
+/// (`loaders/<id>.toml`), so this records only the files.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Manifests {
@@ -228,22 +238,10 @@ pub struct Manifests {
     pub fabric_mod_json: bool,
     /// `quilt.mod.json`.
     pub quilt_mod_json: bool,
-    /// `META-INF/mods.toml` (Forge, and NeoForge before 20.5).
+    /// `META-INF/mods.toml`.
     pub mods_toml: bool,
     /// `META-INF/neoforge.mods.toml`.
     pub neoforge_mods_toml: bool,
-}
-
-impl Manifests {
-    /// Whether the JAR carries the manifest of `loader`.
-    pub fn has(self, loader: Loader) -> bool {
-        match loader {
-            Loader::Fabric => self.fabric_mod_json,
-            Loader::Quilt => self.quilt_mod_json,
-            Loader::Forge => self.mods_toml,
-            Loader::NeoForge => self.neoforge_mods_toml,
-        }
-    }
 }
 
 /// The inspect step.
@@ -268,9 +266,9 @@ pub struct InspectStep {
 pub struct ClassifyStep {
     /// Not built in wave 1.
     pub status: StepStatus,
-    /// The tier, `unknown` until the classifier exists.
-    pub tier: BoardTier,
-    /// Ordered reasons.
+    /// The tier, or `null` when the classifier did not run (not built yet, or no file).
+    pub tier: Option<Tier>,
+    /// Ordered reasons; when the tier is `null`, why.
     pub reasons: Vec<String>,
 }
 
@@ -280,9 +278,7 @@ pub struct ClassifyStep {
 pub struct ConvertStep {
     /// Not built until milestone M2.
     pub status: StepStatus,
-    /// The outcome this step forces (red while no converter exists).
-    pub outcome: Outcome,
-    /// The classified reason.
+    /// The classified reason a file without a conversion carries.
     pub reason_kind: ReasonKind,
     /// The reason in words.
     pub reason: String,
@@ -370,9 +366,9 @@ pub struct Report {
     pub file: ReportFile,
     /// What each step did.
     pub steps: Steps,
-    /// The tier (from the classify step).
-    pub tier: BoardTier,
-    /// The result: never green without a harness score.
+    /// The tier (from the classify step), `null` when the classifier did not run.
+    pub tier: Option<Tier>,
+    /// The result: green, yellow or red from a harness score, otherwise `not-run`.
     pub outcome: Outcome,
     /// The harness score, when the harness ran.
     pub score: Option<f64>,
@@ -399,33 +395,29 @@ impl Report {
         ))
     }
 
-    /// Checks the honesty rules: green needs a harness score of 1.0 or 0.75, a red or yellow
-    /// outcome needs a reason, and every entry carries the fields its kind needs.
+    /// Checks the honesty rules: only a harness score makes a result green, yellow or red
+    /// (green needs 1.0 or 0.75), a result without one is `not-run`, anything but green needs a
+    /// reason, and every entry carries the fields its kind needs.
     pub fn validate(&self) -> Result<(), Error> {
-        let bad = |msg: &str| {
-            Err(Error::invalid(format!(
-                "report {}/{}/{}: {msg}",
-                self.direction, self.project_id, self.game_version
-            )))
-        };
+        let what = format!(
+            "report {}/{}/{}",
+            self.direction, self.project_id, self.game_version
+        );
         if self.schema != SCHEMA {
-            return bad("unknown schema");
+            return Err(Error::invalid(format!("{what}: unknown schema")));
         }
-        match self.outcome {
-            Outcome::Green => {
-                if !matches!(self.score, Some(s) if s == 1.0 || s == 0.75) {
-                    return bad("green needs a harness score of 1.0 or 0.75");
-                }
-            }
-            Outcome::Yellow | Outcome::Red => {
-                if self.reason_kind.is_none() || self.reason.as_deref().is_none_or(str::is_empty) {
-                    return bad("a red or yellow outcome needs a reason");
-                }
-            }
-            Outcome::NotRun => {
-                return bad("the board never records not-run; it is red with a reason");
-            }
+        if self.tier != self.steps.classify.tier {
+            return Err(Error::invalid(format!(
+                "{what}: the tier is not the classify step's"
+            )));
         }
+        check_verdict(
+            self.outcome,
+            self.score,
+            self.reason_kind,
+            self.reason.as_deref(),
+            &what,
+        )?;
         for entry in &self.entries {
             entry
                 .validate()
@@ -489,22 +481,60 @@ mod tests {
     }
 
     #[test]
-    fn tiers_serialise_like_crates_report_plus_unknown() {
-        for tier in Tier::ALL {
-            let board: BoardTier = tier.into();
-            assert_eq!(
-                serde_json::to_string(&board).unwrap(),
-                serde_json::to_string(&tier).unwrap()
-            );
-            assert_eq!(board.id(), tier.id());
-        }
+    fn tiers_and_outcomes_serialise_as_d024_says() {
+        let tiers: Vec<String> = Tier::ALL
+            .iter()
+            .map(|t| serde_json::to_string(&Some(*t)).unwrap())
+            .collect();
+        assert_eq!(tiers, ["\"a\"", "\"b\"", "\"unsupported\""]);
+        assert_eq!(serde_json::to_string(&None::<Tier>).unwrap(), "null");
+        let outcomes: Vec<&str> = Outcome::ALL.iter().map(|o| o.id()).collect();
+        assert_eq!(outcomes, ["green", "yellow", "red", "not-run"]);
+    }
+
+    #[test]
+    fn scores_map_as_d024_says() {
+        assert_eq!(outcome_for_score(1.0), Some(Outcome::Green));
+        assert_eq!(outcome_for_score(0.75), Some(Outcome::Green));
+        assert_eq!(outcome_for_score(0.5), Some(Outcome::Yellow));
+        assert_eq!(outcome_for_score(0.25), Some(Outcome::Red));
+        assert_eq!(outcome_for_score(0.0), Some(Outcome::Red));
+        assert_eq!(outcome_for_score(0.3), None);
+    }
+
+    #[test]
+    fn not_run_is_red_on_the_board_unless_client_only() {
+        let no = Some(ReasonKind::NoConverter);
+        assert_eq!(board_outcome(Outcome::NotRun, no), Outcome::Red);
         assert_eq!(
-            serde_json::to_string(&BoardTier::Unknown).unwrap(),
-            "\"unknown\""
+            board_outcome(Outcome::NotRun, Some(ReasonKind::ClientOnlyNotMeasured)),
+            Outcome::Yellow
         );
-        assert_eq!(BoardTier::A.d1_value(), "A");
-        assert_eq!(BoardTier::Unknown.d1_value(), "unknown");
-        assert_eq!(outcome_d1_value(Outcome::NotRun), "not_run");
+        assert_eq!(board_outcome(Outcome::NotRun, None), Outcome::Red);
+        for o in [Outcome::Green, Outcome::Yellow, Outcome::Red] {
+            assert_eq!(board_outcome(o, no), o);
+        }
+    }
+
+    #[test]
+    fn verdicts_need_a_score_for_a_colour() {
+        let reason = Some("No converter yet (milestone M2)");
+        let kind = Some(ReasonKind::NoConverter);
+        check_verdict(Outcome::NotRun, None, kind, reason, "x").unwrap();
+        check_verdict(Outcome::Green, Some(0.75), None, None, "x").unwrap();
+        check_verdict(Outcome::Red, Some(0.25), kind, reason, "x").unwrap();
+        for (outcome, score) in [
+            (Outcome::Green, None),
+            (Outcome::Green, Some(0.5)),
+            (Outcome::Red, None),
+            (Outcome::Yellow, None),
+            (Outcome::NotRun, Some(0.0)),
+            (Outcome::Red, Some(0.3)),
+        ] {
+            assert!(check_verdict(outcome, score, kind, reason, "x").is_err());
+        }
+        assert!(check_verdict(Outcome::NotRun, None, None, reason, "x").is_err());
+        assert!(check_verdict(Outcome::NotRun, None, kind, Some(""), "x").is_err());
     }
 
     #[test]

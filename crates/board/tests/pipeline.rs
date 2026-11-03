@@ -1,6 +1,6 @@
 //! The whole pipeline offline: a list built in code, JARs built in memory and served by a
-//! fake CDN, every shard, then the merge. Checks the shapes `docs/board.md` fixes, merge
-//! determinism, and that nothing is ever green without a harness.
+//! fake CDN, every shard, then the merge. Checks the shapes `docs/board.md` (schema 2) fixes,
+//! merge determinism, and that nothing is ever green without a harness.
 
 #![allow(
     clippy::unwrap_used,
@@ -19,8 +19,8 @@ use jarrow_board::hash::{sha256_hex, sha512_hex};
 use jarrow_board::list::{BoardList, ListFile, ListMod};
 use jarrow_board::merge::{self, LedgerSummary, merge, output_files};
 use jarrow_board::pipeline::WaveOne;
-use jarrow_board::report::{BoardTier, ReasonKind, Report, StepStatus};
-use jarrow_board::shard::{ShardFile, ShardOptions, ShardSpec, run_shard, select};
+use jarrow_board::report::{ReasonKind, Report, StepStatus};
+use jarrow_board::shard::{self, ShardFile, ShardOptions, ShardSpec, run_shard, select};
 use jarrow_board::time::FixedClock;
 use jarrow_board::{Direction, Loader};
 use jarrow_report::Outcome;
@@ -31,6 +31,10 @@ const SHARDS: u32 = 10;
 struct Fixture {
     list: BoardList,
     cdn: FakeFetch,
+}
+
+fn fabric_neoforge() -> Direction {
+    "fabric-neoforge".parse().unwrap()
 }
 
 fn file(project: &str, gv: &str, bytes: &[u8]) -> ListFile {
@@ -60,14 +64,12 @@ fn project(id: &str, downloads: u64, files: Vec<ListFile>) -> ListMod {
         server_side: Some("optional".to_owned()),
         icon_url: None,
         loaders: vec!["fabric".to_owned()],
-        neoforge_build_exists: false,
-        target_build_exists: false,
         files,
     }
 }
 
-/// 24 projects: 21 plain Fabric JARs (some for both pins), one multi-loader JAR, one whose
-/// CDN bytes do not match the list, one that 404s, and one that is not a zip.
+/// 25 projects: 21 plain Fabric JARs (some for 1.20.1 or 1.21.1 as well), one multi-loader
+/// JAR, one whose CDN bytes do not match the list, one that 404s, and one that is not a zip.
 fn fixture() -> Fixture {
     let fabric = jar(&[
         "fabric.mod.json",
@@ -88,6 +90,9 @@ fn fixture() -> Fixture {
         if i % 3 == 0 {
             files.insert(0, file(&id, "1.21.1", &fabric));
         }
+        if i % 7 == 0 {
+            files.insert(0, file(&id, "1.20.1", &fabric));
+        }
         for f in &files {
             cdn = cdn.with(&f.url, fabric.clone());
         }
@@ -97,8 +102,6 @@ fn fixture() -> Fixture {
     cdn = cdn.with(&multi_file.url, multi.clone());
     let mut neo = project("Neo00002", 777, vec![multi_file]);
     neo.loaders = vec!["fabric".into(), "neoforge".into()];
-    neo.neoforge_build_exists = true;
-    neo.target_build_exists = true;
     mods.push(neo);
 
     // Same length as the listed file, one byte different: only the sha512 can tell.
@@ -119,12 +122,10 @@ fn fixture() -> Fixture {
     mods.push(project("Zip00005", 300, vec![nz]));
 
     let list = BoardList {
-        schema: 1,
+        schema: 2,
+        loader: Loader::Fabric,
         fetched_at: "2026-11-03T14:00:00Z".to_owned(),
-        direction: "fabric-neoforge".parse().unwrap(),
-        source_loader: Loader::Fabric,
-        target_loader: Loader::NeoForge,
-        game_versions: vec!["1.21.1".to_owned(), "1.21.11".to_owned()],
+        game_versions: vec!["1.20.1".into(), "1.21.1".into(), "1.21.11".into()],
         top: 1000,
         mods,
         skipped: vec![],
@@ -138,6 +139,7 @@ fn options(reports: &Path, work: &Path) -> ShardOptions {
     ShardOptions {
         run_id: "nightly-20261104".to_owned(),
         git_sha: SHA.to_owned(),
+        engine_version: jarrow_board::ENGINE_VERSION.to_owned(),
         rules_version: "none".to_owned(),
         reports_dir: reports.to_path_buf(),
         work_dir: Some(work.to_path_buf()),
@@ -145,7 +147,12 @@ fn options(reports: &Path, work: &Path) -> ShardOptions {
     }
 }
 
-fn run_all(fx: &Fixture, reports: &Path, work: &Path) -> Vec<ShardFile> {
+fn run_direction(
+    fx: &Fixture,
+    direction: Direction,
+    reports: &Path,
+    work: &Path,
+) -> Vec<ShardFile> {
     (1..=SHARDS)
         .map(|i| {
             let spec = ShardSpec::new(i, SHARDS).unwrap();
@@ -154,6 +161,7 @@ fn run_all(fx: &Fixture, reports: &Path, work: &Path) -> Vec<ShardFile> {
                 &fx.cdn,
                 &WaveOne,
                 &fx.list,
+                direction,
                 spec,
                 &options(reports, work),
                 &clock,
@@ -162,6 +170,10 @@ fn run_all(fx: &Fixture, reports: &Path, work: &Path) -> Vec<ShardFile> {
             .unwrap()
         })
         .collect()
+}
+
+fn run_all(fx: &Fixture, reports: &Path, work: &Path) -> Vec<ShardFile> {
+    run_direction(fx, fabric_neoforge(), reports, work)
 }
 
 fn keys(value: &serde_json::Value) -> BTreeSet<String> {
@@ -198,13 +210,34 @@ fn end_to_end_board() {
     let out = merge(&shards, &reports).unwrap();
     let board = &out.board;
     let n = fx.list.mods.len() as u64;
+    assert_eq!(board.schema, 2);
     assert_eq!(board.totals.mods, n);
     assert_eq!(board.totals.green, 0);
     assert_eq!(board.totals.yellow, 0);
     assert_eq!(board.totals.red, n);
-    assert_eq!(board.directions.len(), 1);
-    assert_eq!(board.directions[0].totals, board.totals);
-    let reasons: Vec<(ReasonKind, u64)> = board
+
+    // All twelve directions in the build order; only the measured one has a column.
+    let ids: Vec<Direction> = board.directions.iter().map(|d| d.id).collect();
+    assert_eq!(ids, Direction::all());
+    let column = &board.directions[0];
+    assert!(column.column);
+    assert_eq!(column.id, fabric_neoforge());
+    assert_eq!((column.order, column.bar_percent), (1, 60));
+    assert_eq!(column.totals, board.totals);
+    assert_eq!(
+        column.list_fetched_at.as_deref(),
+        Some("2026-11-03T14:00:00Z")
+    );
+    assert_eq!(column.rules_version.as_deref(), Some("none"));
+    assert_eq!(column.game_versions, fx.list.game_versions);
+    for d in &board.directions[1..] {
+        assert!(!d.column, "{}", d.id);
+        assert_eq!(d.totals.mods, 0);
+        assert!(d.top_reasons.is_empty() && d.rules_version.is_none());
+        assert!(d.game_versions.is_empty() && d.list_fetched_at.is_none());
+    }
+    assert_eq!(board.game_versions, fx.list.game_versions);
+    let reasons: Vec<(ReasonKind, u64)> = column
         .top_reasons
         .iter()
         .map(|r| (r.kind, r.count))
@@ -225,30 +258,41 @@ fn end_to_end_board() {
     assert_eq!(board.stats.files, files as u64);
     assert_eq!(out.reports.len(), files);
 
-    // Rows: sorted by downloads, never green, outcome and reason from the primary version.
+    // Rows: sorted by downloads, red on the board, every result not-run (no harness ran),
+    // outcome and reason from the primary version.
     let downloads: Vec<u64> = board.rows.iter().map(|r| r.downloads).collect();
     let mut sorted = downloads.clone();
     sorted.sort_by(|a, b| b.cmp(a));
     assert_eq!(downloads, sorted);
     for row in &board.rows {
+        assert_eq!(row.direction, fabric_neoforge());
         assert_eq!(row.outcome, Outcome::Red);
-        assert_eq!(row.tier, BoardTier::Unknown);
+        assert_eq!(row.tier, None);
+        assert_eq!(row.report_url, None);
         assert!(row.page_url.starts_with("https://modrinth.com/mod/"));
         let newest = row.results.last().unwrap();
         assert_eq!(row.primary_game_version, newest.game_version);
         for r in &row.results {
+            assert_eq!(r.direction, row.direction);
+            assert_eq!(r.outcome, Outcome::NotRun);
             assert_eq!(r.score, None);
+            assert_eq!(r.tier, None);
             assert!(r.report_key.starts_with("report:fabric-neoforge:"));
             assert!(r.report_hash.starts_with("sha256:"));
         }
     }
-    let both = board
+    let three = board
         .rows
         .iter()
         .find(|r| r.project_id == "Fab00000")
         .unwrap();
-    assert_eq!(both.results.len(), 2);
-    assert_eq!(both.primary_game_version, "1.21.11");
+    let versions: Vec<&str> = three
+        .results
+        .iter()
+        .map(|r| r.game_version.as_str())
+        .collect();
+    assert_eq!(versions, ["1.20.1", "1.21.1", "1.21.11"]);
+    assert_eq!(three.primary_game_version, "1.21.11");
     let bad = board
         .rows
         .iter()
@@ -267,7 +311,8 @@ fn end_to_end_board() {
         .iter()
         .find(|r| r.project_id == "Neo00002")
         .unwrap();
-    assert!(neo.neoforge_build_exists);
+    assert!(neo.target_build_exists);
+    assert!(!three.target_build_exists);
     assert_eq!(neo.primary_game_version, "1.21.1");
 
     // Reports: one per result, canonical, hashed, honest about every step.
@@ -282,6 +327,7 @@ fn end_to_end_board() {
         "{path}"
     );
     let report: Report = serde_json::from_slice(bytes).unwrap();
+    assert_eq!(report.schema, 2);
     assert_eq!(report.steps.download.status, StepStatus::Ok);
     assert!(report.steps.download.sha512_verified);
     assert_eq!(report.steps.inspect.status, StepStatus::Ok);
@@ -290,7 +336,7 @@ fn end_to_end_board() {
     assert!(manifests.fabric_mod_json && manifests.neoforge_mods_toml);
     assert!(!manifests.quilt_mod_json && !manifests.mods_toml);
     assert_eq!(report.steps.classify.status, StepStatus::NotBuilt);
-    assert_eq!(report.steps.classify.tier, BoardTier::Unknown);
+    assert_eq!(report.steps.classify.tier, None);
     assert_eq!(
         report.steps.classify.reasons,
         vec!["classifier not built yet (M1 wave 2)"]
@@ -303,7 +349,8 @@ fn end_to_end_board() {
     assert_eq!(report.steps.harness.status, StepStatus::NotRun);
     assert_eq!(report.steps.round_trip.status, StepStatus::NotRun);
     assert!(report.steps.round_trip.reason.starts_with("not run yet"));
-    assert_eq!(report.outcome, Outcome::Red);
+    assert_eq!(report.outcome, Outcome::NotRun);
+    assert_eq!(report.tier, None);
     assert_eq!(report.entries.len(), 1);
 
     let zip = out
@@ -324,6 +371,12 @@ fn end_to_end_board() {
     assert_eq!(failed.steps.download.status, StepStatus::Failed);
     assert_eq!(failed.steps.inspect.status, StepStatus::NotRun);
     assert_eq!(failed.steps.convert.reason_kind, ReasonKind::DownloadFailed);
+    assert_eq!(failed.outcome, Outcome::NotRun);
+
+    // The ledger summary describes the column.
+    assert_eq!(out.summary.direction, fabric_neoforge());
+    assert_eq!(out.summary.mods, n);
+    assert_eq!(out.summary.red, n);
 }
 
 #[test]
@@ -354,39 +407,53 @@ fn board_json_has_the_contract_shape() {
             "started_at",
             "run_id",
             "engine",
-            "rules_version",
             "game_versions",
             "totals",
-            "top_reasons",
             "directions",
             "stats",
             "rows",
         ])
     );
-    assert_eq!(board["schema"], 1);
+    assert_eq!(board["schema"], 2);
     assert_eq!(keys(&board["engine"]), set(&["version", "git_sha"]));
     assert_eq!(
         keys(&board["totals"]),
         set(&["mods", "green", "yellow", "red"])
     );
+    assert_eq!(board["directions"].as_array().unwrap().len(), 12);
+    for d in board["directions"].as_array().unwrap() {
+        assert_eq!(
+            keys(d),
+            set(&[
+                "id",
+                "from",
+                "to",
+                "order",
+                "bar_percent",
+                "column",
+                "game_versions",
+                "list_fetched_at",
+                "rules_version",
+                "totals",
+                "top_reasons",
+            ])
+        );
+    }
+    let first = &board["directions"][0];
+    assert_eq!(first["id"], "fabric-neoforge");
+    assert_eq!(first["from"], "fabric");
+    assert_eq!(first["to"], "neoforge");
+    assert_eq!(first["order"], 1);
+    assert_eq!(first["bar_percent"], 60);
+    assert_eq!(first["column"], true);
     assert_eq!(
-        keys(&board["top_reasons"][0]),
+        keys(&first["top_reasons"][0]),
         set(&["kind", "label", "count"])
     );
-    assert_eq!(
-        keys(&board["directions"][0]),
-        set(&[
-            "direction",
-            "source_loader",
-            "target_loader",
-            "game_versions",
-            "list_fetched_at",
-            "rules_version",
-            "totals",
-            "top_reasons",
-        ])
-    );
-    assert_eq!(board["directions"][0]["direction"], "fabric-neoforge");
+    let second = &board["directions"][1];
+    assert_eq!(second["id"], "neoforge-fabric");
+    assert_eq!(second["column"], false);
+    assert!(second["rules_version"].is_null() && second["list_fetched_at"].is_null());
     let row = &board["rows"][0];
     assert_eq!(
         keys(row),
@@ -405,17 +472,19 @@ fn board_json_has_the_contract_shape() {
             "reason_kind",
             "reason",
             "last_run",
-            "neoforge_build_exists",
+            "report_url",
             "target_build_exists",
             "results",
         ])
     );
-    assert_eq!(row["tier"], "unknown");
+    assert!(row["tier"].is_null());
     assert_eq!(row["outcome"], "red");
     assert_eq!(row["reason_kind"], "no_converter");
+    assert!(row["report_url"].is_null());
     assert_eq!(
         keys(&row["results"][0]),
         set(&[
+            "direction",
             "game_version",
             "version_id",
             "version_number",
@@ -433,8 +502,12 @@ fn board_json_has_the_contract_shape() {
             "duration_ms",
         ])
     );
-    assert!(row["results"][0]["score"].is_null());
-    assert!(row["results"][0]["mod_id"].is_null());
+    let result = &row["results"][0];
+    assert_eq!(result["direction"], "fabric-neoforge");
+    assert_eq!(result["outcome"], "not-run");
+    assert!(result["score"].is_null());
+    assert!(result["tier"].is_null());
+    assert!(result["mod_id"].is_null());
 
     // board-summary.json carries exactly the keys tools/ledger.py accepts.
     let summary: serde_json::Value = serde_json::from_slice(&files[1].1).unwrap();
@@ -442,6 +515,7 @@ fn board_json_has_the_contract_shape() {
         keys(&summary),
         set(&[
             "schema",
+            "direction",
             "run",
             "date",
             "commit",
@@ -456,6 +530,8 @@ fn board_json_has_the_contract_shape() {
             "red_reasons",
         ])
     );
+    assert_eq!(summary["schema"], 1);
+    assert_eq!(summary["direction"], "fabric-neoforge");
     let parsed: LedgerSummary = serde_json::from_value(summary.clone()).unwrap();
     assert_eq!(parsed.date, "2026-11-04");
     assert_eq!(parsed.commit, SHA);
@@ -488,19 +564,90 @@ fn board_json_has_the_contract_shape() {
         );
     }
 
-    // D1: one run per direction, its earlier rows deleted first, batched rows, D1 spellings.
+    // D1, in the schema of migration 0002: the run once, its earlier rows deleted first, one
+    // row per mod, direction and game version, batched, with the D-024 strings.
     let sql = String::from_utf8(files[4].1.clone()).unwrap();
-    assert!(
-        sql.contains("DELETE FROM board_rows WHERE run_id = 'nightly-20261104:fabric-neoforge';")
-    );
-    assert!(sql.contains("INSERT INTO board_runs (id, started_at, finished_at, engine_version"));
-    assert_eq!(sql.matches("INSERT INTO board_rows").count(), 1);
+    assert!(sql.contains("DELETE FROM board_rows WHERE run_id = 'nightly-20261104';"));
+    assert!(sql.contains("DELETE FROM board_runs WHERE id = 'nightly-20261104';"));
+    assert!(sql.contains(
+        "INSERT INTO board_runs (id, started_at, finished_at, engine_version, game_versions, \
+         directions, totals) VALUES ('nightly-20261104', "
+    ));
+    assert!(sql.contains(r#"'["fabric-neoforge"]'"#));
+    assert!(sql.contains(
+        r#""fabric-neoforge":{"mods":25,"green":0,"yellow":0,"red":25,"rules_version":"none"}"#
+    ));
     assert_eq!(
-        sql.matches("'unknown', 'red', NULL, 'no_converter'")
-            .count() as u64,
-        out.reports.len() as u64 - 2
+        sql.matches("INSERT INTO board_rows (run_id, direction, project_id")
+            .count(),
+        1
     );
-    assert!(!sql.contains("'not-run'"));
+    let rows: Vec<&str> = sql
+        .lines()
+        .filter(|l| l.starts_with("('nightly-20261104', 'fabric-neoforge', "))
+        .collect();
+    assert_eq!(rows.len(), out.reports.len());
+    assert_eq!(
+        rows.iter()
+            .filter(|l| l.ends_with(", 1, 'red'),") || l.ends_with(", 1, 'red');"))
+            .count(),
+        fx.list.mods.len()
+    );
+    assert_eq!(
+        rows.iter()
+            .filter(|l| l.contains(", NULL, 'not-run', NULL, "))
+            .count(),
+        out.reports.len()
+    );
+    assert!(!sql.contains("'unknown'") && !sql.contains("'not_run'") && !sql.contains("'A'"));
+}
+
+#[test]
+fn two_directions_from_one_source_list() {
+    // Fabric -> NeoForge and Fabric -> Quilt share the Fabric list; each gets its own column.
+    let fx = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let reports = tmp.path().join("reports");
+    let work = tmp.path().join("work");
+    let quilt: Direction = "fabric-quilt".parse().unwrap();
+    let mut shards = run_direction(&fx, quilt, &reports, &work);
+    shards.extend(run_all(&fx, &reports, &work));
+    let out = merge(&shards, &reports).unwrap();
+    let board = &out.board;
+    let measured: Vec<String> = board
+        .directions
+        .iter()
+        .filter(|d| d.column)
+        .map(|d| d.id.id())
+        .collect();
+    assert_eq!(measured, ["fabric-neoforge", "fabric-quilt"]);
+    let n = fx.list.mods.len() as u64;
+    assert_eq!(board.totals.mods, 2 * n, "one entry per mod per column");
+    assert_eq!(board.rows.len() as u64, 2 * n);
+    // Rows follow the build order: every fabric-neoforge row before every fabric-quilt row.
+    let split = board
+        .rows
+        .iter()
+        .position(|r| r.direction == quilt)
+        .unwrap();
+    assert!(
+        board.rows[..split]
+            .iter()
+            .all(|r| r.direction == fabric_neoforge())
+    );
+    assert!(board.rows[split..].iter().all(|r| r.direction == quilt));
+    let neo = board
+        .rows
+        .iter()
+        .find(|r| r.direction == quilt && r.project_id == "Neo00002")
+        .unwrap();
+    assert!(!neo.target_build_exists, "tagged neoforge, not quilt");
+    // The ledger summary is the first column's.
+    assert_eq!(out.summary.direction, fabric_neoforge());
+    assert_eq!(out.summary.mods, n);
+    let sql = merge::d1_sql(board).unwrap();
+    assert!(sql.contains(r#"'["fabric-neoforge","fabric-quilt"]'"#));
+    assert!(sql.contains("('nightly-20261104', 'fabric-quilt', "));
 }
 
 #[test]
@@ -542,6 +689,7 @@ fn reports_do_not_depend_on_the_clock_or_the_shard() {
         &fx.cdn,
         &WaveOne,
         &fx.list,
+        fabric_neoforge(),
         spec,
         &options(&a, &tmp.path().join("w")),
         &FixedClock("2026-11-04T02:00:00Z".into()),
@@ -552,6 +700,7 @@ fn reports_do_not_depend_on_the_clock_or_the_shard() {
         &fx.cdn,
         &WaveOne,
         &fx.list,
+        fabric_neoforge(),
         spec,
         &options(&b, &tmp.path().join("w")),
         &FixedClock("2026-12-25T23:59:59Z".into()),
@@ -569,6 +718,10 @@ fn reports_do_not_depend_on_the_clock_or_the_shard() {
     assert_eq!(
         fs::read(a.join(rel)).unwrap(),
         fs::read(b.join(rel)).unwrap()
+    );
+    assert_eq!(
+        shard::file_name(first.direction, first.shard),
+        "shard-fabric-neoforge-1.json"
     );
 }
 
@@ -604,12 +757,23 @@ fn merge_refuses_incomplete_or_inconsistent_input() {
     let row = green.iter_mut().find_map(|s| s.rows.first_mut()).unwrap();
     row.outcome = Outcome::Green;
     row.results.last_mut().unwrap().outcome = Outcome::Green;
-    assert!(
-        merge(&green, &reports)
-            .unwrap_err()
-            .to_string()
-            .contains("green without a harness")
-    );
+    let err = merge(&green, &reports).unwrap_err().to_string();
+    assert!(err.contains("green needs a harness score"), "{err}");
+
+    let mut not_run = shards.clone();
+    let row = not_run.iter_mut().find_map(|s| s.rows.first_mut()).unwrap();
+    row.outcome = Outcome::NotRun;
+    let err = merge(&not_run, &reports).unwrap_err().to_string();
+    assert!(err.contains("not-run"), "{err}");
+
+    let mut red_without_score = shards.clone();
+    let row = red_without_score
+        .iter_mut()
+        .find_map(|s| s.rows.first_mut())
+        .unwrap();
+    row.results.last_mut().unwrap().outcome = Outcome::Red;
+    let err = merge(&red_without_score, &reports).unwrap_err().to_string();
+    assert!(err.contains("only a harness score"), "{err}");
 
     assert!(merge(&[], &reports).is_err());
 
@@ -629,18 +793,39 @@ fn merge_refuses_incomplete_or_inconsistent_input() {
 }
 
 #[test]
+fn a_shard_measures_only_directions_from_the_lists_loader() {
+    let fx = fixture();
+    let tmp = tempfile::tempdir().unwrap();
+    let err = run_shard(
+        &fx.cdn,
+        &WaveOne,
+        &fx.list,
+        "quilt-neoforge".parse().unwrap(),
+        ShardSpec::new(1, 1).unwrap(),
+        &options(&tmp.path().join("r"), &tmp.path().join("w")),
+        &FixedClock("2026-11-04T02:00:00Z".into()),
+        |_| {},
+    )
+    .unwrap_err()
+    .to_string();
+    assert!(err.contains("board-list-fabric.json"), "{err}");
+}
+
+#[test]
 fn directions_are_inputs() {
-    // The same JARs measured as a Quilt source: nothing in the shard assumes Fabric.
+    // The same JARs listed as Quilt mods and measured as Quilt to NeoForge: nothing in the
+    // shard assumes Fabric.
     let mut fx = fixture();
+    fx.list.loader = Loader::Quilt;
     let d: Direction = "quilt-neoforge".parse().unwrap();
-    fx.list.direction = d;
-    fx.list.source_loader = Loader::Quilt;
     let tmp = tempfile::tempdir().unwrap();
     let reports = tmp.path().join("reports");
-    let shards = run_all(&fx, &reports, &tmp.path().join("work"));
+    let shards = run_direction(&fx, d, &reports, &tmp.path().join("work"));
     let out = merge(&shards, &reports).unwrap();
-    assert_eq!(out.board.directions[0].direction, d);
-    assert_eq!(out.board.directions[0].source_loader, Loader::Quilt);
+    let column = out.board.directions.iter().find(|x| x.column).unwrap();
+    assert_eq!(column.id, d);
+    assert_eq!(column.from, Loader::Quilt);
+    assert_eq!(column.order, 6);
     assert!(
         out.reports
             .iter()
@@ -651,4 +836,5 @@ fn directions_are_inputs() {
             .iter()
             .all(|x| x.report_key.starts_with("report:quilt-neoforge:"))
     }));
+    assert_eq!(out.summary.direction, d);
 }

@@ -33,17 +33,17 @@ A license the converter cannot recognise gets the personal-use path only.
 
 ## Opt-out is absolute
 
-An author who verifies ownership (GitHub sign-in matching the mod's repository, or a Modrinth-linked account) can mark their mod "do not port". The converter will refuse it, the board will hide it, and the refusal will explain why. This holds even when the license would allow conversion.
+An author who verifies ownership (GitHub sign-in matching the mod's repository, or a Modrinth-linked account) can mark their mod "do not port". The converter will refuse it in every direction, the board will hide it, and the refusal will explain why. This holds even when the license would allow conversion.
 
 The verified flow arrives with author mode (milestone M4). Until then, authors can ask with the `author-opt-out` issue form on [GitHub](https://github.com/MosheByte/jarrow/issues/new/choose).
 
 ## Clean room
 
-The engine learns Fabric and NeoForge from their public documentation and open-source API repositories. Rule tables describe API shapes, never mod code. No code from Sinytra Connector, Architectury, Forgified Fabric API or any mod is copied into the engine or the rule tables. Decompiled user code exists only inside a Tier B job and is never logged, stored, or sent anywhere outside that job.
+The engine learns each loader (Fabric, NeoForge, Forge and Quilt) from its public documentation and open-source API repositories. Rule tables describe API shapes, never mod code. No code from Sinytra Connector, Architectury, Forgified Fabric API or any mod is copied into the engine or the rule tables. Decompiled user code exists only inside a Tier B job and is never logged, stored, or sent anywhere outside that job.
 
 ## Trademarks
 
-"Minecraft" belongs to Mojang. "Fabric" and "NeoForge" belong to their projects. Jarrow is not an official Minecraft product, is not approved by or associated with Mojang or Microsoft, and is not affiliated with the Fabric or NeoForge projects. The product name and logo do not use those names, and this site shows no Fabric or NeoForge logos.
+"Minecraft" belongs to Mojang. "Fabric", "NeoForge", "Forge" and "Quilt" belong to their projects. Jarrow is not an official Minecraft product, is not approved by or associated with Mojang or Microsoft, and is not affiliated with the Fabric, NeoForge, Forge or Quilt projects. The product name and logo do not use those names, and this site shows no loader logos.
 
 ## Licenses of this project
 

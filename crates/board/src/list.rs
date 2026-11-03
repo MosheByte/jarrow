@@ -1,8 +1,10 @@
-//! `board-list.json`: the mods a direction's board tests, fetched from Modrinth.
+//! `board-list-<loader>.json`: the mods the board tests for one source loader, fetched from
+//! Modrinth. Every direction with that source loader shares the list.
 //!
 //! The list holds the top `top` projects of the source loader, by downloads, that ship at
 //! least one usable file for a pinned game version. Projects the search returns without such
-//! a file are recorded under `skipped`, with the reason, and do not count towards `top`.
+//! a file are recorded under `skipped`, with the reason, and do not count towards `top`. Only
+//! a loader whose profile records its Modrinth tag gets a list ([`Loader::modrinth_tag`]).
 
 use std::collections::BTreeSet;
 
@@ -10,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::gamever;
 use crate::http::Fetch;
-use crate::loader::{Direction, Loader};
+use crate::loader::Loader;
 use crate::modrinth::{self, PickedFile, SearchHit};
 use crate::time;
 use crate::{Error, SCHEMA};
@@ -21,20 +23,21 @@ pub const MAX_API_BODY: u64 = 32 * 1024 * 1024;
 /// The largest `--top` the pipeline accepts.
 pub const MAX_TOP: u32 = 10_000;
 
-/// `board-list.json`.
+/// The file name of a loader's list: `board-list-<loader>.json`.
+pub fn file_name(loader: Loader) -> String {
+    format!("board-list-{}.json", loader.id())
+}
+
+/// `board-list-<loader>.json`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BoardList {
     /// Always [`SCHEMA`].
     pub schema: u32,
+    /// The source loader whose mods these are.
+    pub loader: Loader,
     /// When the list was fetched, RFC 3339 UTC.
     pub fetched_at: String,
-    /// The direction, `<source>-<target>`.
-    pub direction: Direction,
-    /// The direction's source loader (repeated for readers that do not parse `direction`).
-    pub source_loader: Loader,
-    /// The direction's target loader.
-    pub target_loader: Loader,
     /// The pinned game versions, oldest first.
     pub game_versions: Vec<String>,
     /// How many mods were asked for.
@@ -65,15 +68,18 @@ pub struct ListMod {
     pub server_side: Option<String>,
     /// Icon URL.
     pub icon_url: Option<String>,
-    /// The project's loader tags on Modrinth, sorted.
-    pub loaders: Vec<String>,
-    /// Whether Modrinth tags the project with `neoforge`. Informational: not an
+    /// The loader ids among the project's Modrinth tags, sorted. Informational: not an
     /// author-verified port.
-    pub neoforge_build_exists: bool,
-    /// Whether Modrinth tags the project with the direction's target loader.
-    pub target_build_exists: bool,
+    pub loaders: Vec<String>,
     /// At most one file per pinned game version, oldest version first.
     pub files: Vec<ListFile>,
+}
+
+impl ListMod {
+    /// Whether Modrinth tags the project with `loader` (informational).
+    pub fn tagged(&self, loader: Loader) -> bool {
+        self.loaders.iter().any(|l| l == loader.id())
+    }
 }
 
 /// The file the board tests for one game version.
@@ -128,8 +134,8 @@ impl From<PickedFile> for ListFile {
 /// What to fetch.
 #[derive(Debug, Clone)]
 pub struct ListOptions {
-    /// The direction; its source loader picks the facets and the files.
-    pub direction: Direction,
+    /// The source loader; its Modrinth tag picks the facets and the files.
+    pub loader: Loader,
     /// The pinned game versions.
     pub game_versions: Vec<String>,
     /// How many mods to keep.
@@ -139,9 +145,7 @@ pub struct ListOptions {
 }
 
 /// Builds a list entry from a search hit and the files picked for it.
-pub fn list_mod(hit: &SearchHit, direction: Direction, files: Vec<PickedFile>) -> ListMod {
-    let loaders = modrinth::loader_tags(&hit.categories);
-    let tagged = |loader: Loader| loaders.iter().any(|l| l == loader.id());
+pub fn list_mod(hit: &SearchHit, files: Vec<PickedFile>) -> ListMod {
     ListMod {
         project_id: hit.project_id.clone(),
         slug: hit.slug.clone(),
@@ -151,11 +155,21 @@ pub fn list_mod(hit: &SearchHit, direction: Direction, files: Vec<PickedFile>) -
         client_side: hit.client_side.clone(),
         server_side: hit.server_side.clone(),
         icon_url: hit.icon_url.clone(),
-        neoforge_build_exists: tagged(Loader::NeoForge),
-        target_build_exists: tagged(direction.target),
-        loaders,
+        loaders: modrinth::loader_tags(&hit.categories),
         files: files.into_iter().map(ListFile::from).collect(),
     }
+}
+
+/// The source loader's researched Modrinth tag, or an error that names the profile field.
+pub fn modrinth_tag(loader: Loader) -> Result<&'static str, Error> {
+    loader.modrinth_tag().ok_or_else(|| {
+        Error::invalid(format!(
+            "loaders/{}.toml records modrinth_loader = \"unknown\", so {} has no source list \
+             until its Modrinth tag is researched",
+            loader.id(),
+            loader.name()
+        ))
+    })
 }
 
 /// Fetches the list: search pages of 100, sorted by downloads, until `top` mods with a usable
@@ -172,19 +186,19 @@ pub fn fetch_list(
             opts.top
         )));
     }
+    let tag = modrinth_tag(opts.loader)?;
     let mut game_versions = opts.game_versions.clone();
     gamever::sort_versions(&mut game_versions);
     if game_versions.is_empty() {
         return Err(Error::invalid("at least one game version is required"));
     }
-    let source = opts.direction.source;
     let mut mods = Vec::new();
     let mut skipped = Vec::new();
     let mut seen = BTreeSet::new();
     let mut offset: u64 = 0;
     let target = usize::try_from(opts.top).unwrap_or(usize::MAX);
     'pages: loop {
-        let url = modrinth::search_url(&opts.api_base, source, &game_versions, offset);
+        let url = modrinth::search_url(&opts.api_base, tag, &game_versions, offset);
         let page = modrinth::parse_search(&fetch.get(&url, MAX_API_BODY)?)?;
         progress(&format!(
             "search offset {offset}: {} hits of {}",
@@ -201,23 +215,22 @@ pub fn fetch_list(
             if !modrinth::is_modrinth_id(&hit.project_id) || !seen.insert(hit.project_id.clone()) {
                 continue;
             }
-            let url =
-                modrinth::versions_url(&opts.api_base, &hit.project_id, source, &game_versions)?;
+            let url = modrinth::versions_url(&opts.api_base, &hit.project_id, tag, &game_versions)?;
             let versions = modrinth::parse_versions(&fetch.get(&url, MAX_API_BODY)?)?;
-            let files = modrinth::pick_files(&versions, source, &game_versions);
+            let files = modrinth::pick_files(&versions, tag, &game_versions);
             if files.is_empty() {
                 skipped.push(ListSkip {
                     project_id: hit.project_id.clone(),
                     slug: hit.slug.clone(),
                     reason: format!(
                         "no {} release or beta JAR on Modrinth for {}",
-                        source.name(),
+                        opts.loader.name(),
                         game_versions.join(" or ")
                     ),
                 });
                 continue;
             }
-            mods.push(list_mod(hit, opts.direction, files));
+            mods.push(list_mod(hit, files));
         }
         offset += page.hits.len() as u64;
         if mods.len() >= target || offset >= page.total_hits {
@@ -226,10 +239,8 @@ pub fn fetch_list(
     }
     let list = BoardList {
         schema: SCHEMA,
+        loader: opts.loader,
         fetched_at,
-        direction: opts.direction,
-        source_loader: opts.direction.source,
-        target_loader: opts.direction.target,
         game_versions,
         top: opts.top,
         mods,
@@ -254,7 +265,7 @@ impl BoardList {
 
     /// Checks the rules of `docs/board.md` that a reader relies on.
     pub fn validate(&self) -> Result<(), Error> {
-        let bad = |msg: String| Err(Error::invalid(format!("board-list.json: {msg}")));
+        let bad = |msg: String| Err(Error::invalid(format!("{}: {msg}", file_name(self.loader))));
         if self.schema != SCHEMA {
             return bad(format!("schema must be {SCHEMA}, got {}", self.schema));
         }
@@ -263,11 +274,6 @@ impl BoardList {
                 "fetched_at {:?} is not an RFC 3339 UTC time",
                 self.fetched_at
             ));
-        }
-        if self.source_loader != self.direction.source
-            || self.target_loader != self.direction.target
-        {
-            return bad("source_loader and target_loader must match direction".to_owned());
         }
         if self.game_versions.is_empty()
             || !self.game_versions.iter().all(|v| gamever::is_release(v))
@@ -320,18 +326,17 @@ impl BoardList {
         Ok(())
     }
 
-    /// Parses and validates `board-list.json`.
+    /// Parses and validates `board-list-<loader>.json`.
     pub fn from_json(bytes: &[u8]) -> Result<Self, Error> {
         let list: BoardList =
-            serde_json::from_slice(bytes).map_err(|e| Error::json("board-list.json", e))?;
+            serde_json::from_slice(bytes).map_err(|e| Error::json("board list", e))?;
         list.validate()?;
         Ok(list)
     }
 
     /// The list as pretty JSON with a trailing newline.
     pub fn to_json(&self) -> Result<Vec<u8>, Error> {
-        let mut out =
-            serde_json::to_vec_pretty(self).map_err(|e| Error::json("board-list.json", e))?;
+        let mut out = serde_json::to_vec_pretty(self).map_err(|e| Error::json("board list", e))?;
         out.push(b'\n');
         Ok(out)
     }

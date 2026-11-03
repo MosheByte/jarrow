@@ -123,7 +123,7 @@ Triggered by `issues` `opened`, `edited` and `labeled`, for issues that carry th
    - mod id and slug, title, license, client and server side, loaders, how many game versions are listed and which pinned ones (1.20.1, 1.21.1, 1.21.11), downloads;
    - whether a NeoForge build exists for a pinned version, from Modrinth's loader tags (not an author-verified port);
    - per pinned game version, the newest file (primary file, version number, release type, loaders, date) and whether a NeoForge build exists for that version;
-   - the board's current row for the mod (result, tier, reason, game version, last run, report link) when the board has one, with a link to `https://jarrow.pages.dev/board/#mod-<Modrinth project id>`; otherwise that the mod is not on the board, or that the board has no rows yet, or that it could not be read.
+   - the board's current row for the mod in the form's direction (`board.json` schema 2 has one row per mod per direction column, [board.md](board.md)): direction, result, tier, reason, game version, last run and report link, with a link to `https://jarrow.pages.dev/board/#mod-<Modrinth project id>`; otherwise that the form's direction has no board column yet, that the mod is not in that column, that the board has no rows yet, or that it could not be read.
 
 The board row link expects the board page to give each row the id `mod-<Modrinth project id>`. Until it does, the link opens the board at the top.
 

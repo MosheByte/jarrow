@@ -1,4 +1,5 @@
-//! One shard of the nightly: download, verify, run the pipeline, delete, report.
+//! One shard of the nightly: one slice of a source loader's list, measured for one direction.
+//! Download, verify, run the pipeline, delete, report.
 //!
 //! Shard assignment is a stable modulo: a mod belongs to shard `fnv1a64(project_id) % total`,
 //! so a mod stays in the same shard however the list's order or length changes.
@@ -10,7 +11,6 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Instant;
 
-use jarrow_report::Outcome;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::board::{BoardResult, BoardRow, Engine, ShardStats, StepDurations, page_url};
@@ -21,11 +21,11 @@ use crate::list::{BoardList, ListFile, ListMod};
 use crate::loader::{Direction, Loader};
 use crate::pipeline::{self, ModContext, ModPipeline};
 use crate::report::{
-    self, BoardTier, ClassifyStep, ConvertStep, DownloadStep, HarnessStep, InspectStep, ReasonKind,
-    Report, ReportFile, RoundTripStep, StepStatus, Steps,
+    self, ClassifyStep, ConvertStep, DownloadStep, HarnessStep, InspectStep, ReasonKind, Report,
+    ReportFile, RoundTripStep, StepStatus, Steps, board_outcome,
 };
 use crate::time::{self, Clock};
-use crate::{ENGINE_VERSION, Error, SCHEMA};
+use crate::{Error, SCHEMA};
 
 /// The largest JAR the board downloads, in bytes.
 pub const MAX_FILE_BYTES: u64 = 512 * 1024 * 1024;
@@ -114,7 +114,12 @@ impl<'de> Deserialize<'de> for ShardSpec {
     }
 }
 
-/// `shard-<n>.json`.
+/// The file name of a shard: `shard-<direction>-<n>.json`.
+pub fn file_name(direction: Direction, spec: ShardSpec) -> String {
+    format!("shard-{direction}-{}.json", spec.index)
+}
+
+/// `shard-<direction>-<n>.json`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ShardFile {
@@ -128,9 +133,9 @@ pub struct ShardFile {
     pub source_loader: Loader,
     /// Its target loader.
     pub target_loader: Loader,
-    /// The pinned game versions, from the list.
+    /// The pinned game versions, from the source list.
     pub game_versions: Vec<String>,
-    /// When the list was fetched.
+    /// When the source list was fetched.
     pub list_fetched_at: String,
     /// Which shard this is.
     pub shard: ShardSpec,
@@ -149,7 +154,7 @@ pub struct ShardFile {
 }
 
 impl ShardFile {
-    /// Parses `shard-<n>.json`.
+    /// Parses `shard-<direction>-<n>.json`.
     pub fn from_json(bytes: &[u8], what: &str) -> Result<Self, Error> {
         serde_json::from_slice(bytes).map_err(|e| Error::json(what.to_owned(), e))
     }
@@ -169,6 +174,9 @@ pub struct ShardOptions {
     pub run_id: String,
     /// The commit being run.
     pub git_sha: String,
+    /// The engine version recorded in the shard and in every report. `jarrow-board` passes its
+    /// own, [`crate::ENGINE_VERSION`]; tests that pin bytes pass a fixed one.
+    pub engine_version: String,
     /// The rules version (see [`rules_version`]).
     pub rules_version: String,
     /// Where the reports go: `<dir>/<direction>/<project_id>/<game_version>.json`.
@@ -345,12 +353,11 @@ fn not_run_steps(download_error: String) -> Steps {
         },
         classify: ClassifyStep {
             status: StepStatus::NotRun,
-            tier: BoardTier::Unknown,
+            tier: None,
             reasons: vec!["not classified: the file could not be downloaded".to_owned()],
         },
         convert: ConvertStep {
             status: StepStatus::NotRun,
-            outcome: Outcome::Red,
             reason_kind: ReasonKind::DownloadFailed,
             reason: download_error,
         },
@@ -376,6 +383,7 @@ fn process_file(
     file: &ListFile,
     work: &Path,
     max_file_bytes: u64,
+    engine_version: &str,
 ) -> Result<FileOutcome, Error> {
     let started = Instant::now();
     let mut step_ms = StepDurations::default();
@@ -432,7 +440,7 @@ fn process_file(
         .unwrap_or_else(|| "not converted".to_owned());
     let report = Report {
         schema: SCHEMA,
-        engine_version: ENGINE_VERSION.to_owned(),
+        engine_version: engine_version.to_owned(),
         direction,
         project_id: project.project_id.clone(),
         slug: project.slug.clone(),
@@ -451,7 +459,7 @@ fn process_file(
         score: verdict.score,
         reason_kind: verdict.reason_kind,
         reason: verdict.reason.clone(),
-        entries: if verdict.outcome == Outcome::Green {
+        entries: if verdict.outcome == jarrow_report::Outcome::Green {
             Vec::new()
         } else {
             vec![report::not_converted_entry(&reason_for_entry)]
@@ -460,6 +468,7 @@ fn process_file(
     };
     report.validate()?;
     let result = BoardResult {
+        direction,
         game_version: file.game_version.clone(),
         version_id: file.version_id.clone(),
         version_number: file.version_number.clone(),
@@ -505,22 +514,33 @@ pub fn select(list: &BoardList, spec: ShardSpec) -> Vec<&ListMod> {
         .collect()
 }
 
-/// Runs one shard: every file of every mod in the shard, one after another.
+/// Runs one shard of `list` for `direction`: every file of every mod in the shard, one after
+/// another. The direction's source loader must be the list's loader.
 ///
 /// Per file: download into a fresh temporary directory, verify size and sha512, run the
-/// pipeline, delete the JAR, write the report. A failed download is a red row with
-/// `download_failed`, not an error; an error stops the shard (a full disk, an unwritable
-/// reports directory, a malformed list).
+/// pipeline, delete the JAR, write the report. A failed download is a `not-run` result with
+/// `download_failed` (a red row), not an error; an error stops the shard (a full disk, an
+/// unwritable reports directory, a malformed list).
+#[allow(clippy::too_many_arguments)]
 pub fn run_shard(
     fetch: &dyn Fetch,
     pipeline: &dyn ModPipeline,
     list: &BoardList,
+    direction: Direction,
     spec: ShardSpec,
     opts: &ShardOptions,
     clock: &dyn Clock,
     mut progress: impl FnMut(&str),
 ) -> Result<ShardFile, Error> {
     list.validate()?;
+    if direction.source != list.loader {
+        return Err(Error::invalid(format!(
+            "{direction} measures {} mods, but {} lists {} mods",
+            direction.source.name(),
+            crate::list::file_name(list.loader),
+            list.loader.name()
+        )));
+    }
     if !is_run_id(&opts.run_id) {
         return Err(Error::invalid(format!(
             "run id {:?} may use only letters, digits, '-', '_' and '.' (at most 64)",
@@ -547,11 +567,12 @@ pub fn run_shard(
             let outcome = process_file(
                 fetch,
                 pipeline,
-                list.direction,
+                direction,
                 project,
                 file,
                 work.path(),
                 opts.max_file_bytes,
+                &opts.engine_version,
             )?;
             write_report(&opts.reports_dir, &outcome.report)?;
             stats.files += 1;
@@ -576,7 +597,7 @@ pub fn run_shard(
         };
         stats.mods += 1;
         rows.push(BoardRow {
-            direction: list.direction,
+            direction,
             project_id: project.project_id.clone(),
             slug: project.slug.clone(),
             title: project.title.clone(),
@@ -586,12 +607,12 @@ pub fn run_shard(
             license: project.license.clone(),
             primary_game_version: primary.game_version.clone(),
             tier: primary.tier,
-            outcome: primary.outcome,
+            outcome: board_outcome(primary.outcome, primary.reason_kind),
             reason_kind: primary.reason_kind,
             reason: primary.reason.clone(),
             last_run: clock.now(),
-            neoforge_build_exists: project.neoforge_build_exists,
-            target_build_exists: project.target_build_exists,
+            report_url: None,
+            target_build_exists: project.tagged(direction.target),
             results,
         });
     }
@@ -605,14 +626,14 @@ pub fn run_shard(
     Ok(ShardFile {
         schema: SCHEMA,
         run_id: opts.run_id.clone(),
-        direction: list.direction,
-        source_loader: list.source_loader,
-        target_loader: list.target_loader,
+        direction,
+        source_loader: direction.source,
+        target_loader: direction.target,
         game_versions: list.game_versions.clone(),
         list_fetched_at: list.fetched_at.clone(),
         shard: spec,
         engine: Engine {
-            version: ENGINE_VERSION.to_owned(),
+            version: opts.engine_version.clone(),
             git_sha: opts.git_sha.clone(),
         },
         rules_version: opts.rules_version.clone(),
@@ -677,6 +698,15 @@ mod tests {
         assert_eq!(bucket("AANobbMI", 10), (fnv1a64(b"AANobbMI") % 10) as u32);
         assert_eq!(bucket("P7dR8mSH", 10), bucket("P7dR8mSH", 10));
         assert_eq!(bucket("anything", 1), 0);
+    }
+
+    #[test]
+    fn file_names() {
+        let d: Direction = "fabric-neoforge".parse().unwrap();
+        assert_eq!(
+            file_name(d, ShardSpec::new(3, 10).unwrap()),
+            "shard-fabric-neoforge-3.json"
+        );
     }
 
     #[test]

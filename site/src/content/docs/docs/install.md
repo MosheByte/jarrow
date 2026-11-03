@@ -22,7 +22,7 @@ The commands above do not work yet. They are listed so you know what to look for
 
 ## Planned CLI commands
 
-- `jarrow convert`: convert a Fabric mod JAR into a NeoForge JAR, with a report.
+- `jarrow convert`: convert a mod JAR from one loader to another, with a report. Directions arrive one at a time in the fixed order on [Directions](/docs/directions/), starting with Fabric to NeoForge; none is available yet.
 - `jarrow check`: classify a JAR into a tier and list the reasons, without converting it.
 
 Every public flag will be documented here when it exists.

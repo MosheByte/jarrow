@@ -20,16 +20,40 @@ const parity = hasRun(load) ? greenPercent(load.board.totals) : null;
 const unreadable = load.status === 'invalid' || load.status === 'error';
 // A board we could not read must not be cached as if it were the real one.
 Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, max-age=300');
+
+// The fixed build order (ROADMAP.md, "Directions"; D-029). A direction is offered only once it has a
+// board column and a converter. Only Fabric -> NeoForge has a column, and no converter exists, so every
+// status here is "not started" or "in progress".
+const buildOrder = [
+  {
+    step: 1,
+    directions: ['Fabric → NeoForge'],
+    status: 'In progress: milestone M0 now, then M1, the harness and the board.',
+  },
+  { step: 2, directions: ['NeoForge → Fabric'], status: 'Not started.' },
+  { step: 3, directions: ['Fabric → Quilt', 'Quilt → Fabric'], status: 'Not started.' },
+  { step: 4, directions: ['Forge → NeoForge', 'NeoForge → Forge'], status: 'Not started.' },
+  { step: 5, directions: ['Fabric → Forge', 'Forge → Fabric'], status: 'Not started.' },
+  {
+    step: 6,
+    directions: ['Quilt → Forge', 'Forge → Quilt', 'Quilt → NeoForge', 'NeoForge → Quilt'],
+    status: 'Not started.',
+  },
+];
 ---
 
-<Base title={PRODUCT_NAME}>
+<Base
+  title={PRODUCT_NAME}
+  description="Jarrow's goal for v1: convert a Minecraft mod between Fabric, NeoForge, Forge and Quilt, in every direction, and prove each result with a behaviour harness. Nothing converts yet: the project is in milestone M0."
+>
   <div class="wrap">
     <section class="hero" aria-labelledby="mission">
-      <p class="eyebrow">Fabric → NeoForge · Minecraft 1.21.1 and 1.21.11 · open source</p>
+      <p class="eyebrow">Any loader to any loader · planned for v1 · open source</p>
       <h1 id="mission">{MISSION}</h1>
       <p class="lead">
-        {PRODUCT_NAME} will convert the JAR itself, not shim it at runtime, and it will only call a conversion
-        good when a behaviour harness says so.
+        The goal for v1 is any loader to any loader: Fabric, NeoForge, Forge and Quilt, every pair in both
+        directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11. {PRODUCT_NAME} will convert the JAR itself, not
+        shim it at runtime, and it will only call a conversion good when a behaviour harness says so.
       </p>
       <div class="actions">
         <a class="btn btn-primary" href="/docs/">
@@ -62,7 +86,8 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
           <li>
             <span class="step" aria-hidden="true">1</span>
             <p>
-              Drop a Fabric mod JAR. The page reads its manifest and sorts it into a tier:
+              Drop a mod JAR and pick the loader you want it for. The page reads its manifest and sorts it into
+              a tier:
               <span class="tier tier-a">Tier A</span>, <span class="tier tier-b">Tier B</span> or
               <span class="tier tier-unsupported">Unsupported</span>.
             </p>
@@ -77,8 +102,8 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
           <li>
             <span class="step" aria-hidden="true">3</span>
             <p>
-              A parity harness starts the original on Fabric and the result on NeoForge and compares what each
-              server registers. That comparison, not a compiler, decides green, yellow or red.
+              A parity harness starts the original on its own loader and the result on the target loader, and
+              compares what each server registers. That comparison, not a compiler, decides green, yellow or red.
             </p>
           </li>
         </ol>
@@ -88,6 +113,40 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
         <p><a href="/board/" class="board-link">Open the board <ArrowRight size={18} aria-hidden="true" /></a></p>
       </BoardCounter>
     </div>
+
+    <section class="directions card" aria-labelledby="directions-title">
+      <h2 id="directions-title">Directions</h2>
+      <p class="directions-lead">
+        Twelve directions, built in a fixed order. None is available yet: a direction is offered here only once it
+        has its own column on the nightly board and a converter. Only Fabric → NeoForge has a column so far, and
+        every mod in it is red because no converter exists yet.
+      </p>
+      <ol class="order">
+        {
+          buildOrder.map(({ step, directions, status }) => (
+            <li>
+              <span class="step" aria-hidden="true">
+                {step}
+              </span>
+              <div>
+                <p class="order-names">
+                  <span class="sr-only">Step {step}: </span>
+                  {directions.map((name, i) => (
+                    <span class="order-dir">{i < directions.length - 1 ? `${name},` : name}</span>
+                  ))}
+                </p>
+                <p class="order-status">{status}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+      <p>
+        <a href="/docs/directions/" class="board-link">
+          All 12 directions and their bars <ArrowRight size={18} aria-hidden="true" />
+        </a>
+      </p>
+    </section>
 
     <section class="badges" aria-labelledby="badges-title">
       <h2 id="badges-title" class="eyebrow">Project signals</h2>
@@ -191,6 +250,56 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
     font-family: var(--font-display);
     font-weight: 800;
     font-size: 1.25rem;
+  }
+
+  .directions {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1.25rem;
+    padding: 1.5rem 1.6rem;
+  }
+
+  .directions h2 {
+    font-size: 1.6rem;
+  }
+
+  .directions-lead {
+    max-width: 48rem;
+    color: var(--jw-muted);
+  }
+
+  .order {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  @media (min-width: 48rem) {
+    .order {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .order li {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  /* One direction per item, so a name such as "Quilt → Fabric" never breaks across lines. */
+  .order-names {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0.4em;
+    font-weight: 700;
+  }
+
+  .order-dir {
+    white-space: nowrap;
+  }
+
+  .order-status {
+    color: var(--jw-muted);
   }
 
   .board-link {

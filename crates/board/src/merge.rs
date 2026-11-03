@@ -17,30 +17,34 @@ use crate::board::{Board, BoardRow, BoardStats, DirectionBoard, Totals, top_reas
 use crate::gamever;
 use crate::hash;
 use crate::loader::Direction;
-use crate::report::{self, Report, outcome_d1_value};
+use crate::report::{self, Report, board_outcome, check_verdict};
 use crate::shard::{ShardFile, is_run_id};
 use crate::time;
-use crate::{Error, SCHEMA};
+use crate::{Error, LEDGER_SCHEMA, SCHEMA};
 
 /// Rows per `INSERT` statement in the D1 import (D1 caps one statement at 100 KB).
 pub const D1_ROWS_PER_INSERT: usize = 50;
 
 /// `board-summary.json`, in exactly the shape `tools/ledger.py` validates (its unknown keys
-/// are errors, so per-direction numbers and durations live in `board.json`).
+/// are errors). It describes one column: the first measured direction in the build order
+/// (Fabric to NeoForge, the only column today). Every column's own numbers are in
+/// `board.json`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LedgerSummary {
-    /// Always 1.
+    /// Always [`LEDGER_SCHEMA`] (1).
     pub schema: u32,
+    /// The column these numbers are for.
+    pub direction: Direction,
     /// The run id.
     pub run: String,
     /// The run's date, `YYYY-MM-DD` (UTC, from when the first shard started).
     pub date: String,
     /// The commit the run built, 40 hex characters.
     pub commit: String,
-    /// Every pinned game version.
+    /// The game versions the column measured.
     pub game_versions: Vec<String>,
-    /// Rows on the board, all directions.
+    /// Rows in the column.
     pub mods: u64,
     /// Green rows.
     pub green: u64,
@@ -104,13 +108,6 @@ pub struct MergeOutput {
     pub reports: Vec<(String, Vec<u8>)>,
 }
 
-/// The D1 run id: `<run_id>:<direction>`. The `board_runs` and `board_rows` tables of
-/// `infra/d1/migrations/0001_init.sql` have no direction column, so the direction is part of
-/// the run id.
-pub fn d1_run_id(run_id: &str, direction: Direction) -> String {
-    format!("{run_id}:{direction}")
-}
-
 fn check(cond: bool, message: impl FnOnce() -> String) -> Result<(), Error> {
     if cond {
         Ok(())
@@ -119,9 +116,10 @@ fn check(cond: bool, message: impl FnOnce() -> String) -> Result<(), Error> {
     }
 }
 
-/// Merges shard files. Every shard of every direction must be present exactly once, every
-/// shard must come from the same run and engine, and every result's report must be in
-/// `reports_dir` with the hash the shard recorded.
+/// Merges shard files. Every shard of every measured direction must be present exactly once,
+/// every shard must come from the same run and engine, and every result's report must be in
+/// `reports_dir` with the hash the shard recorded. The board lists all twelve directions; the
+/// ones the shards measured get a column.
 pub fn merge(shards: &[ShardFile], reports_dir: &Path) -> Result<MergeOutput, Error> {
     let first = shards
         .first()
@@ -150,6 +148,16 @@ pub fn merge(shards: &[ShardFile], reports_dir: &Path) -> Result<MergeOutput, Er
             )
         })?;
         check(
+            shard.source_loader == shard.direction.source
+                && shard.target_loader == shard.direction.target,
+            || {
+                format!(
+                    "shard {} names loaders that are not its direction's",
+                    shard.shard
+                )
+            },
+        )?;
+        check(
             time::is_rfc3339_utc(&shard.started_at) && time::is_rfc3339_utc(&shard.finished_at),
             || format!("shard {} has a malformed start or finish time", shard.shard),
         )?;
@@ -157,7 +165,7 @@ pub fn merge(shards: &[ShardFile], reports_dir: &Path) -> Result<MergeOutput, Er
     }
 
     let mut rows: Vec<BoardRow> = Vec::new();
-    let mut directions = Vec::new();
+    let mut columns: BTreeMap<Direction, DirectionBoard> = BTreeMap::new();
     let mut stats = BoardStats::default();
     let mut reports: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     for (direction, group) in &by_direction {
@@ -228,7 +236,9 @@ pub fn merge(shards: &[ShardFile], reports_dir: &Path) -> Result<MergeOutput, Er
                         parsed.direction == *direction
                             && parsed.project_id == row.project_id
                             && parsed.game_version == result.game_version
+                            && parsed.tier == result.tier
                             && parsed.outcome == result.outcome
+                            && parsed.score == result.score
                             && parsed.reason_kind == result.reason_kind,
                         || format!("{rel}: the report does not match its board row"),
                     )?;
@@ -237,16 +247,18 @@ pub fn merge(shards: &[ShardFile], reports_dir: &Path) -> Result<MergeOutput, Er
                 direction_rows.push(row.clone());
             }
         }
-        directions.push(DirectionBoard {
-            direction: *direction,
-            source_loader: direction.source,
-            target_loader: direction.target,
-            game_versions: head.game_versions.clone(),
-            list_fetched_at: head.list_fetched_at.clone(),
-            rules_version: head.rules_version.clone(),
-            totals: Totals::of(&direction_rows),
-            top_reasons: top_reasons(&direction_rows),
-        });
+        columns.insert(
+            *direction,
+            DirectionBoard {
+                column: true,
+                game_versions: head.game_versions.clone(),
+                list_fetched_at: Some(head.list_fetched_at.clone()),
+                rules_version: Some(head.rules_version.clone()),
+                totals: Totals::of(&direction_rows),
+                top_reasons: top_reasons(&direction_rows),
+                ..DirectionBoard::without_column(*direction)
+            },
+        );
         rows.extend(direction_rows);
     }
 
@@ -256,19 +268,19 @@ pub fn merge(shards: &[ShardFile], reports_dir: &Path) -> Result<MergeOutput, Er
             .then_with(|| b.downloads.cmp(&a.downloads))
             .then_with(|| a.project_id.cmp(&b.project_id))
     });
+    let directions: Vec<DirectionBoard> = Direction::all()
+        .into_iter()
+        .map(|d| {
+            columns
+                .remove(&d)
+                .unwrap_or_else(|| DirectionBoard::without_column(d))
+        })
+        .collect();
     let mut game_versions: Vec<String> = directions
         .iter()
         .flat_map(|d| d.game_versions.iter().cloned())
         .collect();
     gamever::sort_versions(&mut game_versions);
-    let rules: BTreeSet<&str> = directions
-        .iter()
-        .map(|d| d.rules_version.as_str())
-        .collect();
-    let rules_version = match rules.len() {
-        1 => rules.into_iter().next().unwrap_or("none").to_owned(),
-        _ => "per-direction".to_owned(),
-    };
     let generated_at = shards
         .iter()
         .map(|s| s.finished_at.as_str())
@@ -290,10 +302,8 @@ pub fn merge(shards: &[ShardFile], reports_dir: &Path) -> Result<MergeOutput, Er
         started_at,
         run_id,
         engine,
-        rules_version,
         game_versions,
         totals,
-        top_reasons: top_reasons(&rows),
         directions,
         stats,
         rows,
@@ -312,36 +322,45 @@ fn check_row(row: &BoardRow, game_versions: &[String]) -> Result<(), Error> {
         format!("row {id} has no results")
     })?;
     check(row.outcome != Outcome::NotRun, || {
-        format!("row {id} is not-run; the board records red with a reason instead")
+        format!("row {id} is not-run; the board counts a file without a harness score as red")
     })?;
     let newest = gamever::newest(row.results.iter().map(|r| r.game_version.as_str()));
     check(newest == Some(row.primary_game_version.as_str()), || {
         format!("row {id}: primary_game_version is not its newest result")
     })?;
+    let mut versions = BTreeSet::new();
     for r in &row.results {
+        check(r.direction == row.direction, || {
+            format!("row {id} has a result for another direction")
+        })?;
         check(game_versions.contains(&r.game_version), || {
             format!(
                 "row {id} has a result for unpinned version {}",
                 r.game_version
             )
         })?;
-        if r.outcome == Outcome::Green {
-            check(matches!(r.score, Some(s) if s == 1.0 || s == 0.75), || {
-                format!("row {id}: green without a harness score of 1.0 or 0.75")
-            })?;
-        } else {
-            check(r.reason_kind.is_some(), || {
-                format!("row {id}: a non-green result needs a reason_kind")
-            })?;
-        }
+        check(versions.insert(r.game_version.as_str()), || {
+            format!("row {id} has two results for {}", r.game_version)
+        })?;
+        check_verdict(
+            r.outcome,
+            r.score,
+            r.reason_kind,
+            r.reason.as_deref(),
+            &format!("row {id}, {}", r.game_version),
+        )?;
     }
     let primary = row
         .results
         .iter()
         .find(|r| r.game_version == row.primary_game_version);
     check(
-        primary.is_some_and(|p| p.outcome == row.outcome && p.reason_kind == row.reason_kind),
-        || format!("row {id}: outcome and reason must be the primary version's"),
+        primary.is_some_and(|p| {
+            row.outcome == board_outcome(p.outcome, p.reason_kind)
+                && p.reason_kind == row.reason_kind
+                && p.tier == row.tier
+        }),
+        || format!("row {id}: tier, outcome and reason must be the primary version's"),
     )
 }
 
@@ -350,7 +369,8 @@ fn read_report(reports_dir: &Path, rel: &str) -> Result<Vec<u8>, Error> {
     fs::read(&path).map_err(|e| Error::io_at("reading report", &path, e))
 }
 
-/// The ledger input for `tools/ledger.py`.
+/// The ledger input for `tools/ledger.py`: the numbers of the first column in the build
+/// order.
 pub fn ledger_summary(board: &Board) -> Result<LedgerSummary, Error> {
     let date = time::date_of(&board.started_at)
         .ok_or_else(|| Error::invalid("the board's started_at is malformed"))?
@@ -362,8 +382,18 @@ pub fn ledger_summary(board: &Board) -> Result<LedgerSummary, Error> {
             board.engine.git_sha
         )
     })?;
+    let column = board
+        .directions
+        .iter()
+        .find(|d| d.column)
+        .ok_or_else(|| Error::invalid("the board has no column to summarise"))?;
+    let rows: Vec<&BoardRow> = board
+        .rows
+        .iter()
+        .filter(|r| r.direction == column.id)
+        .collect();
     let mut red: BTreeMap<&'static str, u64> = BTreeMap::new();
-    for row in board.rows.iter().filter(|r| r.outcome == Outcome::Red) {
+    for row in rows.iter().filter(|r| r.outcome == Outcome::Red) {
         if let Some(kind) = row.reason_kind {
             *red.entry(kind.label()).or_insert(0) += 1;
         }
@@ -376,22 +406,22 @@ pub fn ledger_summary(board: &Board) -> Result<LedgerSummary, Error> {
         })
         .collect();
     red_reasons.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.reason.cmp(&b.reason)));
-    let attempted = board
-        .rows
+    let attempted = rows
         .iter()
         .flat_map(|r| &r.results)
         .filter(|r| r.score.is_some())
         .count() as u64;
     Ok(LedgerSummary {
-        schema: SCHEMA,
+        schema: LEDGER_SCHEMA,
+        direction: column.id,
         run: board.run_id.clone(),
         date,
         commit: board.engine.git_sha.clone(),
-        game_versions: board.game_versions.clone(),
-        mods: board.totals.mods,
-        green: board.totals.green,
-        yellow: board.totals.yellow,
-        red: board.totals.red,
+        game_versions: column.game_versions.clone(),
+        mods: column.totals.mods,
+        green: column.totals.green,
+        yellow: column.totals.yellow,
+        red: column.totals.red,
         not_run: 0,
         harness: LedgerHarness {
             completed: attempted,
@@ -483,73 +513,104 @@ fn sql_opt(value: Option<&str>) -> Result<String, Error> {
     value.map_or_else(|| Ok("NULL".to_owned()), sql_text)
 }
 
-/// The D1 import for `wrangler d1 execute jarrow --remote --file`: per direction, delete the
-/// run's earlier rows (so a re-run replaces them), insert the run into `board_runs`, then its
-/// results into `board_rows`, [`D1_ROWS_PER_INSERT`] rows per statement. Columns follow
-/// `infra/d1/migrations/0001_init.sql`; the direction is part of the run id ([`d1_run_id`]).
+/// One column's entry in `board_runs.totals`.
+#[derive(Serialize)]
+struct RunTotals<'a> {
+    mods: u64,
+    green: u64,
+    yellow: u64,
+    red: u64,
+    rules_version: Option<&'a str>,
+}
+
+/// The D1 import for `wrangler d1 execute jarrow --remote --file`, in the schema of
+/// `infra/d1/migrations/0002_directions.sql`: delete the run's earlier rows (so a re-run
+/// replaces them), insert the run into `board_runs` with its measured directions and their
+/// totals, then one `board_rows` row per mod, direction and game version, with `is_primary`
+/// and `board_outcome` on the entry that decides the row, [`D1_ROWS_PER_INSERT`] rows per
+/// statement. Tiers and outcomes use the `board.json` strings (D-024).
 pub fn d1_sql(board: &Board) -> Result<String, Error> {
     let mut sql = String::new();
     sql.push_str("-- Generated by jarrow-board merge from board.json. Do not edit.\n");
     sql.push_str(&format!("-- run {}\n", board.run_id));
-    for direction in &board.directions {
-        let id = d1_run_id(&board.run_id, direction.direction);
-        let id_sql = sql_text(&id)?;
-        sql.push_str(&format!(
-            "DELETE FROM board_rows WHERE run_id = {id_sql};\n"
-        ));
-        sql.push_str(&format!("DELETE FROM board_runs WHERE id = {id_sql};\n"));
-        let game_versions = serde_json::to_string(&direction.game_versions)
-            .map_err(|e| Error::json("game_versions", e))?;
-        let totals =
-            serde_json::to_string(&direction.totals).map_err(|e| Error::json("totals", e))?;
-        sql.push_str(&format!(
-            "INSERT INTO board_runs (id, started_at, finished_at, engine_version, rules_version, \
-             game_versions, totals) VALUES ({id_sql}, {}, {}, {}, {}, {}, {});\n",
-            sql_text(&board.started_at)?,
-            sql_text(&board.generated_at)?,
-            sql_text(&format!(
-                "{}+{}",
-                board.engine.version, board.engine.git_sha
-            ))?,
-            sql_text(&direction.rules_version)?,
-            sql_text(&game_versions)?,
-            sql_text(&totals)?,
-        ));
-        let mut values = Vec::new();
-        for row in board
-            .rows
-            .iter()
-            .filter(|r| r.direction == direction.direction)
-        {
-            for r in &row.results {
-                let score = r
-                    .score
-                    .map_or_else(|| "NULL".to_owned(), |s| format!("{s}"));
-                values.push(format!(
-                    "({id_sql}, {}, {}, {}, {}, {}, {}, {}, {score}, {}, {}, {}, {})",
-                    sql_text(&row.project_id)?,
-                    sql_text(&row.slug)?,
-                    sql_opt(r.mod_id.as_deref())?,
-                    sql_text(&r.game_version)?,
-                    row.downloads,
-                    sql_text(r.tier.d1_value())?,
-                    sql_text(outcome_d1_value(r.outcome))?,
-                    sql_opt(r.reason_kind.map(|k| k.id()))?,
-                    sql_opt(r.reason.as_deref())?,
-                    sql_text(&r.report_key)?,
-                    sql_text(&r.report_hash)?,
-                ));
-            }
+    let id_sql = sql_text(&board.run_id)?;
+    sql.push_str(&format!(
+        "DELETE FROM board_rows WHERE run_id = {id_sql};\n"
+    ));
+    sql.push_str(&format!("DELETE FROM board_runs WHERE id = {id_sql};\n"));
+    let measured: Vec<&DirectionBoard> = board.directions.iter().filter(|d| d.column).collect();
+    let ids: Vec<Direction> = measured.iter().map(|d| d.id).collect();
+    let totals: BTreeMap<String, RunTotals<'_>> = measured
+        .iter()
+        .map(|d| {
+            (
+                d.id.id(),
+                RunTotals {
+                    mods: d.totals.mods,
+                    green: d.totals.green,
+                    yellow: d.totals.yellow,
+                    red: d.totals.red,
+                    rules_version: d.rules_version.as_deref(),
+                },
+            )
+        })
+        .collect();
+    sql.push_str(&format!(
+        "INSERT INTO board_runs (id, started_at, finished_at, engine_version, game_versions, \
+         directions, totals) VALUES ({id_sql}, {}, {}, {}, {}, {}, {});\n",
+        sql_text(&board.started_at)?,
+        sql_text(&board.generated_at)?,
+        sql_text(&format!(
+            "{}+{}",
+            board.engine.version, board.engine.git_sha
+        ))?,
+        sql_text(
+            &serde_json::to_string(&board.game_versions)
+                .map_err(|e| Error::json("game_versions", e))?
+        )?,
+        sql_text(&serde_json::to_string(&ids).map_err(|e| Error::json("directions", e))?)?,
+        sql_text(&serde_json::to_string(&totals).map_err(|e| Error::json("totals", e))?)?,
+    ));
+    let mut values = Vec::new();
+    for row in &board.rows {
+        for r in &row.results {
+            let primary = r.game_version == row.primary_game_version;
+            let score = r
+                .score
+                .map_or_else(|| "NULL".to_owned(), |s| format!("{s}"));
+            values.push(format!(
+                "({id_sql}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {score}, {}, {}, {}, {}, \
+                 {}, {}, {})",
+                sql_text(&row.direction.id())?,
+                sql_text(&row.project_id)?,
+                sql_text(&row.slug)?,
+                sql_text(&r.game_version)?,
+                row.downloads,
+                sql_text(&r.version_id)?,
+                sql_text(&r.file_sha512)?,
+                sql_opt(r.mod_id.as_deref())?,
+                sql_opt(r.mod_version.as_deref())?,
+                sql_opt(r.tier.map(|t| t.id()))?,
+                sql_text(r.outcome.id())?,
+                sql_opt(r.reason_kind.map(|k| k.id()))?,
+                sql_opt(r.reason.as_deref())?,
+                sql_text(&r.report_key)?,
+                sql_text(&r.report_hash)?,
+                r.duration_ms,
+                u8::from(primary),
+                sql_opt(primary.then(|| row.outcome.id()))?,
+            ));
         }
-        for chunk in values.chunks(D1_ROWS_PER_INSERT) {
-            sql.push_str(
-                "INSERT INTO board_rows (run_id, project_id, slug, mod_id, game_version, \
-                 downloads, tier, outcome, score, reason_kind, reason, report_key, report_hash) \
-                 VALUES\n",
-            );
-            sql.push_str(&chunk.join(",\n"));
-            sql.push_str(";\n");
-        }
+    }
+    for chunk in values.chunks(D1_ROWS_PER_INSERT) {
+        sql.push_str(
+            "INSERT INTO board_rows (run_id, direction, project_id, slug, game_version, \
+             downloads, version_id, file_sha512, mod_id, mod_version, tier, outcome, score, \
+             reason_kind, reason, report_key, report_hash, duration_ms, is_primary, \
+             board_outcome) VALUES\n",
+        );
+        sql.push_str(&chunk.join(",\n"));
+        sql.push_str(";\n");
     }
     Ok(sql)
 }
@@ -632,14 +693,5 @@ mod tests {
             names.push(entry.path().unwrap().to_string_lossy().into_owned());
         }
         assert_eq!(names, vec!["reports/a.json", "reports/b.json"]);
-    }
-
-    #[test]
-    fn d1_run_ids_carry_the_direction() {
-        let d: Direction = "fabric-neoforge".parse().unwrap();
-        assert_eq!(
-            d1_run_id("nightly-20261104", d),
-            "nightly-20261104:fabric-neoforge"
-        );
     }
 }

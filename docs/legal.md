@@ -8,7 +8,7 @@ Jarrow is pre-alpha (milestone M0). Nothing converts yet. The rules below are th
 
 ## What Jarrow does
 
-Jarrow takes a Fabric mod JAR and produces a NeoForge JAR of the same mod, then checks with a harness that the two behave the same. Simple conversions (Tier A) run in your browser and your JAR never leaves your machine. Harder ones (Tier B) run in a short-lived GitHub Actions job for signed-in users.
+Jarrow will take a mod JAR built for one loader (Fabric, NeoForge, Forge or Quilt) and produce a JAR of the same mod for another, then check with a harness that the two behave the same. Nothing converts yet, in any direction. Simple conversions (Tier A) will run in your browser, and your JAR will never leave your machine. Harder ones (Tier B) will run in a short-lived GitHub Actions job for signed-in users.
 
 ## No redistribution
 
@@ -36,7 +36,7 @@ Jarrow will read the license field of every mod's manifest and act on it, in cod
 An author who proves they own a mod can choose one of two things:
 
 - **Do not port.** The converter refuses the mod, the board hides it, and the refusal explains why. This is honoured even when the license would allow conversion.
-- **Official port exists.** The board links to the author's own NeoForge version instead of showing a result.
+- **Official port exists.** The board links to the author's own version for the target loader instead of showing a result.
 
 How to opt out:
 
@@ -45,7 +45,7 @@ How to opt out:
 
 ## Clean room
 
-- The engine learns the Fabric and NeoForge APIs from their public documentation and their open-source API repositories, under their licenses.
+- The engine learns the APIs of Fabric, NeoForge, Forge and Quilt from their public documentation and their open-source API repositories, under their licenses.
 - Rule tables describe API shapes (class names, methods, event timing, return values) and cite their sources. They never contain code from a mod.
 - Jarrow does not copy code from Sinytra Connector, Architectury or Forgified Fabric API. Their public issue trackers may inform a rule about a known difference, and then the rule credits them.
 - Decompiled code of a user's mod exists only inside a Tier B job. It is never logged, stored, or sent to a model outside that job's own context.
@@ -57,9 +57,9 @@ How to opt out:
 
 ## Trademarks
 
-"Minecraft" is a trademark of Mojang and Microsoft. "Fabric" and "NeoForge" belong to their projects. The name Jarrow, its logo and its domain do not use any of them. The site footer and the README carry this notice:
+"Minecraft" is a trademark of Mojang and Microsoft. "Fabric", "NeoForge", "Forge" and "Quilt" belong to their projects. The name Jarrow, its logo and its domain do not use any of them. The site footer and the README carry this notice:
 
-> Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Not affiliated with the Fabric or NeoForge projects.
+> Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Not affiliated with the Fabric, NeoForge, Forge or Quilt projects.
 
 Loader logos appear only where their own brand guidelines allow it; otherwise the site uses a text name.
 

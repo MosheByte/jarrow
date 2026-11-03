@@ -18,8 +18,12 @@ use jarrow_board::time::{Clock, SystemClock};
 fn modrinth_top_three() {
     let client = HttpClient::new().unwrap();
     let opts = ListOptions {
-        direction: "fabric-neoforge".parse().unwrap(),
-        game_versions: vec!["1.21.1".to_owned(), "1.21.11".to_owned()],
+        loader: jarrow_board::Loader::Fabric,
+        game_versions: vec![
+            "1.20.1".to_owned(),
+            "1.21.1".to_owned(),
+            "1.21.11".to_owned(),
+        ],
         top: 3,
         api_base: API_BASE.to_owned(),
     };

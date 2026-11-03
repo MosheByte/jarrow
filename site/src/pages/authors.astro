@@ -7,7 +7,7 @@ import { NEW_ISSUE_URL } from '../lib/site.ts';
 
 <Base
   title="Authors"
-  description="Author mode will let a Fabric mod author port their own mod to NeoForge as a pull request. It is not built yet (milestone M4)."
+  description="Author mode will let a mod author port their own mod to another loader as a pull request. It is not built yet (milestone M4)."
 >
   <div class="wrap">
     <PageIntro
@@ -18,24 +18,34 @@ import { NEW_ISSUE_URL } from '../lib/site.ts';
 
     <NotBuilt milestone="M4" what="Author mode">
       <p>There is no sign-in yet, and no pull requests are opened by this project.</p>
+      <p>
+        Author mode starts with the first direction, Fabric → NeoForge. Each other direction joins once it has its
+        own board column, in the order on the <a href="/docs/directions/">Directions</a> page.
+      </p>
     </NotBuilt>
 
     <div class="prose body">
       <h2>What it will do</h2>
       <ol>
-        <li>You sign in with GitHub. The site lists your repositories that contain a <code>fabric.mod.json</code>.</li>
-        <li>"Port this" runs a Tier B conversion on the latest release JAR of the repository you pick.</li>
+        <li>
+          You sign in with GitHub. The site lists your repositories that contain a loader manifest, such as
+          <code>fabric.mod.json</code>.
+        </li>
+        <li>
+          You pick a repository and the loader you want a port for. "Port this" runs a Tier B conversion on the
+          latest release JAR of that repository.
+        </li>
         <li>
           It opens a pull request on a new branch of your repository with the converted build setup (a Gradle
-          subproject or a <code>neoforge/</code> source set when decompilation succeeded cleanly), the parity
-          report, and a badge snippet for your README.
+          subproject or a source set for the target loader, such as <code>neoforge/</code>, when decompilation
+          succeeded cleanly), the parity report, and a badge snippet for your README.
         </li>
       </ol>
 
       <h2>Opting out</h2>
       <p>
-        An author who verifies ownership can mark a mod "do not port". The converter will then refuse it, the board
-        will hide it, and the refusal will say why. This holds even for permissive licenses.
+        An author who verifies ownership can mark a mod "do not port". The converter will then refuse it in every
+        direction, the board will hide it, and the refusal will say why. This holds even for permissive licenses.
       </p>
       <p>
         The verified opt-out flow arrives with author mode. Until then you can file a request with the

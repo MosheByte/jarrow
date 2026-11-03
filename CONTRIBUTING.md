@@ -1,8 +1,8 @@
 # Contributing to Jarrow
 
-Thanks for looking. Jarrow is pre-alpha (milestone M0): nothing converts yet. The most useful help right now is research and rule proposals, described below.
+Thanks for looking. Jarrow is pre-alpha (milestone M0): nothing converts yet. The goal for v1 is any loader to any loader: Fabric, NeoForge, Forge and Quilt, all 12 directions, built one at a time in a fixed order that starts with Fabric to NeoForge ([ROADMAP.md](ROADMAP.md)). The most useful help right now is research and rule proposals, described below.
 
-Read [AGENTS.md](AGENTS.md) for the map of the repository and [docs/architecture.md](docs/architecture.md) for how the parts fit. Both are kept current.
+Read [AGENTS.md](AGENTS.md) for the map of the repository and [docs/architecture.md](docs/architecture.md) for how the parts fit. Both are kept current. The status and design of each direction are in [docs/directions/](docs/directions/), and the loader profiles are in [loaders/](loaders/).
 
 ## Without installing anything
 
@@ -55,9 +55,9 @@ A Developer Certificate of Origin (DCO) sign-off is not required.
 
 ## Contributing a rule
 
-Rule tables are TOML files under `rules/fabric-neoforge/<game-version>/`. The format is described in [docs/rules.md](docs/rules.md) (draft, implemented in M2).
+Rule tables are TOML files under `rules/<from>-<to>/<game-version>/`, one directory per direction. Each direction's tables have an inverse (A → B and B → A), and the harness tests each pair with a round trip from A to B and back to A. A direction's page in [docs/directions/](docs/directions/) is written before its tables. The first direction is Fabric to NeoForge (`rules/fabric-neoforge/`), the others follow in the order in [ROADMAP.md](ROADMAP.md), and no rule table exists yet. The format is described in [docs/rules.md](docs/rules.md) (draft, implemented in M2).
 
-1. Open a [rule proposal](https://github.com/MosheByte/jarrow/issues/new?template=rule-proposal.yml) first. Name the Fabric API symbol, its NeoForge counterpart, the semantic differences, and your public sources.
+1. Open a [rule proposal](https://github.com/MosheByte/jarrow/issues/new?template=rule-proposal.yml) first. Name the direction, the source loader's API symbol, its counterpart on the target loader, the semantic differences, and your public sources.
 2. Add the rule to the table for each game version it applies to, and add every source to `rules/SOURCES.md`.
 3. Add a golden test for the rule.
 4. The harness measures the result in CI and in the nightly run.
@@ -68,7 +68,7 @@ Rule tables are dedicated to the public domain under CC0-1.0. By contributing a 
 
 This is the rule that protects the project. Break it and the contribution is reverted.
 
-- Describe API shapes only: class names, method names, descriptors, event timing, cancellation, return values. Learn them from public documentation and from the open-source API repositories of Fabric and NeoForge.
+- Describe API shapes only: class names, method names, descriptors, event timing, cancellation, return values. Learn them from public documentation and from the open-source API repositories of the loaders: Fabric, NeoForge, Forge and Quilt.
 - Never copy code from a mod. Not into `rules/`, not into `crates/`, not into an issue.
 - Never copy code from Sinytra Connector, Architectury or Forgified Fabric API. You may read their public issue trackers to learn about known differences, and you must cite them when you do. You may not reproduce their code or port it.
 - Never paste decompiled code anywhere in this project.

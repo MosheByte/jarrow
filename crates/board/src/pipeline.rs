@@ -4,7 +4,8 @@
 //! `jarrow-classify` (M1 wave 2), `jarrow-engine` (M2), `jarrow-harness` (M1), and the
 //! classfile and manifest round trips (M1 wave 2). [`WaveOne`] is what exists today: it reads
 //! the zip central directory and records every other step as not built or not run, so every
-//! mod is red with the reason "No converter yet (milestone M2)".
+//! file is `not-run` with the reason "No converter yet (milestone M2)", and every mod is red
+//! on the board.
 
 use std::fs::File;
 use std::path::Path;
@@ -14,8 +15,8 @@ use jarrow_report::Outcome;
 use crate::list::{ListFile, ListMod};
 use crate::loader::Direction;
 use crate::report::{
-    BoardTier, ClassifyStep, ConvertStep, HarnessStep, InspectStep, Manifests, ReasonKind,
-    RoundTripStep, StepStatus, Steps,
+    ClassifyStep, ConvertStep, HarnessStep, InspectStep, Manifests, ReasonKind, RoundTripStep,
+    StepStatus, Steps, outcome_for_score,
 };
 
 /// The classify reason while the classifier does not exist.
@@ -54,8 +55,8 @@ pub trait ModPipeline {
     fn round_trip(&self, ctx: &ModContext<'_>, jar: &Path) -> RoundTripStep;
 }
 
-/// Reads the zip central directory of `jar`: size, entry count, and which loader manifests
-/// are present. Nothing is decompressed.
+/// Reads the zip central directory of `jar`: size, entry count, and which manifest files are
+/// present. Nothing is decompressed.
 pub fn inspect_jar(jar: &Path) -> InspectStep {
     let failed = |error: String| InspectStep {
         status: StepStatus::Failed,
@@ -99,38 +100,27 @@ pub fn inspect_jar(jar: &Path) -> InspectStep {
     }
 }
 
-/// The outcome a harness score maps to (decision D-024): 1.0 and 0.75 are green, 0.5 is
-/// yellow, anything else is red.
-pub fn outcome_for_score(score: f64) -> Outcome {
-    if score == 1.0 || score == 0.75 {
-        Outcome::Green
-    } else if score == 0.5 {
-        Outcome::Yellow
-    } else {
-        Outcome::Red
-    }
-}
-
-/// The board's verdict for one file, derived from the steps.
+/// The verdict for one file, derived from the steps.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Verdict {
-    /// Green, yellow or red; never not-run.
+    /// Green, yellow or red from a harness score; `not-run` without one.
     pub outcome: Outcome,
-    /// The harness score, when it ran.
+    /// The harness score, when it ran and scored.
     pub score: Option<f64>,
-    /// The classified reason for yellow or red.
+    /// The classified reason for anything but green.
     pub reason_kind: Option<ReasonKind>,
     /// The reason in words.
     pub reason: Option<String>,
 }
 
-/// Decides the outcome: the harness score when the harness ran and scored, otherwise the
-/// convert step's red outcome and reason. A file without a harness score is never green.
+/// Decides the verdict: the harness score when the harness ran and produced a valid score
+/// (D-024), otherwise `not-run` with the convert step's reason. A file without a harness
+/// score is never green, yellow or red.
 pub fn decide(steps: &Steps) -> Verdict {
     if steps.harness.status == StepStatus::Ok
         && let Some(score) = steps.harness.score
+        && let Some(outcome) = outcome_for_score(score)
     {
-        let outcome = outcome_for_score(score);
         let (reason_kind, reason) = if outcome == Outcome::Green {
             (None, None)
         } else {
@@ -151,13 +141,12 @@ pub fn decide(steps: &Steps) -> Verdict {
             reason,
         };
     }
-    // Without a harness score nothing is claimed: whatever the convert step says, only red
-    // reaches the board.
-    let kind = steps.convert.reason_kind;
+    // Without a harness score nothing is claimed: the file is not-run, with the reason the
+    // convert step gives (no converter, a failed download, ...).
     Verdict {
-        outcome: Outcome::Red,
+        outcome: Outcome::NotRun,
         score: None,
-        reason_kind: Some(kind),
+        reason_kind: Some(steps.convert.reason_kind),
         reason: Some(steps.convert.reason.clone()),
     }
 }
@@ -174,7 +163,7 @@ impl ModPipeline for WaveOne {
     fn classify(&self, _ctx: &ModContext<'_>, _jar: &Path, _inspect: &InspectStep) -> ClassifyStep {
         ClassifyStep {
             status: StepStatus::NotBuilt,
-            tier: BoardTier::Unknown,
+            tier: None,
             reasons: vec![CLASSIFIER_NOT_BUILT.to_owned()],
         }
     }
@@ -182,7 +171,6 @@ impl ModPipeline for WaveOne {
     fn convert(&self, _ctx: &ModContext<'_>, _jar: &Path, _classify: &ClassifyStep) -> ConvertStep {
         ConvertStep {
             status: StepStatus::NotBuilt,
-            outcome: Outcome::Red,
             reason_kind: ReasonKind::NoConverter,
             reason: ReasonKind::NoConverter.label().to_owned(),
         }
@@ -226,12 +214,11 @@ mod tests {
             },
             classify: ClassifyStep {
                 status: StepStatus::NotBuilt,
-                tier: BoardTier::Unknown,
+                tier: None,
                 reasons: vec![CLASSIFIER_NOT_BUILT.to_owned()],
             },
             convert: ConvertStep {
                 status: StepStatus::NotBuilt,
-                outcome: Outcome::Red,
                 reason_kind: ReasonKind::NoConverter,
                 reason: ReasonKind::NoConverter.label().to_owned(),
             },
@@ -249,18 +236,9 @@ mod tests {
     }
 
     #[test]
-    fn scores_map_as_d024_says() {
-        assert_eq!(outcome_for_score(1.0), Outcome::Green);
-        assert_eq!(outcome_for_score(0.75), Outcome::Green);
-        assert_eq!(outcome_for_score(0.5), Outcome::Yellow);
-        assert_eq!(outcome_for_score(0.25), Outcome::Red);
-        assert_eq!(outcome_for_score(0.0), Outcome::Red);
-    }
-
-    #[test]
-    fn no_harness_score_means_red_with_the_convert_reason() {
+    fn no_harness_score_means_not_run_with_the_convert_reason() {
         let verdict = decide(&wave_one_steps());
-        assert_eq!(verdict.outcome, Outcome::Red);
+        assert_eq!(verdict.outcome, Outcome::NotRun);
         assert_eq!(verdict.reason_kind, Some(ReasonKind::NoConverter));
         assert_eq!(
             verdict.reason.as_deref(),
@@ -270,12 +248,27 @@ mod tests {
     }
 
     #[test]
-    fn a_convert_step_cannot_claim_green_without_the_harness() {
+    fn nothing_is_claimed_without_a_valid_harness_score() {
         let mut steps = wave_one_steps();
-        steps.convert.outcome = Outcome::Green;
-        assert_eq!(decide(&steps).outcome, Outcome::Red);
         steps.harness.status = StepStatus::Ok;
-        assert_eq!(decide(&steps).outcome, Outcome::Red, "ok without a score");
+        assert_eq!(
+            decide(&steps).outcome,
+            Outcome::NotRun,
+            "ok without a score"
+        );
+        steps.harness.score = Some(0.3);
+        assert_eq!(
+            decide(&steps).outcome,
+            Outcome::NotRun,
+            "not a harness score"
+        );
+        steps.harness.status = StepStatus::NotRun;
+        steps.harness.score = Some(1.0);
+        assert_eq!(
+            decide(&steps).outcome,
+            Outcome::NotRun,
+            "a score from no run"
+        );
     }
 
     #[test]

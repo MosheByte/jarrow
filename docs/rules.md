@@ -1,10 +1,12 @@
 # Rule tables
 
-**Status: draft, implemented in M2.** No rule table exists yet and the `rules` crate (`crates/rules`) is not built. This page fixes a first draft of the format so that research, rule proposals and the crate start from the same shape. The format may change before M2 closes; when it does, this page changes in the same pull request.
+**Status: draft, implemented in M2.** No rule table exists yet, for any direction, and the `rules` crate (`crates/rules`) is not built. This page fixes a first draft of the format so that research, rule proposals and the crate start from the same shape. The format may change before M2 closes; when it does, this page changes in the same pull request.
 
 ## What a rule table is
 
-A rule table says how one Fabric API shape becomes a NeoForge shape: which call, field, class or entrypoint to match in a mod's bytecode, what to replace it with, and how the two differ in behaviour. The `rules` crate loads and validates the tables; the `rewrite` crate applies them; every application becomes a report entry.
+A rule table says how one loader's API shape becomes another loader's shape, for one direction and one game version: which call, field, class or entrypoint to match in a mod's bytecode, what to replace it with, and how the two differ in behaviour. The `rules` crate loads and validates the tables; the `rewrite` crate applies them; every application becomes a report entry.
+
+There is one engine for all 12 directions (D-029). The loaders' own facts (manifest, event model, runtime names and so on) live in the loader profiles ([loaders.md](loaders.md)); a rule table holds only what one API shape maps to in the other loader.
 
 Rule tables describe API shapes only: class names, member names, descriptors, event timing, cancellation and return values, learned from public documentation and the open-source API repositories. They never contain code from a mod, and never code from Sinytra Connector, Architectury or Forgified Fabric API (see [CONTRIBUTING.md](../CONTRIBUTING.md), "Clean room"). Rule tables are CC0-1.0.
 
@@ -12,9 +14,9 @@ Rule tables describe API shapes only: class names, member names, descriptors, ev
 
 ```
 rules/
-  SOURCES.md                      every source any rule relies on
-  fabric-neoforge/
-    1.21.1/
+  SOURCES.md                      every source any rule relies on, for every direction
+  fabric-neoforge/                one directory per direction: <from>-<to>
+    1.21.1/                       one directory per pinned game version
       lifecycle-events-v1.toml    one file per API area
       api-base.toml
       loader-entrypoints.toml
@@ -22,16 +24,30 @@ rules/
       ...
     1.21.11/
       ...                         checked separately against that version's sources
+  neoforge-fabric/                the inverse direction
+    1.21.1/
+      ...
 ```
 
-- One directory per pinned game version. A rule that holds for both versions is written in both directories, each checked against its own version's sources. Copying a rule across without checking is not allowed.
-- One file per API area. The file stem is the Fabric API module name without the `fabric-` prefix: `fabric-lifecycle-events-v1` becomes `lifecycle-events-v1.toml`. Areas that are not a Fabric API module use a plain name: `loader-entrypoints.toml` for Fabric Loader entrypoints and `registries.toml` for vanilla registration.
+- Tables live in `rules/<from>-<to>/<game-version>/<area>.toml`. `<from>` and `<to>` are loader ids with a profile in `loaders/`: `fabric`, `neoforge`, `forge`, `quilt`.
+- One directory per pinned game version. A rule that holds for several versions is written in each directory, each checked against its own version's sources. Copying a rule across without checking is not allowed.
+- One file per API area. In `fabric-neoforge`, the file stem is the Fabric API module name without the `fabric-` prefix: `fabric-lifecycle-events-v1` becomes `lifecycle-events-v1.toml`. Areas that are not a Fabric API module use a plain name: `loader-entrypoints.toml` for Fabric Loader entrypoints and `registries.toml` for vanilla registration. Every other direction sets its area names on its page in [directions/](directions/) before its first table.
+- A direction's page ([directions/](directions/)) is written before any of its tables.
+
+## Inverse pairs and the round trip
+
+Tables come in inverse pairs: every A → B table has an inverse B → A table, or an explicit "not invertible" mark with a reason.
+
+- **The pairing is written down twice.** The A → B table's header names its inverse, and the inverse's header names it back. Each rule names its inverse rule, or says why it has none.
+- **A table and its inverse land in the same pull request.** The fixed build order decides when a direction gets its board column and its source list. It does not hold back an inverse table: the round trip needs both halves. So the first Fabric → NeoForge table arrives with its NeoForge → Fabric inverse, long before NeoForge → Fabric has a column of its own.
+- **CI tests each pair by a round trip.** A mod built for loader A is converted A → B, then B → A, and the harness compares the result with the original on an A server and scores it with the usual scores ([harness.md](harness.md#the-round-trip-check)). The A → B half is also scored on its own, on a B server, as every conversion is.
+- **"Not invertible" is a statement, not a gap.** A rule that is not invertible (Fabric event phases approximated with NeoForge priorities, for example) is listed in the round-trip report, so a round trip that is not green can be traced to it. A not-invertible mark never makes a round trip green.
 
 ## Names inside a rule
 
 - Class names are JVM internal names: slashes for packages, `$` for nested classes (`net/fabricmc/fabric/api/event/lifecycle/v1/ServerTickEvents$EndTick`).
 - Method and field types are JVM descriptors (`(Lnet/minecraft/server/MinecraftServer;)V`).
-- Rules are matched after the remap pass, so Minecraft classes appear under **Mojang official names** (`net/minecraft/server/level/ServerLevel`), never intermediary names (`net/minecraft/class_NNNN`) and never Yarn names. Fabric API and NeoForge classes are not remapped and appear as published.
+- Rules are matched after the first remap pass, so Minecraft classes appear under **Mojang names** (`net/minecraft/server/level/ServerLevel`), whatever the two loaders run on: never intermediary names (`net/minecraft/class_NNNN`), never SRG or Quilt hashed names, and never Yarn names. The engine remaps the source into Mojang names, applies the rules, and remaps into the target's runtime names last ([architecture.md](architecture.md#conversion-data-flow)). Loader and API classes are not remapped and appear as published.
 - A **symbol** (used by `[[mark]]`) is written `owner` for a class, `owner.name:descriptor` for a field, and `owner.name(descriptor)` for a method, for example `net/fabricmc/fabric/api/event/Event.register(Ljava/lang/Object;)V`.
 
 ## File format
@@ -45,12 +61,14 @@ TOML. Unknown keys are errors, so a typo fails loudly instead of being ignored.
 | `schema` | integer | yes | Format version. This draft is `1`. The crate refuses a schema it does not know |
 | `area` | string | yes | Must equal the file stem |
 | `game_version` | string | yes | Must equal the directory name, and be one of the versions pinned in `research-lock.json` |
-| `from` | string | yes | `"fabric"` |
-| `to` | string | yes | `"neoforge"` |
-| `names` | string | yes | `"official"`, the only namespace in v1 |
+| `from` | string | yes | The source loader id, for example `"fabric"`. Must equal the first part of the direction directory |
+| `to` | string | yes | The target loader id, for example `"neoforge"`. Must equal the second part |
+| `names` | string | yes | `"mojang"`, the only namespace rules are written in. (An earlier draft called it `"official"`, which is the intermediary files' name for the obfuscated names, so it was renamed.) |
 | `summary` | string | yes | One line: what API area the file covers |
+| `inverse` | string | one of these two | The inverse table, as `<to>-<from>/<game-version>/<area>` |
+| `not_invertible` | string | one of these two | Why this whole area has no inverse, in one sentence |
 
-Loader and API versions are not repeated in the tables. They come from `research-lock.json` for the game version, so they can never drift apart.
+Loader and API versions are not repeated in the tables. They come from `research-lock.json` for the game version, through the loader profiles, so they can never drift apart.
 
 ### Keys every `[[rule]]` has
 
@@ -61,6 +79,8 @@ Loader and API versions are not repeated in the tables. They come from `research
 | `summary` | string | yes | One sentence: what becomes what |
 | `confidence` | string | yes | `"exact"` (same behaviour by construction), `"equivalent"` (same behaviour per the sources, with the differences listed), `"approximate"` (known differences that can matter). Copied into each report entry |
 | `sources` | array of strings | yes, at least one | Ids of entries in `rules/SOURCES.md` |
+| `inverse` | string | one of these two | The `id` of the rule in the inverse table that undoes this one |
+| `not_invertible` | string | one of these two | Why no rule can undo this one, in one sentence. Shown in round-trip reports |
 | `[rule.match]` | table | yes | What to find. Keys depend on `kind` |
 | `[rule.target]` | table | yes | What to produce. Keys depend on `kind` |
 | `[[rule.difference]]` | array of tables | yes for `event_bridge`, at least one | Documented semantic differences |
@@ -71,6 +91,10 @@ Each `[[rule.difference]]` has:
 | --- | --- | --- |
 | `topic` | string | `"timing"`, `"ordering"`, `"cancellation"`, `"return-value"`, `"arguments"`, `"side"`, `"phase"` or `"none"` |
 | `text` | string | The difference in plain words, or for `"none"`, what was compared and found equal |
+
+### Keys per kind
+
+The match and target keys below are written for the first direction: a source whose events are held in callback fields and a target with an event bus (`events.model` in the two profiles), Fabric → NeoForge. Each other combination of models gets its keys here, and on its direction page, before its first table. Until then a table for it is refused.
 
 ### `kind = "event_bridge"`
 
@@ -108,7 +132,7 @@ When the rewriter finds a use it cannot match (the event stored in a variable fi
 
 ### `kind = "call_rewrite"`
 
-A call to a Fabric API method becomes a call to a NeoForge or vanilla method.
+A call to a source-loader API method becomes a call to a target-loader or vanilla method.
 
 | Table | Key | Type | Meaning |
 | --- | --- | --- | --- |
@@ -120,12 +144,12 @@ A call to a Fabric API method becomes a call to a NeoForge or vanilla method.
 
 ### `kind = "class_substitution"`
 
-A reference to a Fabric API class becomes a reference to another class with the same shape.
+A reference to a source-loader API class becomes a reference to another class with the same shape.
 
 | Table | Key | Type | Meaning |
 | --- | --- | --- | --- |
-| `[rule.match]` | `class` | string | The Fabric API class |
-| `[rule.target]` | `class` | string | The replacement. Every member of the matched class that the mod uses must exist on the target with the same name and descriptor; the `rules` crate checks this against the NeoForge API index |
+| `[rule.match]` | `class` | string | The source-loader API class |
+| `[rule.target]` | `class` | string | The replacement. Every member of the matched class that the mod uses must exist on the target with the same name and descriptor; the `rules` crate checks this against the target loader's API index |
 
 ### `kind = "entrypoint"`
 
@@ -137,14 +161,14 @@ A Fabric entrypoint becomes a call from the generated `@Mod` class.
 | | `interface` | string | The entrypoint interface, for example `net/fabricmc/api/ModInitializer` |
 | | `method` | string | Its method, for example `onInitialize` |
 | | `descriptor` | string | Its descriptor, for example `()V` |
-| `[rule.target]` | `stage` | string | `"construct"`, `"common-setup"`, `"client-setup"` or `"dedicated-server-setup"` |
+| `[rule.target]` | `stage` | string | `"construct"`, `"register"` (inside the first `RegisterEvent`, D-023), `"common-setup"`, `"client-setup"` or `"dedicated-server-setup"` |
 | | `side` | string | `"both"`, `"client"` or `"server"` |
 
 Custom entrypoint keys (mod menus, recipe viewers) have no rule. The report lists them as "plugin entrypoint for `<key>`, not translated".
 
 ### `[[mark]]`: symbols without a rule
 
-Every public Fabric API symbol in the Fabric API index maps to a rule, to a mark, or to nothing yet. A mark says why a symbol has no rule.
+Every public symbol in the source loader's API index maps to a rule, to a mark, or to nothing yet. A mark says why a symbol has no rule.
 
 | Key | Type | Required | Meaning |
 | --- | --- | --- | --- |
@@ -153,9 +177,11 @@ Every public Fabric API symbol in the Fabric API index maps to a rule, to a mark
 | `reason` | string | yes | Why, in one sentence. Shown in reports |
 | `sources` | array of strings | yes | Ids in `rules/SOURCES.md` |
 
+A mark has no inverse: nothing was rewritten, so there is nothing to undo.
+
 ## Example
 
-This is a complete draft entry for Minecraft 1.21.1. It describes API shapes only: the Fabric API event `net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents` and the NeoForge event `net.neoforged.neoforge.event.tick.ServerTickEvent`. It is not active; no rule table exists until M2.
+This is a complete draft entry for Minecraft 1.21.1. It describes API shapes only: the Fabric API event `net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents` and the NeoForge event `net.neoforged.neoforge.event.tick.ServerTickEvent`. It is not active; no rule table exists until M2. The inverse names point at the NeoForge → Fabric table that would land with it; `event-tick` is an illustration, since that direction sets its area names on its page first.
 
 `rules/fabric-neoforge/1.21.1/lifecycle-events-v1.toml`:
 
@@ -166,8 +192,9 @@ area = "lifecycle-events-v1"
 game_version = "1.21.1"
 from = "fabric"
 to = "neoforge"
-names = "official"
+names = "mojang"
 summary = "Server and world lifecycle and tick events from fabric-lifecycle-events-v1."
+inverse = "neoforge-fabric/1.21.1/event-tick"
 
 [[rule]]
 id = "lifecycle-events-v1/server-tick-start"
@@ -179,6 +206,7 @@ sources = [
   "neoforge/event/tick/ServerTickEvent",
   "neoforge-bus/IEventBus",
 ]
+inverse = "event-tick/server-tick-pre"
 
 [rule.match]
 owner = "net/fabricmc/fabric/api/event/lifecycle/v1/ServerTickEvents"
@@ -222,6 +250,7 @@ sources = [
   "neoforge/event/tick/ServerTickEvent",
   "neoforge-bus/IEventBus",
 ]
+inverse = "event-tick/server-tick-post"
 
 [rule.match]
 owner = "net/fabricmc/fabric/api/event/lifecycle/v1/ServerTickEvents"
@@ -264,7 +293,7 @@ sources = ["fabric-api/api-base/Event"]
 
 ## `rules/SOURCES.md`
 
-Each source is a level-3 heading whose text is the id that rules cite, followed by four bullets. The `rules` crate reads the headings and rejects a rule that cites an id that is not there. URLs are pinned to a commit or tag, so the source a rule was checked against cannot change underneath it.
+One file for every direction. Each source is a level-3 heading whose text is the id that rules cite, followed by four bullets. The `rules` crate reads the headings and rejects a rule that cites an id that is not there. URLs are pinned to a commit or tag, so the source a rule was checked against cannot change underneath it.
 
 ```markdown
 ### fabric-api/lifecycle-events-v1/ServerTickEvents
@@ -287,6 +316,11 @@ A source that is an issue in Sinytra Connector's public tracker is cited the sam
 The `rules` crate will refuse to load a table when:
 
 - `area` differs from the file stem, or `game_version` from the directory, or the game version is not pinned;
+- `from` or `to` differs from the direction directory, names a loader with no profile in `loaders/`, or `from` equals `to`;
+- either loader's profile is `"not-researched"` for the game version ([loaders.md](loaders.md#validation));
+- the combination of the two profiles' event models has no key set on this page yet;
+- the header has both or neither of `inverse` and `not_invertible`, or a rule has both or neither;
+- the inverse table or the inverse rule does not exist, or does not point back;
 - an `id` is duplicated in the directory, or does not start with `<area>/`;
 - a key is unknown, a required key is missing, or a value is outside its allowed set;
 - a class name uses dots, or a descriptor is not a valid JVM descriptor;
@@ -297,20 +331,23 @@ The `rules` crate will refuse to load a table when:
 ## How rules reach the report and the ledger
 
 - Every rule application is a report entry with `kind`, `location`, `before`, `after`, `rule` and `confidence`.
-- Every use the rewriter could not match is an "unmatched" entry. The board aggregates them into "top red reasons", which decides which rule to write next.
-- The rule-table version used in a conversion is a content hash of the game-version directory, so the same tables always give the same output (see "Determinism contract" in [architecture.md](architecture.md)).
-- The ledger metric is the share of the Fabric API index covered by rules, weighted by how often the 1,000 board mods use each symbol.
+- Every use the rewriter could not match is an "unmatched" entry. The board aggregates them per direction into "top red reasons", which decides which rule to write next.
+- The rule-table version used in a conversion is a content hash of `rules/<from>-<to>/<game-version>/`, so the same tables always give the same output (see "Determinism contract" in [architecture.md](architecture.md)).
+- The ledger metric, per direction, is the share of the source loader's API index covered by rules, weighted by how often the mods in that direction's source list use each symbol.
 
 ## How to add a rule
 
 1. Open a [rule proposal](https://github.com/MosheByte/jarrow/issues/new?template=rule-proposal.yml).
-2. Read the Fabric and NeoForge sides from public sources and add each source to `rules/SOURCES.md`.
-3. Add the rule to each game-version directory it applies to, with every difference you found.
-4. Add a golden test: a small fixture class written for the test (never taken from a mod), the expected rewritten output and the expected report entries.
-5. Open a pull request. The harness smoke set runs on it. The rule counts as working when the harness says so.
+2. Check that the direction's page in [directions/](directions/) covers the API area. If it does not, update the page first.
+3. Read both loaders' sides from public sources and add each source to `rules/SOURCES.md`.
+4. Add the rule to each game-version directory it applies to, with every difference you found, and add its inverse to the inverse table, or mark it not invertible with a reason.
+5. Add golden tests for both halves: a small fixture class written for the test (never taken from a mod), the expected rewritten output and the expected report entries.
+6. Open a pull request. The harness smoke set and the round-trip check run on it. The rule counts as working when the harness says so.
 
 ## Open questions for M2
 
 - **When the main entrypoint runs.** The first design placed `ModInitializer` at `FMLCommonSetupEvent`, but the registry bridge captures `register` calls made during the original initializer and replays them in `RegisterEvent`, which fires before common setup. D-023 (amendment A-10 in [spec-amendments.md](spec-amendments.md)) runs `main` inside the first `RegisterEvent` instead. M2 checks that stage with a harness measurement; if the measurement disagrees, a new decision and amendment follow.
 - **Callbacks that return a value** (for example interaction callbacks that return a result). The `result` kinds are defined with the first rule that needs one.
 - **Phased registration.** Marked Tier B for now; a later rule may approximate phases with priorities if the harness shows no difference.
+- **Key sets for other event models.** NeoForge → Fabric needs the event-bus-to-callback-fields form of `event_bridge` and `entrypoint`. They are defined with the first NeoForge → Fabric table, which lands with its Fabric → NeoForge pair.
+- **Namespaces other than intermediary and Mojang.** Rules stay in Mojang names. On 1.20.1, Forge and NeoForge run on SRG names for fields and methods (`research-lock.json`), so their 1.20.1 tables need the MCP config mappings that the installers merge, which are not pinned yet. No pinned loader runs on Quilt's hashed names.

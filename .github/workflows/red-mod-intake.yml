@@ -58,6 +58,8 @@ jobs:
           MARKER = "<!-- jarrow:red-mod-intake -->"
           FIELD_IDS = ("source-mod-url", "mod-url")
           FALLBACK_LABELS = ("Source mod URL", "Modrinth mod URL", "Mod URL")
+          DIRECTION_FIELD = "direction"
+          LOADER_NAMES = {"fabric": "Fabric", "neoforge": "NeoForge", "forge": "Forge", "quilt": "Quilt"}
           TEMPLATE = ".github/ISSUE_TEMPLATE/red-mod-report.yml"
           PINNED = ("1.20.1", "1.21.1", "1.21.11")
           MODRINTH_API = "https://api.modrinth.com/v2"
@@ -170,6 +172,24 @@ jobs:
               return m.group(0) if m else ""
 
 
+          def direction_label(direction):
+              source, target = direction.split("-")
+              return f"{LOADER_NAMES[source]} → {LOADER_NAMES[target]}"
+
+
+          def form_direction(body, labels):
+              """The form's direction as an id such as "fabric-neoforge" ("Fabric → NeoForge"), or None."""
+              value = form_sections(body).get(labels.get(DIRECTION_FIELD) or "Direction") or ""
+              names = {name.lower(): loader for loader, name in LOADER_NAMES.items()}
+              m = re.fullmatch(r"\s*([A-Za-z]+)\s*(?:→|->|-|to)\s*([A-Za-z]+)\s*", value)
+              if not m:
+                  return None
+              source, target = (names.get(g.lower(), g.lower()) for g in m.groups())
+              if source in LOADER_NAMES and target in LOADER_NAMES and source != target:
+                  return f"{source}-{target}"
+              return None
+
+
           def modrinth_slug(value):
               """The project slug or id in a Modrinth project URL, or None."""
               m = re.search(r"(?:https?://)?(?:www\.)?modrinth\.com/[^\s)>\]]+|https?://[^\s)>\]]+", value)
@@ -220,27 +240,43 @@ jobs:
               return next((f for f in files if f.get("primary")), files[0] if files else None)
 
 
-          def board_row(board, project):
+          def board_row(board, project, direction=None):
+              """The project's row in board.json (schema 2, docs/board.md): one row per mod per
+              direction column, so the form's direction picks the column when it names one."""
               for row in (board or {}).get("rows") or []:
-                  ids = {row.get("project_id"), row.get("mod_id")}
-                  if project.get("id") in ids or (row.get("slug") and row.get("slug") == project.get("slug")):
+                  if direction and row.get("direction") != direction:
+                      continue
+                  if project.get("id") == row.get("project_id") or (row.get("slug") and row.get("slug") == project.get("slug")):
                       return row
               return None
 
 
-          def board_lines(board, board_error, project, site):
+          def has_column(board, direction):
+              """False when board.json lists the direction without a column; True otherwise."""
+              for d in (board or {}).get("directions") or []:
+                  if isinstance(d, dict) and d.get("id") == direction:
+                      return bool(d.get("column"))
+              return True
+
+
+          def board_lines(board, board_error, project, site, direction=None):
               title = md(project.get("title") or project.get("slug"))
               if board_error:
                   return [f"Board: {site}/api/board.json could not be read ({md(board_error)}); this comment updates on the next edit."]
+              if direction and board is not None and not has_column(board, direction):
+                  return [f"Board: {direction_label(direction)} has no column on [the board]({site}/board/) yet, so there is no row for {title} in that direction."]
               if board is None or not (board.get("rows") or []):
                   return [f"Board: no rows yet (no nightly has filled [the board]({site}/board/)), so there is no row for {title}."]
-              row = board_row(board, project)
+              row = board_row(board, project, direction)
               generated = board.get("generated_at") or "unknown time"
               if row is None:
-                  return [f"Board: {title} is not on [the board]({site}/board/) generated {md(generated)}."]
+                  where = f" in the {direction_label(direction)} column" if direction else ""
+                  return [f"Board: {title} is not on [the board]({site}/board/){where} generated {md(generated)}."]
               anchor = f"{site}/board/#mod-{urllib.parse.quote(str(project.get('id')), safe='')}"
+              row_direction = row.get("direction")
               details = [
-                  ("Result", row.get("outcome") or row.get("result")),
+                  ("Direction", direction_label(row_direction) if row_direction in {f"{a}-{b}" for a in LOADER_NAMES for b in LOADER_NAMES if a != b} else None),
+                  ("Result", row.get("outcome")),
                   ("Tier", row.get("tier")),
                   ("Reason", row.get("reason")),
                   ("Game version", row.get("primary_game_version")),
@@ -254,7 +290,7 @@ jobs:
               return lines
 
 
-          def render_project(project, versions, board, board_error, site, when):
+          def render_project(project, versions, board, board_error, site, when, direction=None):
               title = md(project.get("title") or project.get("slug"))
               page = f"https://modrinth.com/{project.get('project_type') or 'mod'}/{urllib.parse.quote(str(project.get('slug')), safe='')}"
               lic = project.get("license") or {}
@@ -312,7 +348,7 @@ jobs:
                   loaders = md(", ".join(version.get("loaders") or []))
                   lines.append(f"| {gv} | {label} | {loaders} | {published} | {'yes' if gv in neo else 'no'} |")
               lines.append("")
-              lines += board_lines(board, board_error, project, site)
+              lines += board_lines(board, board_error, project, site, direction)
               lines += ["", "This comment is updated when the issue is edited."]
               return "\n".join(lines) + "\n"
 
@@ -352,7 +388,9 @@ jobs:
               repo = env["REPO"]
               site = (env.get("SITE_URL") or "https://jarrow.pages.dev").rstrip("/")
               issue = api(f"repos/{repo}/issues/{int(env['ISSUE_NUMBER'])}") or {}
-              value = form_url(issue.get("body") or "", template_labels(repo, env.get("DEFAULT_BRANCH") or "main"))
+              labels = template_labels(repo, env.get("DEFAULT_BRANCH") or "main")
+              value = form_url(issue.get("body") or "", labels)
+              direction = form_direction(issue.get("body") or "", labels)
               if not value:
                   return render_problem(
                       "The form has no Modrinth URL. Edit the issue and put the mod's page, such as "
@@ -381,7 +419,9 @@ jobs:
                   board = fetch_json(f"{site}/api/board.json")
               except FetchError as err:
                   board_error = str(err)
-              return render_project(project, versions if isinstance(versions, list) else [], board, board_error, site, now())
+              return render_project(
+                  project, versions if isinstance(versions, list) else [], board, board_error, site, now(), direction
+              )
 
 
           def main(env):

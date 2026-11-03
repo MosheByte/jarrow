@@ -380,11 +380,27 @@ mod tests {
                 .starts_with("no pin at game_versions.1.7.10"),
             "{err}"
         );
-        let err = lock.loader_version(Loader::Quilt, "1.21.1").unwrap_err();
+        // research-lock.json pins all four loaders on every game version (D-029), so a missing
+        // loader pin is shown on a lock that lacks one.
+        let partial = Lock::parse(r#"{"game_versions": {"1.21.1": {}}}"#).unwrap();
+        let err = partial.loader_version(Loader::Quilt, "1.21.1").unwrap_err();
         assert_eq!(
             err,
             LockError::Missing("game_versions.1.21.1.quilt.loader.version".into())
         );
+        for game in lock.game_versions() {
+            for loader in [
+                Loader::Fabric,
+                Loader::NeoForge,
+                Loader::Forge,
+                Loader::Quilt,
+            ] {
+                assert!(
+                    lock.loader_version(loader, &game).is_ok(),
+                    "{loader:?} on {game}"
+                );
+            }
+        }
     }
 
     #[test]

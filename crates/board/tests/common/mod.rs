@@ -9,7 +9,6 @@
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::io::Write;
 use std::path::PathBuf;
 
 use jarrow_board::http::{Fetch, FetchError, FetchErrorKind, ResettableSink};
@@ -63,16 +62,63 @@ impl Fetch for FakeFetch {
     }
 }
 
-/// A zip with the given entry names (each holding its own name as content).
+/// A zip with the given entry names (each holding its own name as content), stored, with
+/// every header field fixed: DOS time 1980-01-01 00:00, "version made by" 2.0 on MS-DOS, no
+/// attributes. The same bytes on every OS (the zip crate's writer stamps the host OS into each
+/// central directory entry), so the hashes in `fixtures/board-sample.json` hold everywhere.
 pub fn jar(entries: &[&str]) -> Vec<u8> {
-    let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
-    let options =
-        zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
-    for name in entries {
-        writer.start_file(*name, options).unwrap();
-        writer.write_all(name.as_bytes()).unwrap();
+    fn u16le(out: &mut Vec<u8>, v: usize) {
+        out.extend_from_slice(&u16::try_from(v).unwrap().to_le_bytes());
     }
-    writer.finish().unwrap().into_inner()
+    fn u32le(out: &mut Vec<u8>, v: usize) {
+        out.extend_from_slice(&u32::try_from(v).unwrap().to_le_bytes());
+    }
+    const VERSION: usize = 20;
+    const DOS_DATE_1980_01_01: usize = 0x21;
+    let mut out = Vec::new();
+    let mut central = Vec::new();
+    for name in entries {
+        let data = name.as_bytes();
+        let mut crc = flate2::Crc::new();
+        crc.update(data);
+        let crc = crc.sum() as usize;
+        let offset = out.len();
+        u32le(&mut out, 0x0403_4b50);
+        for v in [VERSION, 0, 0, 0, DOS_DATE_1980_01_01] {
+            u16le(&mut out, v);
+        }
+        for v in [crc, data.len(), data.len()] {
+            u32le(&mut out, v);
+        }
+        u16le(&mut out, name.len());
+        u16le(&mut out, 0);
+        out.extend_from_slice(name.as_bytes());
+        out.extend_from_slice(data);
+
+        u32le(&mut central, 0x0201_4b50);
+        for v in [VERSION, VERSION, 0, 0, 0, DOS_DATE_1980_01_01] {
+            u16le(&mut central, v);
+        }
+        for v in [crc, data.len(), data.len()] {
+            u32le(&mut central, v);
+        }
+        for v in [name.len(), 0, 0, 0, 0] {
+            u16le(&mut central, v);
+        }
+        u32le(&mut central, 0);
+        u32le(&mut central, offset);
+        central.extend_from_slice(name.as_bytes());
+    }
+    let central_offset = out.len();
+    out.extend_from_slice(&central);
+    u32le(&mut out, 0x0605_4b50);
+    for v in [0, 0, entries.len(), entries.len()] {
+        u16le(&mut out, v);
+    }
+    u32le(&mut out, central.len());
+    u32le(&mut out, central_offset);
+    u16le(&mut out, 0);
+    out
 }
 
 /// Path of a fixture file.

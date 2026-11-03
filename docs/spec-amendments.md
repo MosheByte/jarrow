@@ -84,3 +84,9 @@ When the project specification (private) and reality disagree, reality wins. Eac
 - **What we do:** it stays on the maintainer machine (untracked, in `.gitignore`), and `main`'s history was replaced once with a single orphan root commit (D-026). Old commit SHAs may remain reachable on GitHub by direct link until GitHub's caches expire; a GitHub Support request purges them.
 - **Reverts when:** never.
 
+## A-13 — v1 is any loader to any loader
+
+- **Spec:** v1 converts Fabric mods to NeoForge, on two 1.21 minors (1.21.1 and 1.21.11).
+- **Reality (2026-11-03):** the project owner widened v1 to any loader to any loader: Fabric, NeoForge, Forge and Quilt, all 12 directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11.
+- **What we do:** one engine, with one profile per loader in `loaders/<name>.toml`. Rule tables live in `rules/<from>-<to>/<game-version>/` and come in inverse pairs, and the harness scores each pair by an A → B → A round trip. Each direction gets its page in `docs/directions/` before its rule tables, and its own board column. v1 is done when every column is at least 50% green, and Fabric → NeoForge at least 60%. The directions are built in a fixed order that starts with Fabric → NeoForge, and none is advertised on the site before its column exists. `research-lock.json` pins 1.20.1 and the Forge and Quilt builds (D-029 to D-036). On 2026-11-03 no direction converts and none has a board column.
+- **Reverts when:** never.

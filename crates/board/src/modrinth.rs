@@ -1,8 +1,11 @@
 //! The parts of the Modrinth API v2 the board reads, and the rules for picking files.
 //!
-//! - Search: `GET /v2/search` with facets `project_type:mod`, `categories:<source loader>`
-//!   and `versions:<v1>` OR `versions:<v2>` ..., sorted by downloads, 100 per page.
+//! - Search: `GET /v2/search` with facets `project_type:mod`, `categories:<loader tag>` and
+//!   `versions:<v1>` OR `versions:<v2>` ..., sorted by downloads, 100 per page.
 //! - Versions: `GET /v2/project/<id>/version?loaders=[...]&game_versions=[...]&include_changelog=false`.
+//!
+//! The loader tag is the source loader's `modrinth_loader` from its profile
+//! ([`Loader::modrinth_tag`]); a loader whose tag is not researched has no list.
 //!
 //! Field names follow <https://docs.modrinth.com/api/>. Unknown fields are ignored, so
 //! Modrinth can add fields without breaking the board; missing required fields are errors.
@@ -153,28 +156,29 @@ fn json_string_array(items: &[String]) -> String {
     serde_json::Value::from(items.to_vec()).to_string()
 }
 
-/// The search facets for a source loader and the pinned versions, as Modrinth's JSON:
+/// The search facets for a source loader's Modrinth tag and the pinned versions, as
+/// Modrinth's JSON:
 /// `[["project_type:mod"],["categories:fabric"],["versions:1.21.1","versions:1.21.11"]]`.
 /// Inner arrays are OR, outer arrays AND.
-pub fn search_facets(source: Loader, game_versions: &[String]) -> String {
+pub fn search_facets(tag: &str, game_versions: &[String]) -> String {
     let versions: Vec<String> = game_versions
         .iter()
         .map(|v| format!("versions:{v}"))
         .collect();
     let facets = vec![
         vec!["project_type:mod".to_owned()],
-        vec![format!("categories:{}", source.modrinth_tag())],
+        vec![format!("categories:{tag}")],
         versions,
     ];
     serde_json::Value::from(facets).to_string()
 }
 
 /// `GET /v2/search` for one page, sorted by downloads.
-pub fn search_url(api_base: &str, source: Loader, game_versions: &[String], offset: u64) -> String {
+pub fn search_url(api_base: &str, tag: &str, game_versions: &[String], offset: u64) -> String {
     format!(
         "{}/search?facets={}&index=downloads&offset={offset}&limit={PAGE_SIZE}",
         api_base.trim_end_matches('/'),
-        encode_query_value(&search_facets(source, game_versions)),
+        encode_query_value(&search_facets(tag, game_versions)),
     )
 }
 
@@ -183,12 +187,12 @@ pub fn is_modrinth_id(id: &str) -> bool {
     !id.is_empty() && id.len() <= 64 && id.bytes().all(|b| b.is_ascii_alphanumeric())
 }
 
-/// `GET /v2/project/<id>/version`, filtered to the loader and the pinned versions, without
+/// `GET /v2/project/<id>/version`, filtered to the loader tag and the pinned versions, without
 /// changelogs.
 pub fn versions_url(
     api_base: &str,
     project_id: &str,
-    source: Loader,
+    tag: &str,
     game_versions: &[String],
 ) -> Result<String, Error> {
     if !is_modrinth_id(project_id) {
@@ -199,7 +203,7 @@ pub fn versions_url(
     Ok(format!(
         "{}/project/{project_id}/version?loaders={}&game_versions={}&include_changelog=false",
         api_base.trim_end_matches('/'),
-        encode_query_value(&json_string_array(&[source.modrinth_tag().to_owned()])),
+        encode_query_value(&json_string_array(&[tag.to_owned()])),
         encode_query_value(&json_string_array(game_versions)),
     ))
 }
@@ -214,12 +218,14 @@ pub fn parse_versions(body: &[u8]) -> Result<Vec<Version>, Error> {
     serde_json::from_slice(body).map_err(|e| Error::json("Modrinth version list", e))
 }
 
-/// The loader tags among a project's categories, sorted (Modrinth puts loaders and
-/// categories in one list).
+/// The loader ids among a project's categories, sorted (Modrinth puts loaders and categories
+/// in one list). Informational only (the list's `loaders` and the rows'
+/// `target_build_exists`): it matches the category strings against Jarrow's loader ids and
+/// decides nothing the board measures.
 pub fn loader_tags(categories: &[String]) -> Vec<String> {
     let mut tags: Vec<String> = Loader::ALL
         .iter()
-        .filter(|l| categories.iter().any(|c| c == l.modrinth_tag()))
+        .filter(|l| categories.iter().any(|c| c == l.id()))
         .map(|l| l.id().to_owned())
         .collect();
     tags.sort();
@@ -248,12 +254,11 @@ fn usable_file(version: &Version) -> Option<(&VersionFile, String)> {
 }
 
 /// Picks the file to test for one game version: the newest `release` that declares the
-/// loader and the game version, or the newest `beta` when there is no release. Alphas are
+/// loader tag and the game version, or the newest `beta` when there is no release. Alphas are
 /// never picked. Within a version, the primary file wins, and only a `.jar` on Modrinth's CDN
 /// with a sha512 counts. Ties on the publication time break on the version id, so the pick is
 /// deterministic.
-pub fn pick_file(versions: &[Version], loader: Loader, game_version: &str) -> Option<PickedFile> {
-    let tag = loader.modrinth_tag();
+pub fn pick_file(versions: &[Version], tag: &str, game_version: &str) -> Option<PickedFile> {
     let matching = |kind: &str| {
         versions
             .iter()
@@ -282,16 +287,12 @@ pub fn pick_file(versions: &[Version], loader: Loader, game_version: &str) -> Op
 }
 
 /// Picks one file per pinned game version (see [`pick_file`]), oldest version first.
-pub fn pick_files(
-    versions: &[Version],
-    loader: Loader,
-    game_versions: &[String],
-) -> Vec<PickedFile> {
+pub fn pick_files(versions: &[Version], tag: &str, game_versions: &[String]) -> Vec<PickedFile> {
     let mut sorted = game_versions.to_vec();
     gamever::sort_versions(&mut sorted);
     sorted
         .iter()
-        .filter_map(|gv| pick_file(versions, loader, gv))
+        .filter_map(|gv| pick_file(versions, tag, gv))
         .collect()
 }
 
@@ -304,13 +305,13 @@ mod tests {
     }
 
     #[test]
-    fn facets_follow_the_source_loader() {
+    fn facets_follow_the_loader_tag() {
         assert_eq!(
-            search_facets(Loader::Fabric, &gv(&["1.21.1", "1.21.11"])),
+            search_facets("fabric", &gv(&["1.21.1", "1.21.11"])),
             r#"[["project_type:mod"],["categories:fabric"],["versions:1.21.1","versions:1.21.11"]]"#
         );
         assert_eq!(
-            search_facets(Loader::Forge, &gv(&["1.20.1"])),
+            search_facets("forge", &gv(&["1.20.1"])),
             r#"[["project_type:mod"],["categories:forge"],["versions:1.20.1"]]"#
         );
     }
@@ -319,7 +320,7 @@ mod tests {
     fn urls_are_encoded() {
         let url = search_url(
             "https://api.modrinth.com/v2/",
-            Loader::Quilt,
+            "quilt",
             &gv(&["1.21.1"]),
             200,
         );
@@ -329,14 +330,14 @@ mod tests {
              %5B%22categories%3Aquilt%22%5D%2C%5B%22versions%3A1.21.1%22%5D%5D\
              &index=downloads&offset=200&limit=100"
         );
-        let url = versions_url(API_BASE, "AANobbMI", Loader::NeoForge, &gv(&["1.21.1"])).unwrap();
+        let url = versions_url(API_BASE, "AANobbMI", "neoforge", &gv(&["1.21.1"])).unwrap();
         assert_eq!(
             url,
             "https://api.modrinth.com/v2/project/AANobbMI/version?loaders=%5B%22neoforge%22%5D\
              &game_versions=%5B%221.21.1%22%5D&include_changelog=false"
         );
-        assert!(versions_url(API_BASE, "../admin", Loader::Fabric, &gv(&["1.21.1"])).is_err());
-        assert!(versions_url(API_BASE, "", Loader::Fabric, &gv(&["1.21.1"])).is_err());
+        assert!(versions_url(API_BASE, "../admin", "fabric", &gv(&["1.21.1"])).is_err());
+        assert!(versions_url(API_BASE, "", "fabric", &gv(&["1.21.1"])).is_err());
     }
 
     #[test]

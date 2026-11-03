@@ -1,13 +1,13 @@
-//! The rows and totals of `board.json` (`docs/board.md`). Shards write rows; the merge adds
-//! totals, reasons and statistics.
+//! The directions, rows and totals of `board.json` (`docs/board.md`, schema 2). Shards write
+//! rows; the merge adds the directions, totals, reasons and statistics.
 
 use std::collections::BTreeMap;
 
-use jarrow_report::Outcome;
+use jarrow_report::{Outcome, Tier};
 use serde::{Deserialize, Serialize};
 
 use crate::loader::{Direction, Loader};
-use crate::report::{BoardTier, ReasonKind};
+use crate::report::ReasonKind;
 
 /// The engine that produced a shard or a board.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -20,10 +20,12 @@ pub struct Engine {
     pub git_sha: String,
 }
 
-/// One game version's result for one mod.
+/// One game version's result for one mod in one direction.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BoardResult {
+    /// The direction, the same as the row's.
+    pub direction: Direction,
     /// The game version.
     pub game_version: String,
     /// Modrinth version id.
@@ -38,19 +40,19 @@ pub struct BoardResult {
     /// The mod's version; Modrinth's version number until the manifest crate reads the JAR's
     /// own (M1 wave 2).
     pub mod_version: Option<String>,
-    /// The tier, `unknown` while the classifier is not built.
-    pub tier: BoardTier,
-    /// Why that tier.
+    /// The tier, `null` when the classifier did not run (not built yet, or no file).
+    pub tier: Option<Tier>,
+    /// Why that tier, or why there is none.
     pub tier_reasons: Vec<String>,
-    /// Green, yellow or red.
+    /// Green, yellow or red from a harness score; `not-run` without one.
     pub outcome: Outcome,
-    /// The harness score, when the harness ran.
+    /// The harness score, when the harness ran and scored.
     pub score: Option<f64>,
-    /// The classified reason for yellow or red.
+    /// The classified reason for anything but green.
     pub reason_kind: Option<ReasonKind>,
     /// The reason in words.
     pub reason: Option<String>,
-    /// The KV key of the full report.
+    /// The KV key of the full report, `report:<direction>:<project_id>:<game_version>`.
     pub report_key: String,
     /// `sha256:<hex>` of the canonical report JSON.
     pub report_hash: String,
@@ -58,11 +60,11 @@ pub struct BoardResult {
     pub duration_ms: u64,
 }
 
-/// One mod on the board, for one direction.
+/// One mod in one direction's column.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BoardRow {
-    /// The direction this row measures.
+    /// The column this row is in.
     pub direction: Direction,
     /// Modrinth project id.
     pub project_id: String,
@@ -78,12 +80,13 @@ pub struct BoardRow {
     pub icon_url: Option<String>,
     /// SPDX id or `LicenseRef-...`, as Modrinth lists it.
     pub license: Option<String>,
-    /// The newest pinned game version the mod ships a file for. The row's tier, outcome and
-    /// reason are this version's.
+    /// The newest pinned game version the mod ships a source-loader file for. The row's tier,
+    /// outcome and reason are this version's.
     pub primary_game_version: String,
     /// Tier on the primary version.
-    pub tier: BoardTier,
-    /// Outcome on the primary version.
+    pub tier: Option<Tier>,
+    /// The row's outcome on the board: the primary result's, with `not-run` counted as red
+    /// (or yellow for `client_only_not_measured`). Green, yellow or red, never `not-run`.
     pub outcome: Outcome,
     /// Reason kind on the primary version.
     pub reason_kind: Option<ReasonKind>,
@@ -91,15 +94,16 @@ pub struct BoardRow {
     pub reason: Option<String>,
     /// When this row's last file finished, RFC 3339 UTC.
     pub last_run: String,
-    /// Whether Modrinth tags the project `neoforge` (informational).
-    pub neoforge_build_exists: bool,
-    /// Whether Modrinth tags the project with the direction's target loader (informational).
+    /// The site page of the primary report; `null` until the site has report pages.
+    pub report_url: Option<String>,
+    /// Whether Modrinth tags the project with the direction's target loader (informational,
+    /// not an author-verified port).
     pub target_build_exists: bool,
     /// Every pinned game version the mod ships a file for, oldest first.
     pub results: Vec<BoardResult>,
 }
 
-/// Mods per outcome. `mods == green + yellow + red` always holds.
+/// Rows per board outcome. `mods == green + yellow + red` always holds.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Totals {
@@ -114,8 +118,8 @@ pub struct Totals {
 }
 
 impl Totals {
-    /// Counts the rows' outcomes. A `not-run` row counts as red: "not run" is not an outcome
-    /// on the board.
+    /// Counts the rows' board outcomes. A `not-run` row (which the merge refuses) would count
+    /// as red: "not run" is not an outcome on the board.
     pub fn of<'a>(rows: impl IntoIterator<Item = &'a BoardRow>) -> Self {
         let mut t = Totals::default();
         for row in rows {
@@ -231,26 +235,54 @@ pub struct ShardStats {
     pub step_ms: StepDurations,
 }
 
-/// One direction's column of the board.
+/// One direction of the board, measured or not. `board.json` lists all twelve, in the build
+/// order; a direction has a column once the nightly measured it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DirectionBoard {
-    /// The direction.
-    pub direction: Direction,
+    /// The direction, `<from>-<to>`.
+    pub id: Direction,
     /// Its source loader.
-    pub source_loader: Loader,
+    pub from: Loader,
     /// Its target loader.
-    pub target_loader: Loader,
-    /// The pinned game versions it measured.
+    pub to: Loader,
+    /// Its step in the build order, 1 to 6.
+    pub order: u8,
+    /// The share of its column that must be green for v1, in percent.
+    pub bar_percent: u8,
+    /// Whether this run measured it. Without a column: no game versions, no list time, no
+    /// rules version, zero totals, no reasons and no rows.
+    pub column: bool,
+    /// The pinned game versions its column measured, oldest first.
     pub game_versions: Vec<String>,
-    /// When its mod list was fetched from Modrinth.
-    pub list_fetched_at: String,
-    /// The content hash of its rule tables, or `none` while it has none.
-    pub rules_version: String,
-    /// Mods per outcome.
+    /// When its source list was fetched from Modrinth.
+    pub list_fetched_at: Option<String>,
+    /// `sha256:<hex>` over its rule tables under `rules/<from>-<to>/`, or `none` while it has
+    /// none; `null` without a column.
+    pub rules_version: Option<String>,
+    /// Its rows per board outcome.
     pub totals: Totals,
     /// Reasons of its yellow and red rows.
     pub top_reasons: Vec<ReasonCount>,
+}
+
+impl DirectionBoard {
+    /// A direction without a column.
+    pub fn without_column(direction: Direction) -> Self {
+        Self {
+            id: direction,
+            from: direction.source,
+            to: direction.target,
+            order: direction.order(),
+            bar_percent: direction.bar_percent(),
+            column: false,
+            game_versions: Vec::new(),
+            list_fetched_at: None,
+            rules_version: None,
+            totals: Totals::default(),
+            top_reasons: Vec::new(),
+        }
+    }
 }
 
 /// Run-wide statistics (counts and durations), summed over shards.
@@ -279,7 +311,7 @@ pub struct BoardStats {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Board {
-    /// Always 1.
+    /// Always [`crate::SCHEMA`] (2).
     pub schema: u32,
     /// When the last shard finished, RFC 3339 UTC.
     pub generated_at: String,
@@ -289,19 +321,15 @@ pub struct Board {
     pub run_id: String,
     /// The engine.
     pub engine: Engine,
-    /// The rules version when every direction shares one, otherwise `per-direction`.
-    pub rules_version: String,
-    /// Every pinned game version of every direction, oldest first.
+    /// Every game version a column measured, oldest first.
     pub game_versions: Vec<String>,
-    /// All directions together.
+    /// The sum of every direction's totals: one entry per mod per column.
     pub totals: Totals,
-    /// All directions together.
-    pub top_reasons: Vec<ReasonCount>,
-    /// One entry per direction, sorted by direction id.
+    /// All twelve directions, in the build order.
     pub directions: Vec<DirectionBoard>,
     /// Counts and durations.
     pub stats: BoardStats,
-    /// Rows, sorted by direction, downloads (most first) and project id.
+    /// Rows, sorted by direction (build order), downloads (most first) and project id.
     pub rows: Vec<BoardRow>,
 }
 
@@ -330,12 +358,12 @@ mod tests {
             icon_url: None,
             license: None,
             primary_game_version: "1.21.11".into(),
-            tier: BoardTier::Unknown,
+            tier: None,
             outcome,
             reason_kind: kind,
             reason: kind.map(|k| k.label().to_owned()),
             last_run: "2026-11-04T02:00:00Z".into(),
-            neoforge_build_exists: false,
+            report_url: None,
             target_build_exists: false,
             results: vec![],
         }
@@ -380,6 +408,19 @@ mod tests {
             vec![("no_converter", 2), ("crash", 1), ("download_failed", 1)]
         );
         assert_eq!(reasons[0].label, "No converter yet (milestone M2)");
+    }
+
+    #[test]
+    fn a_direction_without_a_column_is_empty() {
+        let d: Direction = "quilt-forge".parse().unwrap();
+        let empty = DirectionBoard::without_column(d);
+        assert!(!empty.column);
+        assert_eq!((empty.order, empty.bar_percent), (6, 50));
+        assert_eq!((empty.from, empty.to), (Loader::Quilt, Loader::Forge));
+        assert_eq!(empty.totals, Totals::default());
+        let json = serde_json::to_value(&empty).unwrap();
+        assert_eq!(json["id"], "quilt-forge");
+        assert!(json["rules_version"].is_null() && json["list_fetched_at"].is_null());
     }
 
     #[test]

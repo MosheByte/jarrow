@@ -11,12 +11,12 @@ Start with [CONTRIBUTING.md](https://github.com/MosheByte/jarrow/blob/main/CONTR
 
 - **Questions and ideas:** [GitHub Discussions](https://github.com/MosheByte/jarrow/discussions).
 - **Bugs and wrong-looking conversions:** the issue forms on the [new issue page](https://github.com/MosheByte/jarrow/issues/new/choose).
-- **Rule tables:** from milestone M2, rule tables under `rules/` describe how Fabric API calls map to NeoForge. They are CC0, and a rule proposal is a good first contribution once the format is documented.
+- **Rule tables:** from milestone M2, rule tables under `rules/` describe how one loader's API calls map to another's, one directory per direction, starting with Fabric to NeoForge. They are CC0, and a rule proposal is a good first contribution once the format is documented.
 - **The site and these docs:** the source is in `site/` of the repository. Every docs page has an edit link at the bottom.
 
 ## Ground rules
 
-- Be polite to everyone, including the Sinytra, Fabric and NeoForge maintainers. Their work is the ecosystem this project lives in. The project follows the [Contributor Covenant](https://github.com/MosheByte/jarrow/blob/main/CODE_OF_CONDUCT.md).
+- Be polite to everyone, including the Sinytra, Fabric, NeoForge, Forge and Quilt maintainers. Their work is the ecosystem this project lives in. The project follows the [Contributor Covenant](https://github.com/MosheByte/jarrow/blob/main/CODE_OF_CONDUCT.md).
 - Never commit a mod JAR, decompiled source or any user upload.
 - Never copy code from Sinytra Connector, Architectury, Forgified Fabric API or any mod.
 - Nothing is called "working" without a harness result.

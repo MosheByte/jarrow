@@ -17,7 +17,7 @@ export const MISSION =
 
 /** Shorter description used in meta tags. */
 export const DESCRIPTION =
-  'Jarrow will convert a Fabric mod JAR into a NeoForge JAR and prove the result with a behaviour harness. Nothing converts yet: the project is in milestone M0.';
+  'Jarrow will convert a Minecraft mod JAR from any loader to any loader and prove each result with a behaviour harness. Nothing converts yet: the project is in milestone M0, and the nightly board measures only Fabric → NeoForge, where every mod is red until a converter exists.';
 
 export const REPO_SLUG = 'MosheByte/jarrow';
 export const REPO_URL = `https://github.com/${REPO_SLUG}`;
@@ -30,8 +30,11 @@ export const DISCUSSIONS_URL = `${REPO_URL}/discussions`;
 export const CI_WORKFLOW_URL = `${REPO_URL}/actions/workflows/ci.yml`;
 export const CI_BADGE_URL = `${CI_WORKFLOW_URL}/badge.svg?branch=main`;
 
-/** Minecraft versions v1 targets (D-002, docs/research/game-versions.json). */
-export const GAME_VERSIONS = ['1.21.1', '1.21.11'] as const;
+/**
+ * Minecraft versions v1 targets: 1.21.1 and 1.21.11 (D-002, docs/research/game-versions.json),
+ * plus 1.20.1 (D-029). Oldest first.
+ */
+export const GAME_VERSIONS = ['1.20.1', '1.21.1', '1.21.11'] as const;
 
 /** The milestone the project is in. Update when a milestone closes. */
 export const CURRENT_MILESTONE = 'M0';

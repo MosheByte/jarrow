@@ -1,8 +1,9 @@
 //! `jarrow-board`: the nightly board pipeline's command line (see `docs/board-pipeline.md`).
 //!
 //! ```text
-//! jarrow-board list  --direction fabric-neoforge --top 1000 --game-versions 1.21.1,1.21.11 --out board-list.json
-//! jarrow-board shard --list board-list.json --shard 3/10 --out shard-3.json --reports-dir reports/
+//! jarrow-board list  --loader fabric --top 1000 --game-versions 1.20.1,1.21.1,1.21.11 --out board-list-fabric.json
+//! jarrow-board shard --list board-list-fabric.json --direction fabric-neoforge --shard 3/10 \
+//!                    --out shard-fabric-neoforge-3.json --reports-dir reports/
 //! jarrow-board merge shard-*.json --reports-dir reports/ --out-dir out/
 //! ```
 
@@ -22,7 +23,7 @@ use jarrow_board::shard::{
     MAX_FILE_BYTES, ShardFile, ShardOptions, ShardSpec, rules_version, run_shard,
 };
 use jarrow_board::time::{Clock, SystemClock, compact_date};
-use jarrow_board::{Direction, Error, gamever};
+use jarrow_board::{Direction, ENGINE_VERSION, Error, Loader, gamever};
 
 /// The nightly board: Modrinth list, sharded per-mod pipeline, merged board.
 #[derive(Debug, Parser)]
@@ -40,33 +41,38 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Fetch the most-downloaded mods of the direction's source loader from Modrinth.
+    /// Fetch the most-downloaded mods of one source loader from Modrinth
+    /// (board-list-<loader>.json, shared by every direction from that loader).
     List {
-        /// Conversion direction, `<source>-<target>`, for example fabric-neoforge.
+        /// Source loader: fabric, neoforge, forge or quilt. Its profile must record its
+        /// Modrinth tag (today only fabric's is researched).
         #[arg(long)]
-        direction: Direction,
+        loader: Loader,
         /// How many mods to keep (each with at least one usable file).
         #[arg(long, default_value_t = 1000)]
         top: u32,
         /// Pinned game versions, comma-separated.
         #[arg(long, value_name = "VERSIONS")]
         game_versions: String,
-        /// Where to write board-list.json.
+        /// Where to write board-list-<loader>.json.
         #[arg(long, value_name = "FILE")]
         out: PathBuf,
         /// Modrinth API base URL.
         #[arg(long, default_value = API_BASE, value_name = "URL")]
         api_base: String,
     },
-    /// Run one shard of a list: download, verify, pipeline, delete, report.
+    /// Run one shard of a list for one direction: download, verify, pipeline, delete, report.
     Shard {
-        /// board-list.json from `list`.
+        /// board-list-<loader>.json from `list`.
         #[arg(long, value_name = "FILE")]
         list: PathBuf,
+        /// The direction to measure, `<source>-<target>`; its source must be the list's loader.
+        #[arg(long)]
+        direction: Direction,
         /// Which shard, N/M (1-based).
         #[arg(long, value_name = "N/M")]
         shard: ShardSpec,
-        /// Where to write shard-N.json.
+        /// Where to write shard-<direction>-N.json.
         #[arg(long, value_name = "FILE")]
         out: PathBuf,
         /// Directory for the per-mod reports.
@@ -91,7 +97,7 @@ enum Command {
     /// Merge shard files into board.json, board-summary.json, reports.tar.gz and the
     /// Cloudflare import files.
     Merge {
-        /// shard-N.json files, or directories holding them.
+        /// shard-<direction>-N.json files, or directories holding them.
         #[arg(required = true, value_name = "SHARD")]
         shards: Vec<PathBuf>,
         /// Directory holding every shard's reports.
@@ -143,14 +149,14 @@ fn shard_paths(inputs: &[PathBuf]) -> Result<Vec<PathBuf>, Error> {
 fn run(cli: Cli) -> Result<(), Error> {
     match cli.command {
         Command::List {
-            direction,
+            loader,
             top,
             game_versions,
             out,
             api_base,
         } => {
             let opts = ListOptions {
-                direction,
+                loader,
                 game_versions: gamever::parse_list(&game_versions)?,
                 top,
                 api_base,
@@ -162,7 +168,7 @@ fn run(cli: Cli) -> Result<(), Error> {
             write_file(&out, &list.to_json()?)?;
             let files: usize = list.mods.iter().map(|m| m.files.len()).sum();
             println!(
-                "{}: {} mods, {files} files, {} skipped search hits ({direction}, {})",
+                "{}: {} mods, {files} files, {} skipped search hits ({loader}, {})",
                 out.display(),
                 list.mods.len(),
                 list.skipped.len(),
@@ -172,6 +178,7 @@ fn run(cli: Cli) -> Result<(), Error> {
         }
         Command::Shard {
             list,
+            direction,
             shard,
             out,
             reports_dir,
@@ -196,7 +203,8 @@ fn run(cli: Cli) -> Result<(), Error> {
             let opts = ShardOptions {
                 run_id,
                 git_sha,
-                rules_version: rules_version(&rules_dir, board_list.direction)?,
+                engine_version: ENGINE_VERSION.to_owned(),
+                rules_version: rules_version(&rules_dir, direction)?,
                 reports_dir,
                 work_dir,
                 max_file_bytes: max_file_mib.saturating_mul(1024 * 1024),
@@ -206,6 +214,7 @@ fn run(cli: Cli) -> Result<(), Error> {
                 &client,
                 &WaveOne,
                 &board_list,
+                direction,
                 shard,
                 &opts,
                 &clock,
@@ -215,7 +224,7 @@ fn run(cli: Cli) -> Result<(), Error> {
             )?;
             write_file(&out, &result.to_json()?)?;
             println!(
-                "{}: shard {shard}, {} mods, {} files, {} bytes downloaded, {} download failures, {} ms",
+                "{}: {direction} shard {shard}, {} mods, {} files, {} bytes downloaded, {} download failures, {} ms",
                 out.display(),
                 result.stats.mods,
                 result.stats.files,
@@ -250,7 +259,7 @@ fn run(cli: Cli) -> Result<(), Error> {
                 t.red,
                 output.reports.len()
             );
-            for d in &output.board.directions {
+            for d in output.board.directions.iter().filter(|d| d.column) {
                 let reasons: Vec<String> = d
                     .top_reasons
                     .iter()
@@ -258,7 +267,7 @@ fn run(cli: Cli) -> Result<(), Error> {
                     .collect();
                 println!(
                     "  {}: {} mods, {} green, {} yellow, {} red; reasons: {}",
-                    d.direction,
+                    d.id,
                     d.totals.mods,
                     d.totals.green,
                     d.totals.yellow,
@@ -310,18 +319,24 @@ mod tests {
             "jarrow-board",
             "shard",
             "--list",
-            "board-list.json",
+            "board-list-fabric.json",
+            "--direction",
+            "fabric-neoforge",
             "--shard",
             "3/10",
             "--out",
-            "shard-3.json",
+            "shard-fabric-neoforge-3.json",
         ])
         .unwrap();
         match cli.command {
             Command::Shard {
-                shard, reports_dir, ..
+                shard,
+                direction,
+                reports_dir,
+                ..
             } => {
                 assert_eq!(shard.to_string(), "3/10");
+                assert_eq!(direction.id(), "fabric-neoforge");
                 assert_eq!(reports_dir, PathBuf::from("reports"));
             }
             other => panic!("parsed {other:?}"),
@@ -329,9 +344,24 @@ mod tests {
         assert!(
             Cli::try_parse_from([
                 "jarrow-board",
-                "list",
+                "shard",
+                "--list",
+                "board-list-fabric.json",
                 "--direction",
                 "fabric-fabric",
+                "--shard",
+                "1/1",
+                "--out",
+                "x"
+            ])
+            .is_err()
+        );
+        assert!(
+            Cli::try_parse_from([
+                "jarrow-board",
+                "list",
+                "--loader",
+                "rift",
                 "--game-versions",
                 "1.21.1",
                 "--out",

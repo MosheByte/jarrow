@@ -1,0 +1,263 @@
+# Forge (MinecraftForge) loader profile. Format: docs/loaders.md.
+# Facts come from research-lock.json (the Forge pins, read from each installer's
+# install_profile.json and version.json). Everything else is "unknown" until it is
+# researched; the comment above each table names the research still needed.
+
+schema = 1
+id = "forge"
+name = "Forge"
+modrinth_loader = "unknown"   # research needed: the Modrinth loader tag for Forge projects (https://api.modrinth.com/v2/tag/loader)
+lock_section = "forge"
+research = ["research-lock.json"]
+
+# --------------------------------------------------------------------------- 1.20.1
+
+[versions."1.20.1"]
+status = "partial"
+loader = "47.4.28"
+java = "17"   # the game's Java version (research-lock.json mojang.java_major)
+
+[versions."1.20.1".manifest]
+path = "META-INF/mods.toml"
+format = "toml"
+schema = "modLoader = \"javafml\"; loaderVersion is a Maven range over the Forge major version ([47,)); mods depend on the forge mod id"   # research needed: which keys are mandatory, and the full key set
+source = "research-lock.json game_versions.1.20.1.forge.mods_toml"
+
+# research needed: Forge's mod-id rule and its exact pattern
+[versions."1.20.1".mod_id]
+rule = "unknown"
+pattern = "unknown"
+source = "unknown"
+
+# research needed: Forge's @Mod entry class and lifecycle order on this version
+[versions."1.20.1".entrypoints]
+model = "unknown"
+kinds = "unknown"
+order = "unknown"
+source = "unknown"
+
+# research needed: Forge's event model (buses, priorities, cancellation) on this version
+[versions."1.20.1".events]
+model = "unknown"
+ordering = "unknown"
+cancellation = "unknown"
+summary = "net.minecraftforge:eventbus:6.2.33 ships with this build; how listeners, priorities and cancellation work is not researched yet"
+source = "research-lock.json game_versions.1.20.1.forge.eventbus"
+
+# research needed: Forge's registration model and when its registries freeze
+[versions."1.20.1".registration]
+model = "unknown"
+freeze = "unknown"
+summary = "unknown"
+source = "unknown"
+
+[versions."1.20.1".mappings]
+runtime = "srg"   # Mojang class names with SRG field and method names
+source = "research-lock.json game_versions.1.20.1.forge.runtime_names_evidence"
+
+# research needed: how a Forge mod declares its mixin configs
+[versions."1.20.1".mixin]
+service = "shipped with Forge (read from its installer)"
+artifact = "org.spongepowered:mixin:0.8.5"
+mixinextras = "unknown"   # research needed: the lock lists no MixinExtras artifact for this build; whether it ships another way
+configs = "unknown"
+source = "research-lock.json game_versions.1.20.1.forge.mixin"
+
+# research needed: Forge's access transformer format and path on this version
+[versions."1.20.1".access]
+format = "unknown"
+path = "unknown"
+namespace = "unknown"
+source = "unknown"
+
+# research needed: Forge's resource-condition key and condition fields
+[versions."1.20.1".resources]
+condition_key = "unknown"
+condition_id_field = "unknown"
+source = "unknown"
+
+# research needed: Forge's networking API on this version
+[versions."1.20.1".networking]
+family = "unknown"
+summary = "unknown"
+source = "unknown"
+
+[versions."1.20.1".harness]
+install = "installer"
+lock = "game_versions.1.20.1.forge"
+summary = "java -jar forge-1.20.1-47.4.28-installer.jar --installServer, then run.sh or run.bat."
+source = "research-lock.json"
+
+[versions."1.20.1".api]
+name = "Forge"
+separate = false   # the lock pins no separate API library for Forge; mods depend on the forge mod id (mods_toml.forge_dependency_range)
+artifact = "net.minecraftforge:forge:1.20.1-47.4.28"
+source = "research-lock.json"
+
+# --------------------------------------------------------------------------- 1.21.1
+
+[versions."1.21.1"]
+status = "partial"
+loader = "52.1.20"
+java = "21"   # the game's Java version (research-lock.json mojang.java_major)
+
+[versions."1.21.1".manifest]
+path = "META-INF/mods.toml"
+format = "toml"
+schema = "modLoader = \"javafml\"; loaderVersion is a Maven range over the Forge major version ([52,)); mods depend on the forge mod id"   # research needed: which keys are mandatory, and the full key set
+source = "research-lock.json game_versions.1.21.1.forge.mods_toml"
+
+# research needed: Forge's mod-id rule and its exact pattern
+[versions."1.21.1".mod_id]
+rule = "unknown"
+pattern = "unknown"
+source = "unknown"
+
+# research needed: Forge's @Mod entry class and lifecycle order on this version
+[versions."1.21.1".entrypoints]
+model = "unknown"
+kinds = "unknown"
+order = "unknown"
+source = "unknown"
+
+# research needed: Forge's event model (buses, priorities, cancellation) on this version
+[versions."1.21.1".events]
+model = "unknown"
+ordering = "unknown"
+cancellation = "unknown"
+summary = "net.minecraftforge:eventbus:6.2.33 ships with this build; how listeners, priorities and cancellation work is not researched yet"
+source = "research-lock.json game_versions.1.21.1.forge.eventbus"
+
+# research needed: Forge's registration model and when its registries freeze
+[versions."1.21.1".registration]
+model = "unknown"
+freeze = "unknown"
+summary = "unknown"
+source = "unknown"
+
+[versions."1.21.1".mappings]
+runtime = "mojang"
+source = "research-lock.json game_versions.1.21.1.forge.runtime_names_evidence"
+
+# research needed: how a Forge mod declares its mixin configs
+[versions."1.21.1".mixin]
+service = "shipped with Forge (read from its installer)"
+artifact = "org.spongepowered:mixin:0.8.7"
+mixinextras = "unknown"   # research needed: the lock lists no MixinExtras artifact for this build; whether it ships another way
+configs = "unknown"
+source = "research-lock.json game_versions.1.21.1.forge.mixin"
+
+# research needed: Forge's access transformer format and path on this version
+[versions."1.21.1".access]
+format = "unknown"
+path = "unknown"
+namespace = "unknown"
+source = "unknown"
+
+# research needed: Forge's resource-condition key and condition fields
+[versions."1.21.1".resources]
+condition_key = "unknown"
+condition_id_field = "unknown"
+source = "unknown"
+
+# research needed: Forge's networking API on this version
+[versions."1.21.1".networking]
+family = "unknown"
+summary = "unknown"
+source = "unknown"
+
+[versions."1.21.1".harness]
+install = "installer"
+lock = "game_versions.1.21.1.forge"
+summary = "java -jar forge-1.21.1-52.1.20-installer.jar --installServer, then run.sh or run.bat."
+source = "research-lock.json"
+
+[versions."1.21.1".api]
+name = "Forge"
+separate = false   # the lock pins no separate API library for Forge; mods depend on the forge mod id (mods_toml.forge_dependency_range)
+artifact = "net.minecraftforge:forge:1.21.1-52.1.20"
+source = "research-lock.json"
+
+# --------------------------------------------------------------------------- 1.21.11
+
+[versions."1.21.11"]
+status = "partial"
+loader = "61.2.4"
+java = "21"   # the game's Java version (research-lock.json mojang.java_major)
+
+[versions."1.21.11".manifest]
+path = "META-INF/mods.toml"
+format = "toml"
+schema = "modLoader = \"javafml\"; loaderVersion is a Maven range over the Forge major version ([61,)); mods depend on the forge mod id"   # research needed: which keys are mandatory, and the full key set
+source = "research-lock.json game_versions.1.21.11.forge.mods_toml"
+
+# research needed: Forge's mod-id rule and its exact pattern
+[versions."1.21.11".mod_id]
+rule = "unknown"
+pattern = "unknown"
+source = "unknown"
+
+# research needed: Forge's @Mod entry class and lifecycle order on this version
+[versions."1.21.11".entrypoints]
+model = "unknown"
+kinds = "unknown"
+order = "unknown"
+source = "unknown"
+
+# research needed: Forge's event model (buses, priorities, cancellation) on this version
+[versions."1.21.11".events]
+model = "unknown"
+ordering = "unknown"
+cancellation = "unknown"
+summary = "net.minecraftforge:eventbus:7.0.5 ships with this build; how listeners, priorities and cancellation work is not researched yet"
+source = "research-lock.json game_versions.1.21.11.forge.eventbus"
+
+# research needed: Forge's registration model and when its registries freeze
+[versions."1.21.11".registration]
+model = "unknown"
+freeze = "unknown"
+summary = "unknown"
+source = "unknown"
+
+[versions."1.21.11".mappings]
+runtime = "mojang"
+source = "research-lock.json game_versions.1.21.11.forge.runtime_names_evidence"
+
+# research needed: how a Forge mod declares its mixin configs
+[versions."1.21.11".mixin]
+service = "shipped with Forge (read from its installer)"
+artifact = "org.spongepowered:mixin:0.8.7"
+mixinextras = "io.github.llamalad7:mixinextras-forge:0.5.4"
+configs = "unknown"
+source = "research-lock.json game_versions.1.21.11.forge.mixin"
+
+# research needed: Forge's access transformer format and path on this version
+[versions."1.21.11".access]
+format = "unknown"
+path = "unknown"
+namespace = "unknown"
+source = "unknown"
+
+# research needed: Forge's resource-condition key and condition fields
+[versions."1.21.11".resources]
+condition_key = "unknown"
+condition_id_field = "unknown"
+source = "unknown"
+
+# research needed: Forge's networking API on this version
+[versions."1.21.11".networking]
+family = "unknown"
+summary = "unknown"
+source = "unknown"
+
+[versions."1.21.11".harness]
+install = "installer"
+lock = "game_versions.1.21.11.forge"
+summary = "java -jar forge-1.21.11-61.2.4-installer.jar --installServer, then run.sh or run.bat."
+source = "research-lock.json"
+
+[versions."1.21.11".api]
+name = "Forge"
+separate = false   # the lock pins no separate API library for Forge; mods depend on the forge mod id (mods_toml.forge_dependency_range)
+artifact = "net.minecraftforge:forge:1.21.11-61.2.4"
+source = "research-lock.json"

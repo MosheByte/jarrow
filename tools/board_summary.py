@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Post the nightly board summary to GitHub Discussions.
 
-Reads board.json (written by `jarrow-board merge`, contract in docs/board.md) and posts one
-Discussion per direction in the category "Nightly results" (or "Announcements" when that
-category does not exist), titled
+Reads board.json (schema 2, written by `jarrow-board merge`, contract in docs/board.md) and
+posts one Discussion per board column, that is per direction with `column: true`, in the
+category "Nightly results" (or "Announcements" when that category does not exist), titled
 
     Nightly YYYY-MM-DD: G green, Y yellow, R red
 
-With several directions on the board, each title names its direction:
+With several columns on the board, each title names its direction:
 "Nightly YYYY-MM-DD (fabric-neoforge): ...". The body holds the totals, the ten most common
 reasons, links to the workflow run and to https://jarrow.pages.dev/board, and, while mods are
-red only because no converter exists, a note that says so.
+red only because no converter exists, a note that says so. A direction without a column gets
+no post: it has no numbers.
 
 Idempotent: every body carries the marker
     <!-- jarrow-nightly date=YYYY-MM-DD direction=<direction> -->
@@ -46,6 +47,22 @@ CATEGORY = "Nightly results"
 FALLBACK_CATEGORY = "Announcements"
 TOP_REASONS = 10
 NO_CONVERTER = "no_converter"
+SCHEMA = 2
+# The 12 directions in the fixed build order (docs/board.md, D-029).
+DIRECTIONS = (
+    "fabric-neoforge",
+    "neoforge-fabric",
+    "fabric-quilt",
+    "quilt-fabric",
+    "forge-neoforge",
+    "neoforge-forge",
+    "fabric-forge",
+    "forge-fabric",
+    "quilt-forge",
+    "forge-quilt",
+    "quilt-neoforge",
+    "neoforge-quilt",
+)
 
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}T")
 _DIRECTION = re.compile(r"^(fabric|neoforge|forge|quilt)-(fabric|neoforge|forge|quilt)$")
@@ -71,7 +88,7 @@ class Reason:
 
 @dataclass(frozen=True)
 class Column:
-    """One direction of the board."""
+    """One direction of the board that has a column."""
 
     direction: str
     source: str
@@ -143,24 +160,35 @@ def _reasons(value: Any, where: str) -> list[Reason]:
 def read_board(data: Any) -> Summary:
     """Validates the parts of board.json the summary uses."""
     board = _object(data, "board.json")
-    if board.get("schema") != 1:
-        raise BoardError("board.json schema must be 1")
+    if board.get("schema") != SCHEMA:
+        raise BoardError(f"board.json schema must be {SCHEMA}")
     started = _text(board.get("started_at"), "started_at")
     if not _DATE.match(started):
         raise BoardError("started_at must be an RFC 3339 time")
     engine = _object(board.get("engine"), "engine")
     stats = _object(board.get("stats"), "stats")
     directions = board.get("directions")
-    if not isinstance(directions, list) or not directions:
-        raise BoardError("directions must be a non-empty list")
+    if not isinstance(directions, list) or len(directions) != len(DIRECTIONS):
+        raise BoardError(f"directions must list all {len(DIRECTIONS)} directions")
     columns = []
     for i, d in enumerate(directions):
         d = _object(d, f"directions[{i}]")
-        direction = _text(d.get("direction"), f"directions[{i}].direction")
+        direction = _text(d.get("id"), f"directions[{i}].id")
         match = _DIRECTION.match(direction)
         if not match or match.group(1) == match.group(2):
-            raise BoardError(f"directions[{i}].direction {direction!r} is not <source>-<target>")
+            raise BoardError(f"directions[{i}].id {direction!r} is not <source>-<target>")
+        if direction != DIRECTIONS[i]:
+            raise BoardError(f"directions[{i}] must be {DIRECTIONS[i]}: directions are in build order")
+        if d.get("from") != match.group(1) or d.get("to") != match.group(2):
+            raise BoardError(f"directions[{i}]: from and to must be the loaders of {direction}")
+        has_column = d.get("column")
+        if not isinstance(has_column, bool):
+            raise BoardError(f"directions[{i}].column must be true or false")
         totals = _object(d.get("totals"), f"directions[{i}].totals")
+        if not has_column:
+            if _count(totals.get("mods"), f"directions[{i}].totals.mods") != 0 or d.get("top_reasons"):
+                raise BoardError(f"{direction} has no column, so it must have no mods and no reasons")
+            continue
         column = Column(
             direction=direction,
             source=match.group(1),
@@ -175,9 +203,8 @@ def read_board(data: Any) -> Summary:
         if column.green + column.yellow + column.red != column.mods:
             raise BoardError(f"{direction}: green + yellow + red must equal mods")
         columns.append(column)
-    if len({c.direction for c in columns}) != len(columns):
-        raise BoardError("a direction appears twice")
-    columns.sort(key=lambda c: c.direction)
+    if not columns:
+        raise BoardError("the board has no column")
     return Summary(
         date=started[:10],
         run_id=_text(board.get("run_id"), "run_id"),

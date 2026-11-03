@@ -1,26 +1,67 @@
 # The parity harness
 
-**Status: M1, `crates/harness` exists.** The dump format, provisioning for Fabric and NeoForge, the EULA-gated runner, baselines, diff and score are built and tested offline. Forge and Quilt servers are not built yet (they will be driven by loader profiles). The probe mods (`harness/probe`, [probes.md](probes.md)) and `.github/workflows/harness.yml` are a separate package. No live server has run through the harness yet, and until the converter exists (M2) no converted mod has been measured, so no mod is green.
+**Status: M1, `crates/harness` exists for Fabric and NeoForge.** The dump format, provisioning for Fabric and NeoForge, the EULA-gated runner, baselines, diff and score are built and tested offline. Forge and Quilt servers are not built yet (they will be driven by loader profiles), and the round-trip check is a design. The probe mods (`harness/probe`, [probes.md](probes.md)) and `.github/workflows/harness.yml` are a separate package. No live server has run through the harness yet, and until the converter exists (M2) no converted mod has been measured in any direction, so no mod is green.
 
 The harness is how Jarrow decides whether a conversion works. A conversion is green because the harness says so, never because the code compiled. It is built in M1, before the converter is good, so the converter is measured from its first day.
 
-## What it does
+It serves all 12 directions between Fabric, NeoForge, Forge and Quilt (D-029). What differs per loader, such as how a server is installed, comes from the loader profiles in `loaders/` ([loaders.md](loaders.md)). The first direction it measures is Fabric → NeoForge.
 
-For one mod and one pinned game version, with the loader and the game version always given as inputs:
+## Servers for four loaders
+
+The harness is designed to provision a headless dedicated server for any of the four loaders, on any pinned game version, from that loader's profile (`harness` table) and the exact versions and hashes in `research-lock.json`:
+
+| Loader | Install | Source |
+| --- | --- | --- |
+| Fabric | Fabric's server launcher with the verified Mojang server jar; fallback: the hash-pinned installer in server mode. Fabric API goes into `mods/` | [Research, section 13](research/fabric-neoforge-notes.md#13-harness-provisioning); steps per version in `research-lock.json` |
+| NeoForge | The NeoForge installer with `--installServer`, then `run.sh` or `run.bat`. On 1.20.1 the installer is the Forge 47.1 fork's (`net.neoforged:forge`) | [Same](research/fabric-neoforge-notes.md#13-harness-provisioning) for 1.21; `research-lock.json` for 1.20.1 |
+| Forge | The Forge installer with `--installServer`, then `run.sh` or `run.bat` | `research-lock.json` |
+| Quilt | The Quilt installer in server mode, given the verified Mojang server jar as `server.jar`, then `quilt-server-launch.jar`. Its API library goes into `mods/`: Quilted Fabric API on 1.20.1, Fabric API on the 1.21 pins | `research-lock.json` |
+
+Every loader is pinned, with its install steps, for all three game versions. `crates/harness` builds the Fabric and NeoForge installs today ([Provisioning](#provisioning-and-the-cache)); for Forge and Quilt it answers "not built yet". Mojang's version JSON names Java 17 for 1.20.1 and Java 21 for the 1.21 pins. A profile field that is `"unknown"` stops the harness with that reason; it never borrows another loader's steps.
+
+Every server uses the same fixed `server.properties` (seed `20261103`, `online-mode=false`), and no mods besides the mod under test, its loader's API library where that is separate, and the probe. The Minecraft server JAR comes from Mojang's URL in the lock, SHA-1 checked, at run time. It is never committed.
+
+## Probes, one per loader
+
+A small probe mod for each loader, part of this repository and MIT licensed, runs after startup and writes one canonical dump, `jarrow-dump.json`, whatever the loader ([The probe dump](#the-probe-dump)):
+
+- every static and dynamic registry, with entries in raw id order;
+- tags, resolved and sorted;
+- recipes, loot tables and advancements, encoded with the game's own codecs;
+- a worldgen sample: the seed, the chunks sampled, and a block-state histogram;
+- the server log's errors and warnings, and the probe's own errors.
+
+| Probe | Built against | Status |
+| --- | --- | --- |
+| `probe-fabric` | Fabric Loader and Fabric API, a `main` entrypoint | Built (M1) for 1.21.1 and 1.21.11, `harness/probe` ([probes.md](probes.md)); not run on a live server yet |
+| `probe-neoforge` | NeoForge, an `@Mod` class | Built (M1) for 1.21.1 and 1.21.11; not run on a live server yet |
+| `probe-forge` | Forge | Waits for research into Forge's entrypoints and events |
+| `probe-quilt` | Quilt | Waits for research into Quilt's entrypoints, and whether a Fabric probe already runs on it |
+
+No probe is built for 1.20.1 yet.
+
+**Baselines.** Each loader adds content of its own (tags, registry entries, conditions), so two loaders never dump the same thing even without a mod. For every loader and game version, the harness first dumps a server with only the probe and the API library: the baseline. A mod is judged on what it adds over its loader's baseline. The probes themselves are checked by comparing baselines: entries that vanilla defines must dump identically on every loader, so a probe that drifts is caught before it scores a mod. How `crates/harness` learns and subtracts the noise between two loaders today is in [Loader noise and baselines](#loader-noise-and-baselines).
+
+## One conversion
+
+For one mod, one direction A → B and one pinned game version, with the loaders and the game version always given as inputs:
 
 1. **Provision two headless dedicated servers** from the pins in `research-lock.json` ([Provisioning](#provisioning-and-the-cache)).
-   - Reference: the original mod on its own loader (Fabric for the first direction: Fabric Loader, Fabric API and the original JAR).
-   - Candidate: the converted mod on the target loader (NeoForge and the converted JAR).
-   - The Minecraft server JAR comes from Mojang's URL in the lock, SHA-1 checked, at run time. It is never committed.
-   - Both servers use the same fixed `server.properties` (seed `20261103`, `online-mode=false`) and no mods besides the probe, the loader's own API and the mods under test.
-2. **Dump.** A small probe mod, one per loader, part of this repository and MIT licensed, runs after startup and writes `jarrow-dump.json` ([The probe dump](#the-probe-dump)):
-   - every static and dynamic registry, with entries in raw id order;
-   - tags, resolved and sorted;
-   - recipes, loot tables and advancements, encoded with the game's own codecs;
-   - a worldgen sample: the seed, the chunks sampled, and a block-state histogram;
-   - the server log's errors and warnings, and the probe's own errors.
+   - Reference: the original mod on loader A (for the first direction: Fabric Loader, Fabric API and the original JAR).
+   - Candidate: the converted mod on loader B (for the first direction: NeoForge and the converted JAR).
+2. **Dump** both with the probe.
 3. **Diff** the canonical dumps of the two servers, then **subtract the loader noise** learned from a baseline pair: the same two loaders with only the probe ([Loader noise](#loader-noise-and-baselines)).
 4. **Score** what is left and attach a reason ([Scoring](#scoring)).
+
+## The round-trip check
+
+Rule tables come in inverse pairs, A → B with B → A ([rules.md](rules.md#inverse-pairs-and-the-round-trip)). CI tests each pair with a round trip:
+
+1. Convert a mod built for A with the A → B tables, then convert the result back with the B → A tables.
+2. Run the original and the round-tripped JAR, each on its own loader A server.
+3. Diff the two dumps and score them with the same table as any conversion.
+
+Both halves are needed: a round trip is only run for a pair whose two tables exist. The round-trip report lists every rule that was applied and every rule marked "not invertible", so a round trip that is not green can be traced to the rules behind it. A round-trip score never stands in for a direction's own score: the A → B half is always scored on its own, on a B server, too.
 
 ## Scoring
 
@@ -32,9 +73,9 @@ For one mod and one pinned game version, with the loader and the game version al
 | `0.25` | The mod loads but entries differ materially | Red |
 | `0` | The converted mod fails to load | Red |
 
-This mapping is decision D-024. Red results carry a reason taken from the log: class not found, mixin failure, registry conflict, crash, or another classified cause. The board aggregates those reasons into "top red reasons", which is the work queue for the rule tables.
+This mapping is decision D-024, the same for every direction and for round trips. Red results carry a reason taken from the log: class not found, mixin failure, registry conflict, crash, or another classified cause. The board aggregates those reasons per direction into "top red reasons", which is the work queue for that direction's rule tables.
 
-A report for a mod the harness has not run on says `not-run`, never green. On the board such a mod counts as red, with the reason why it was not run (for example `no_converter` or `harness_not_run_eula`), so the totals always add up to the number of mods (D-024).
+A report for a mod the harness has not run on says `not-run`, never green. On the board such a mod counts as red, with the reason why it was not run (for example `no_converter` or `harness_not_run_eula`), so a column's totals always add up to its number of mods (D-024, [board.md](board.md)).
 
 How `crates/harness` (`score.rs`) decides the band, after canonicalisation and noise subtraction:
 
@@ -74,13 +115,13 @@ When a log matches several, the most specific wins: `mixin_failure`, then `class
 
 The harness compares what a server can dump. It does not measure client-only behaviour such as rendering, screens, sounds as heard, or tick-by-tick timing. Where a result depends on those, the docs and the report say "not measured".
 
-An optional client smoke test is planned for M4: a headless NeoForge client with a software renderer joins the server and takes a screenshot of the creative tab. The screenshot is kept as evidence. It is not scored.
+An optional client smoke test is planned for M4: a headless client of the target loader with a software renderer joins the server and takes a screenshot of the creative tab. The screenshot is kept as evidence. It is not scored. It starts with NeoForge, the first direction's target.
 
 ## The EULA gate
 
 Running a Minecraft dedicated server requires accepting the Minecraft EULA. That is a terms acceptance only the project owner can give (amendment A-6 in [spec-amendments.md](spec-amendments.md)).
 
-- The harness refuses to start any server unless `MINECRAFT_EULA_ACCEPTED` or `MINECRAFT_EULA` is `true`, `yes`, `1` or `accepted` (case-insensitive).
+- The harness refuses to start any server, for any loader, unless `MINECRAFT_EULA_ACCEPTED` or `MINECRAFT_EULA` is `true`, `yes`, `1` or `accepted` (case-insensitive).
 - In CI the value comes from the repository secret `MINECRAFT_EULA_ACCEPTED`, which the project owner created on 2026-11-03. The agent never sets it.
 - Locally, a person who has read and accepted the [Minecraft EULA](https://www.minecraft.net/en-us/eula) sets the environment variable `MINECRAFT_EULA_ACCEPTED=true` for their own runs.
 - The harness writes `eula=true` into a server directory only when the gate is open. It never writes it otherwise.
@@ -90,14 +131,14 @@ In `crates/harness` the gate is checked before anything is downloaded, installed
 
 ## Where it runs
 
-- **Pull requests** that touch `crates/` or `rules/` run the harness on a 25-mod smoke set (`.github/workflows/harness.yml`, owned by the probe-mod package; the invocations it should run are [below](#what-harnessyml-runs)).
-- **The nightly board** runs it on all 1,000 mods, sharded (see [architecture.md](architecture.md), "Board data flow").
+- **Pull requests** that touch `crates/`, `rules/` or `loaders/` run the harness on a 25-mod smoke set for each direction that has a board column, plus the round-trip check for each rule-table pair the pull request touches (`.github/workflows/harness.yml`, owned by the probe-mod package; the invocations it should run are [below](#what-harnessyml-runs)).
+- **The nightly board** runs it on every mod of every direction column, sharded (see [architecture.md](architecture.md), "Board data flow"). It is not wired into the board yet: today every result there is `not-run` because no converter exists.
 - **Tier B jobs** run it before returning a result (M4).
-- **Locally**, with JDK 21 in `JAVA_HOME`, network access, and the EULA variable set by a person who accepted it. The commands are [below](#command-line).
+- **Locally**, with network access, the EULA variable set by a person who accepted it, and the Java version Mojang's version JSON names in `JAVA_HOME`: 21 for the 1.21 pins, 17 for 1.20.1 (D-034). `crates/harness` checks for at least the lock's `jdk.major`, 21, and has not run a 1.20.1 server yet. The commands are [below](#command-line).
 
 ## Outputs
 
-Each run produces a structured result: the score, the per-category differences, the classified reason, the exact versions used, and the hashes of the inputs. The result never contains decompiled code or the JAR itself.
+Each run produces a structured result: the direction, the score, the per-category differences, the classified reason, the exact versions used, and the hashes of the inputs. A round trip's result also names the pair and lists the rules marked "not invertible" that it applied. The result never contains decompiled code or the JAR itself.
 
 `crates/harness` writes three kinds of files. None of them holds a timestamp except the run record's duration, so the same inputs give the same report bytes.
 
