@@ -8,8 +8,9 @@
 # pull request with the workflow token, turns on auto-merge, and starts ci.yml and harness.yml
 # on the branch with workflow_dispatch (a push made with the workflow token starts no
 # workflow), so the head commit gets ci-ok. Nothing is pushed to main. The commit carries the
-# trailer "Jarrow-Generated: contributors", which tools/contributors.py leaves out of every
-# count, so a refresh never causes another one. See docs/community-automation.md.
+# trailer "Jarrow-Generated: contributors": tools/contributors.py leaves it out while it is the
+# newest commit on main, so a refresh never causes another one, and counts it once another
+# commit lands on top. See docs/community-automation.md.
 name: contributors
 
 on:

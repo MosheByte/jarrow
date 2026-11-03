@@ -87,6 +87,6 @@ Status columns:
 | `GITLAB_MIRROR_PATH` | Actions variable | MosheByte/jarrow | agent (M5) | mirror.yml |
 | `DISCORD_WEBHOOK_URL` | Actions secret | MosheByte/jarrow | owner | board.yml, release.yml |
 | `MINECRAFT_EULA_ACCEPTED` | Actions secret | MosheByte/jarrow | owner (set 2026-11-03) | harness.yml, board.yml |
-| `BOT_DEPLOY_KEY` | Actions secret (SSH deploy key, write) | MosheByte/jarrow | agent (generated 2026-11-03; rotate by replacing the deploy key) | board.yml pushes `board-data` and bot commits of LEDGER.md; contributors.yml pushes the nightly refresh of the "Who works on Jarrow" list |
+| `BOT_DEPLOY_KEY` | Actions secret (SSH deploy key, write) | MosheByte/jarrow | agent (generated 2026-11-03; rotate by replacing the deploy key) | Kept only for a push to a protected branch, which GITHUB_TOKEN cannot make; no workflow uses it. Bot commits (LEDGER.md, board data, the contributors list) are made as github-actions[bot] with GITHUB_TOKEN through tools/bot_pr.sh (docs/community-automation.md) |
 | `HOMEBREW_TAP_TOKEN` | Actions secret | MosheByte/jarrow | owner | release.yml |
 | `PROJECT_TOKEN` | Actions secret | MosheByte/jarrow | owner (optional) | roadmap project sync |
