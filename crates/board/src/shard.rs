@@ -25,7 +25,7 @@ use crate::report::{
     ReportFile, RoundTripStep, StepStatus, Steps, board_outcome,
 };
 use crate::time::{self, Clock};
-use crate::{ENGINE_VERSION, Error, SCHEMA};
+use crate::{Error, SCHEMA};
 
 /// The largest JAR the board downloads, in bytes.
 pub const MAX_FILE_BYTES: u64 = 512 * 1024 * 1024;
@@ -174,6 +174,9 @@ pub struct ShardOptions {
     pub run_id: String,
     /// The commit being run.
     pub git_sha: String,
+    /// The engine version recorded in the shard and in every report. `jarrow-board` passes its
+    /// own, [`crate::ENGINE_VERSION`]; tests that pin bytes pass a fixed one.
+    pub engine_version: String,
     /// The rules version (see [`rules_version`]).
     pub rules_version: String,
     /// Where the reports go: `<dir>/<direction>/<project_id>/<game_version>.json`.
@@ -380,6 +383,7 @@ fn process_file(
     file: &ListFile,
     work: &Path,
     max_file_bytes: u64,
+    engine_version: &str,
 ) -> Result<FileOutcome, Error> {
     let started = Instant::now();
     let mut step_ms = StepDurations::default();
@@ -436,7 +440,7 @@ fn process_file(
         .unwrap_or_else(|| "not converted".to_owned());
     let report = Report {
         schema: SCHEMA,
-        engine_version: ENGINE_VERSION.to_owned(),
+        engine_version: engine_version.to_owned(),
         direction,
         project_id: project.project_id.clone(),
         slug: project.slug.clone(),
@@ -568,6 +572,7 @@ pub fn run_shard(
                 file,
                 work.path(),
                 opts.max_file_bytes,
+                &opts.engine_version,
             )?;
             write_report(&opts.reports_dir, &outcome.report)?;
             stats.files += 1;
@@ -628,7 +633,7 @@ pub fn run_shard(
         list_fetched_at: list.fetched_at.clone(),
         shard: spec,
         engine: Engine {
-            version: ENGINE_VERSION.to_owned(),
+            version: opts.engine_version.clone(),
             git_sha: opts.git_sha.clone(),
         },
         rules_version: opts.rules_version.clone(),

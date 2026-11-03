@@ -9,7 +9,8 @@
 //!
 //! The sample is one nightly of wave 1 for the one column that exists, Fabric to NeoForge,
 //! over four made-up projects: every result `not-run`, every row red. Durations are set to
-//! zero, because they are the only values that vary between runs.
+//! zero, because they are the only values that vary between runs, and the engine version is
+//! the fixed `0.0.0-sample`, so a workspace version bump does not change the sample.
 
 #![allow(
     clippy::unwrap_used,
@@ -136,6 +137,7 @@ fn board_samples_are_current() {
                 &ShardOptions {
                     run_id: "nightly-20261104".to_owned(),
                     git_sha: "0123456789abcdef0123456789abcdef01234567".to_owned(),
+                    engine_version: "0.0.0-sample".to_owned(),
                     rules_version: "none".to_owned(),
                     reports_dir: reports.clone(),
                     work_dir: Some(tmp.path().join("work")),

@@ -4,7 +4,7 @@
   "started_at": "2026-11-04T02:21:00Z",
   "run_id": "nightly-20261104",
   "engine": {
-    "version": "0.1.0",
+    "version": "0.0.0-sample",
     "git_sha": "0123456789abcdef0123456789abcdef01234567"
   },
   "game_versions": [
@@ -304,7 +304,7 @@
           "reason_kind": "no_converter",
           "reason": "No converter yet (milestone M2)",
           "report_key": "report:fabric-neoforge:SmpAAAA1:1.20.1",
-          "report_hash": "sha256:94f3c6234ee04b75593ffedd295e2a4cdb8c6db0b0f8b53731dcfbfe9583b27c",
+          "report_hash": "sha256:14a1c3999c3080240ab355f3f7eab57e2a0715326540d8fe5d6952611c4bfe51",
           "duration_ms": 0
         },
         {
@@ -324,7 +324,7 @@
           "reason_kind": "no_converter",
           "reason": "No converter yet (milestone M2)",
           "report_key": "report:fabric-neoforge:SmpAAAA1:1.21.1",
-          "report_hash": "sha256:7893fce869d987ac1f48f50e904458f451b1f94c50355b4cf7dbb2285877f48c",
+          "report_hash": "sha256:c1435cfae03075a9a30b7b0ed5b20d6c2489be9743a7daf9906a976b3c8de6dc",
           "duration_ms": 0
         },
         {
@@ -344,7 +344,7 @@
           "reason_kind": "no_converter",
           "reason": "No converter yet (milestone M2)",
           "report_key": "report:fabric-neoforge:SmpAAAA1:1.21.11",
-          "report_hash": "sha256:8b514a1f864feb0bea849071302493f59bdaeca252aeb057d647061f93f7b0bf",
+          "report_hash": "sha256:0a838562b133ac3c4cd158c90fb81d36d9239aa3a9cd76075f5eccd8b440f5c3",
           "duration_ms": 0
         }
       ]
@@ -384,7 +384,7 @@
           "reason_kind": "no_converter",
           "reason": "No converter yet (milestone M2)",
           "report_key": "report:fabric-neoforge:SmpBBBB2:1.21.1",
-          "report_hash": "sha256:462e414c75ebdb8744fa2cf1339123754999e08331c7ba47d2961510fd793cb8",
+          "report_hash": "sha256:8f533a29e0cdc4572565c306d67c3b71d4b60271004ef409847420cab11dc0e3",
           "duration_ms": 0
         }
       ]
@@ -424,7 +424,7 @@
           "reason_kind": "no_converter",
           "reason": "No converter yet (milestone M2)",
           "report_key": "report:fabric-neoforge:SmpCCCC3:1.20.1",
-          "report_hash": "sha256:ac88dbd98f6c229fda873357c85e14819e4f569deee6fa0b73942e396feb149f",
+          "report_hash": "sha256:ce228b03504ca3de94d7b473154b91fedff991ae9e597b8bc8d568f53d03cbb4",
           "duration_ms": 0
         }
       ]
@@ -464,7 +464,7 @@
           "reason_kind": "download_failed",
           "reason": "download failed: GET https://cdn.modrinth.com/data/SmpDDDD4/versions/VSmpD12111/SmpDDDD4-1.21.11.jar answered HTTP 404",
           "report_key": "report:fabric-neoforge:SmpDDDD4:1.21.11",
-          "report_hash": "sha256:18d5680159e09f39041b62abdaecaa3362f158f42638a457ff7a3094cf9fca18",
+          "report_hash": "sha256:6518c9d256ba43dc5b65de10fca6b2688f98c3639701cbe1ef80be2d793f93ed",
           "duration_ms": 0
         }
       ]

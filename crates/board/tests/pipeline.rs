@@ -139,6 +139,7 @@ fn options(reports: &Path, work: &Path) -> ShardOptions {
     ShardOptions {
         run_id: "nightly-20261104".to_owned(),
         git_sha: SHA.to_owned(),
+        engine_version: jarrow_board::ENGINE_VERSION.to_owned(),
         rules_version: "none".to_owned(),
         reports_dir: reports.to_path_buf(),
         work_dir: Some(work.to_path_buf()),

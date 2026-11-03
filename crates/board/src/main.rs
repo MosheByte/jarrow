@@ -23,7 +23,7 @@ use jarrow_board::shard::{
     MAX_FILE_BYTES, ShardFile, ShardOptions, ShardSpec, rules_version, run_shard,
 };
 use jarrow_board::time::{Clock, SystemClock, compact_date};
-use jarrow_board::{Direction, Error, Loader, gamever};
+use jarrow_board::{Direction, ENGINE_VERSION, Error, Loader, gamever};
 
 /// The nightly board: Modrinth list, sharded per-mod pipeline, merged board.
 #[derive(Debug, Parser)]
@@ -203,6 +203,7 @@ fn run(cli: Cli) -> Result<(), Error> {
             let opts = ShardOptions {
                 run_id,
                 git_sha,
+                engine_version: ENGINE_VERSION.to_owned(),
                 rules_version: rules_version(&rules_dir, direction)?,
                 reports_dir,
                 work_dir,
