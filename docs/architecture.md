@@ -23,7 +23,7 @@ Every package is named `jarrow-<crate>` (library `jarrow_<crate>`), except the C
 | `crates/wasm` | `wasm-bindgen` surface for the browser: `classify`, `convert`, streaming progress | Budget: 4 MB gzipped | Planned (M3) |
 | `crates/cli` | The `jarrow` binary: `convert`, `check`, `report`, `board-run` | Released with cargo-dist | Exists (M0 skeleton: `--version` and `tokens` only; `check` in M1, `convert` in M2) |
 | `crates/harness` | Starts headless Fabric and NeoForge servers, dumps registries, recipes, tags, loot and worldgen, diffs and scores | Needs a JDK; runs in Actions and locally ([harness.md](harness.md)) | Planned (M1) |
-| `crates/board` | Fetches the top-1,000 list from Modrinth, runs classify, convert and harness, writes results | Nightly job | Planned (M1) |
+| `crates/board` | Fetches the top-1,000 list from Modrinth, runs classify, convert and harness, writes results | Nightly job | Exists (M1 wave 1: `list`, `shard`, `merge` and `board.yml`; classify, convert and the harness are not wired yet, so every mod is red with "no converter yet"; [board-pipeline.md](board-pipeline.md)) |
 
 ### Dependency direction
 
