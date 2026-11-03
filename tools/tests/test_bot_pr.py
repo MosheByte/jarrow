@@ -1,4 +1,4 @@
-"""Tests for tools/bot_pr.sh: the branch, the commit, the push, the pull request and the key.
+"""Tests for tools/bot_pr.sh: the branch, the commit, the push, the pull request and the CI kick.
 
 The script runs under bash against a throwaway repository. The remote is a local bare
 repository (BOT_PR_REMOTE), and `gh` is a fake on PATH that logs its arguments, so nothing
@@ -8,6 +8,7 @@ never WSL's).
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -20,19 +21,21 @@ from conftest import GitRepo
 
 SCRIPT = Path(__file__).resolve().parents[1] / "bot_pr.sh"
 TRAILER = "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
-FAKE_KEY = "fake-deploy-key-material-for-tests-0123456789"
+BOT = "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+FAKE_TOKEN = "fake-workflow-token-for-tests-0123456789"
 PR_URL = "https://github.com/MosheByte/jarrow/pull/42"
 
 FAKE_GH = """#!/usr/bin/env bash
 # A stand-in for gh: logs each call, answers the few the script makes.
 printf '%s\\n' "$*" >> "$FAKE_GH_LOG"
 case "$1 $2" in
-  "api meta") echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" ;;
   "pr create")
     if [ -n "${FAKE_GH_CREATE_ERROR:-}" ]; then echo "$FAKE_GH_CREATE_ERROR" >&2; exit 1; fi
     echo "Warning: 1 uncommitted change" >&2
     echo "$FAKE_GH_URL" ;;
   "pr merge") ;;
+  "workflow run")
+    if [ -n "${FAKE_GH_DISPATCH_ERROR:-}" ]; then echo "$FAKE_GH_DISPATCH_ERROR" >&2; exit 1; fi ;;
   "pr list") printf '%s' "${FAKE_GH_OLDER:-}" ;;
   "pr close") ;;
   *) echo "fake gh: unexpected call: $*" >&2; exit 1 ;;
@@ -85,13 +88,14 @@ class Setup:
             "PATH": str(self.bin) + os.pathsep + os.environ.get("PATH", ""),
             "FAKE_GH_LOG": self.log.as_posix(),
             "FAKE_GH_URL": PR_URL,
-            "GH_TOKEN": "dummy-token",
-            "BOT_DEPLOY_KEY": FAKE_KEY,
+            "GH_TOKEN": FAKE_TOKEN,
             "GITHUB_REPOSITORY": "MosheByte/jarrow",
             "RUNNER_TEMP": self.runner_temp.as_posix(),
             "BOT_PR_REMOTE": self.remote.as_posix(),
         }
-        for name in ("GITHUB_STEP_SUMMARY", "GITHUB_RUN_ID", "BOT_PR_BASE"):
+        for name in (
+            "GITHUB_STEP_SUMMARY", "GITHUB_RUN_ID", "GITHUB_SERVER_URL", "BOT_PR_BASE", "BOT_DEPLOY_KEY",
+        ):
             env.pop(name, None)
         env.update(extra)
         return env
@@ -151,7 +155,8 @@ def test_opens_an_auto_merging_pull_request_from_a_bot_branch(setup: Setup) -> N
     assert setup.remote_git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").strip()
     log = setup.remote_git("log", "-1", "--format=%an <%ae>%n%cn <%ce>%n%B", branch)
     author, committer, *message = log.splitlines()
-    assert author == committer == "jarrow-bot <jarrow-bot@noreply.invalid>"
+    # GitHub Actions' own bot account, so the commit counts for it as a contributor.
+    assert author == committer == BOT
     text = "\n".join(message).strip()
     assert text.startswith("chore(team): refresh the contributors list\n\nNightly refresh.")
     assert text.endswith(f"\n\nJarrow-Generated: contributors\n{TRAILER}")
@@ -162,17 +167,69 @@ def test_opens_an_auto_merging_pull_request_from_a_bot_branch(setup: Setup) -> N
 
     sha = setup.remote_git("rev-parse", branch).strip()
     calls = setup.gh_calls()
-    assert calls[0].startswith("api meta")
-    create = next(c for c in calls if c.startswith("pr create"))
-    assert f"--repo MosheByte/jarrow --base main --head {branch}" in create
+    create = calls[0]
+    assert create.startswith(f"pr create --repo MosheByte/jarrow --base main --head {branch}")
     assert "--title chore(team): refresh the contributors list" in create
-    merge = next(c for c in calls if c.startswith("pr merge"))
+    merge = calls[1]
     assert merge.startswith(f"pr merge 42 --repo MosheByte/jarrow --auto --squash --match-head-commit {sha}")
     assert "--subject chore(team): refresh the contributors list (#42)" in merge
-    assert any(c.startswith("pr list") for c in calls)
+    # A push and a pull request made with the workflow token start nothing, so the script
+    # starts CI itself, once auto-merge is on.
+    assert calls[2:4] == [
+        f"workflow run ci.yml --repo MosheByte/jarrow --ref {branch}",
+        f"workflow run harness.yml --repo MosheByte/jarrow --ref {branch}",
+    ]
+    assert calls[4].startswith("pr list")
+    assert "started ci.yml" in proc.stdout and "started harness.yml" in proc.stdout
 
-    # The key never shows up in the output, and its file is gone.
-    assert FAKE_KEY not in proc.stdout + proc.stderr
+    # The token never shows up in the output, and the scratch files are gone.
+    assert FAKE_TOKEN not in proc.stdout + proc.stderr
+    assert list(setup.runner_temp.iterdir()) == []
+
+
+def test_the_step_summary_names_the_bot_and_the_ci_runs(setup: Setup) -> None:
+    setup.work.write("docs/team.md", "new\n")
+    summary = setup.tmp / "summary.md"
+    proc = setup.standard(GITHUB_STEP_SUMMARY=summary.as_posix(), GITHUB_RUN_ID="7")
+    assert proc.returncode == 0, proc.stderr
+    text = summary.read_text(encoding="utf-8")
+    assert PR_URL in text and f"bot/contributors-{today()}" in text
+    assert "github-actions[bot]" in text and "ci.yml harness.yml" in text
+
+
+def test_the_token_reaches_git_only_through_the_credential_helper() -> None:
+    script = SCRIPT.read_text(encoding="utf-8")
+    m = re.search(r"^CREDENTIAL_HELPER='(.*)'$", script, re.MULTILINE)
+    assert m, "bot_pr.sh defines CREDENTIAL_HELPER on one line"
+    helper = m.group(1)
+    assert "$GH_TOKEN" in helper
+    # No token in a remote URL and no SSH key any more.
+    assert "x-access-token:" not in script and "GIT_SSH_COMMAND" not in script
+    assert "secrets." not in script and "BOT_DEPLOY_KEY:-" not in script
+
+    def fill(host: str) -> list[str]:
+        proc = subprocess.run(
+            ["git", "-c", "credential.helper=", "-c", f"credential.https://github.com.helper={helper}",
+             "credential", "fill"],
+            input=f"protocol=https\nhost={host}\nusername=x-access-token\n\n",
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GH_TOKEN": FAKE_TOKEN, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "",
+                 "SSH_ASKPASS": ""},
+            check=False,
+        )
+        return proc.stdout.splitlines()
+
+    assert f"password={FAKE_TOKEN}" in fill("github.com")
+    # Scoped to the GitHub server: another host never gets the token.
+    assert f"password={FAKE_TOKEN}" not in fill("example.invalid")
+
+
+def test_a_failed_ci_start_fails_the_job(setup: Setup) -> None:
+    setup.work.write("docs/team.md", "new\n")
+    proc = setup.standard(FAKE_GH_DISPATCH_ERROR="HTTP 403: Resource not accessible by integration")
+    assert proc.returncode == 1
+    assert "ci.yml could not be started" in proc.stderr and "actions: write" in proc.stderr
     assert list(setup.runner_temp.iterdir()) == []
 
 
@@ -194,11 +251,8 @@ def test_a_second_run_the_same_day_gets_its_own_branch_and_supersedes(setup: Set
     assert "closed #41" in proc.stdout
 
 
-def test_missing_secrets_fail_before_anything_is_pushed(setup: Setup) -> None:
+def test_a_missing_token_fails_before_anything_is_pushed(setup: Setup) -> None:
     setup.work.write("docs/team.md", "new\n")
-    proc = setup.standard(BOT_DEPLOY_KEY="")
-    assert proc.returncode == 1
-    assert "BOT_DEPLOY_KEY is missing" in proc.stderr
     proc = setup.standard(GH_TOKEN="")
     assert proc.returncode == 1 and "GH_TOKEN is not set" in proc.stderr
     assert setup.gh_calls() == []
@@ -213,7 +267,7 @@ def test_actions_not_allowed_to_open_prs_says_what_the_owner_turns_on(setup: Set
     assert proc.returncode == 1
     assert "Allow GitHub Actions to create and approve pull requests" in proc.stderr
     assert f"bot/contributors-{today()}" in proc.stderr
-    assert not any(c.startswith("pr merge") for c in setup.gh_calls())
+    assert not any(c.startswith(("pr merge", "workflow run")) for c in setup.gh_calls())
     assert list(setup.runner_temp.iterdir()) == []
 
 

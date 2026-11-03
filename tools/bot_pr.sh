@@ -2,8 +2,8 @@
 # bot_pr.sh: commit generated files on a fresh bot/ branch and open an auto-merging pull request.
 #
 # Every change to main goes through a pull request, the bot's included. Workflows that
-# regenerate files (contributors.yml now, board.yml next) call this script instead of pushing
-# to main.
+# regenerate files (contributors.yml, and board.yml's ledger) call this script instead of
+# pushing to main.
 #
 # Usage:
 #   tools/bot_pr.sh <branch-prefix> <title> <body-file> -- <path>...
@@ -16,36 +16,47 @@
 # What it does:
 #   1. When none of the paths changed, it prints so and exits 0 without a branch or a PR.
 #   2. It commits the paths on a new branch bot/<prefix>-<UTC date> (bot/<prefix>-<date>-<time>
-#      when that branch already exists) as jarrow-bot <jarrow-bot@noreply.invalid>. The message
-#      ends with the trailers "Jarrow-Generated: <prefix>" and
+#      when that branch already exists). Author and committer are
+#      github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>, so the
+#      commit, and the squash commit on main, count for GitHub Actions as a contributor. The
+#      message ends with the trailers "Jarrow-Generated: <prefix>" and
 #      "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>".
-#   3. It pushes the branch over SSH with the BOT_DEPLOY_KEY deploy key. A push made with a
-#      deploy key triggers workflows, so ci.yml runs on the push to bot/** and the head commit
-#      gets the required ci-ok check. A push with the workflow token would trigger nothing.
-#   4. It opens the pull request with GH_TOKEN (the job's GITHUB_TOKEN), enables auto-merge
-#      (squash, pinned to the pushed commit, with the same commit message so the trailers
-#      reach main), closes older open bot/<prefix>-* pull requests as superseded, and prints
-#      the pull request URL on the last line of its output.
+#   3. It pushes the branch over HTTPS with GH_TOKEN, the job's GITHUB_TOKEN. The token reaches
+#      git only through a credential helper set in the environment for this run, scoped to the
+#      GitHub server; it is never written to a file, a remote URL or a command line.
+#   4. It opens the pull request with GH_TOKEN, enables auto-merge (squash, pinned to the pushed
+#      commit, with the same commit message so the trailers reach main), and closes older open
+#      bot/<prefix>-* pull requests as superseded.
+#   5. A push or a pull request made with GITHUB_TOKEN starts no workflow, so it starts ci.yml
+#      and harness.yml on the branch with "gh workflow run", the documented exception. The ci
+#      run reports ci-ok on the head commit, which the main ruleset requires; then the merge
+#      queue runs its merge_group checks as for any pull request.
+#   6. It prints the pull request URL on the last line of its output.
 #
 # Environment:
-#   GH_TOKEN            required; needs pull-requests: write, and contents: write for auto-merge
-#   BOT_DEPLOY_KEY      required; the private half of the jarrow-bot deploy key (write access)
+#   GH_TOKEN            required; the job's GITHUB_TOKEN with contents: write (push, auto-merge),
+#                       pull-requests: write (open, close) and actions: write (workflow_dispatch)
 #   GITHUB_REPOSITORY   required; OWNER/NAME
-#   RUNNER_TEMP         where the key file lives while the script runs (default: a mktemp dir)
+#   GITHUB_SERVER_URL   default https://github.com
+#   RUNNER_TEMP         scratch files while the script runs (default: a mktemp dir)
 #   BOT_PR_BASE         base branch (default: main)
-#   BOT_PR_REMOTE       push URL (default: git@github.com:$GITHUB_REPOSITORY.git); the tests
+#   BOT_PR_REMOTE       push URL (default: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git); the tests
 #                       point it at a local bare repository
 #
-# Secrets: the key is written to a 0600 file under RUNNER_TEMP, reaches git only through
-# GIT_SSH_COMMAND, is never echoed, and is deleted by an EXIT trap. GitHub's SSH host keys come
-# from "gh api meta" over HTTPS, so the first connection is verified, not trusted on first use.
+# The BOT_DEPLOY_KEY deploy key is not used here. It is kept only for a push to a protected
+# branch, which GITHUB_TOKEN cannot make (docs/community-automation.md).
 #
 # Exit status: 0 PR opened (or nothing to do), 1 a step failed, 2 usage error.
 set -euo pipefail
 
-BOT_NAME="jarrow-bot"
-BOT_EMAIL="jarrow-bot@noreply.invalid"
+BOT_NAME="github-actions[bot]"
+BOT_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
 TRAILER="Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+# Workflows started on the bot branch. ci.yml reports the required ci-ok check.
+DISPATCH=(ci.yml harness.yml)
+# git runs this as `sh -c '<helper> "$@"' <helper> get|store|erase`. It answers "get" with the
+# token from the environment, so the token itself never appears in git's configuration.
+CREDENTIAL_HELPER='!f() { test "$1" = get || exit 0; printf "username=x-access-token\npassword=%s\n" "$GH_TOKEN"; }; f'
 
 usage() {
   echo "usage: tools/bot_pr.sh <branch-prefix> <title> <body-file> -- <path>..." >&2
@@ -98,25 +109,23 @@ if [ -z "$(git status --porcelain --untracked-files=all -- "${paths[@]}")" ]; th
 fi
 
 [ -n "${GITHUB_REPOSITORY:-}" ] || fail "GITHUB_REPOSITORY is not set"
-[ -n "${GH_TOKEN:-}" ] || fail "GH_TOKEN is not set, so the pull request cannot be opened"
-[ -n "${BOT_DEPLOY_KEY:-}" ] || fail "BOT_DEPLOY_KEY is missing, so the branch cannot be pushed"
+[ -n "${GH_TOKEN:-}" ] || fail "GH_TOKEN is not set, so the branch cannot be pushed and the pull request cannot be opened"
 repo=$GITHUB_REPOSITORY
 base=${BOT_PR_BASE:-main}
-remote=${BOT_PR_REMOTE:-git@github.com:${repo}.git}
+server=${GITHUB_SERVER_URL:-https://github.com}
+server=${server%/}
+remote=${BOT_PR_REMOTE:-${server}/${repo}.git}
 
 work=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/bot-pr.XXXXXX")
-key="$work/key"
-hosts="$work/known_hosts"
 cleanup() { rm -rf "$work"; }
 trap cleanup EXIT
 
-# 3a. The deploy key, for git only.
-(umask 077 && printf '%s\n' "$BOT_DEPLOY_KEY" >"$key")
-chmod 600 "$key"
-unset BOT_DEPLOY_KEY
-gh api meta --jq '.ssh_keys[] | "github.com " + .' >"$hosts" || fail "could not read GitHub's SSH host keys (gh api meta)"
-[ -s "$hosts" ] || fail "gh api meta returned no SSH host keys"
-export GIT_SSH_COMMAND="ssh -i '$key' -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile='$hosts'"
+# 3a. GH_TOKEN for git, through the environment only: an empty helper first drops any helper
+# from other configuration, then ours answers for the GitHub server and nothing else.
+export GIT_CONFIG_COUNT=2
+export GIT_CONFIG_KEY_0="credential.${server}.helper" GIT_CONFIG_VALUE_0=""
+export GIT_CONFIG_KEY_1="credential.${server}.helper" GIT_CONFIG_VALUE_1="$CREDENTIAL_HELPER"
+export GIT_TERMINAL_PROMPT=0
 
 # 2. The branch and the commit.
 day=$(date -u +%Y-%m-%d)
@@ -151,18 +160,23 @@ message="$work/commit-message.md"
 git commit -q -F "$message"
 sha=$(git rev-parse HEAD)
 
-git push -q "$remote" "HEAD:refs/heads/$branch" || fail "could not push $branch with the deploy key"
+git push -q "$remote" "HEAD:refs/heads/$branch" || fail "could not push $branch with GH_TOKEN (the job needs contents: write)"
 echo "bot_pr: pushed $branch at ${sha:0:12} as $BOT_NAME"
 
 # 4. The pull request.
+dispatched=""
+for workflow in "${DISPATCH[@]}"; do
+  dispatched="${dispatched:+$dispatched and }\`$workflow\`"
+done
 pr_body="$work/pr-body.md"
 {
   printf '%s\n\n---\n\nOpened by `tools/bot_pr.sh`' "$body"
   if [ -n "${GITHUB_RUN_ID:-}" ]; then
     printf ' in [%s run %s](%s/%s/actions/runs/%s)' "${GITHUB_WORKFLOW:-workflow}" "$GITHUB_RUN_ID" \
-      "${GITHUB_SERVER_URL:-https://github.com}" "$repo" "$GITHUB_RUN_ID"
+      "$server" "$repo" "$GITHUB_RUN_ID"
   fi
-  printf '. CI ran on the push to `%s`; auto-merge squashes it when `ci-ok` passes.\n' "$branch"
+  printf ' as `%s`. A push made with the workflow token starts no workflow, so the script starts %s on `%s` with workflow_dispatch. Auto-merge puts the pull request in the merge queue when `ci-ok` passes.\n' \
+    "$BOT_NAME" "$dispatched" "$branch"
 } >"$pr_body"
 
 errors="$work/gh-errors.txt"
@@ -186,6 +200,15 @@ if ! gh pr merge "$number" --repo "$repo" --auto --squash --match-head-commit "$
   fail "pull request #$number is open, but auto-merge could not be enabled"
 fi
 
+# 5. CI on the branch. Without these runs the pull request never gets ci-ok and never merges.
+for workflow in "${DISPATCH[@]}"; do
+  if ! gh workflow run "$workflow" --repo "$repo" --ref "$branch" 2>"$errors"; then
+    cat "$errors" >&2
+    fail "pull request #$number is open, but $workflow could not be started on $branch (the job needs actions: write)"
+  fi
+  echo "bot_pr: started $workflow on $branch"
+done
+
 # Older bot PRs for the same prefix regenerated the same files from an older main.
 older=$(gh pr list --repo "$repo" --state open --limit 100 --json number,headRefName,isCrossRepository,author \
   --jq ".[] | select(.headRefName | startswith(\"bot/${prefix}-\")) | select(.headRefName != \"${branch}\") | select(.isCrossRepository | not) | select(.author.is_bot) | \"\(.number) \(.headRefName)\"" \
@@ -206,6 +229,7 @@ while read -r old_number old_branch; do
 done <<<"$older"
 
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-  printf 'Opened %s with auto-merge (squash) from `%s`.\n' "$url" "$branch" >>"$GITHUB_STEP_SUMMARY"
+  printf 'Opened %s as `%s` with auto-merge (squash) from `%s`, and started %s on it.\n' \
+    "$url" "$BOT_NAME" "$branch" "${DISPATCH[*]}" >>"$GITHUB_STEP_SUMMARY"
 fi
 echo "$url"
