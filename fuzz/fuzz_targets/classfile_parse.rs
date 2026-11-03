@@ -31,7 +31,8 @@ fuzz_target!(|data: &[u8]| {
             assert_eq!(insn.offset as usize, covered);
             covered += insn.length as usize;
             let mut encoded = Vec::new();
-            insn.encode(&mut encoded).expect("a decoded instruction always encodes");
+            insn.encode(&mut encoded)
+                .expect("a decoded instruction always encodes");
             assert_eq!(encoded.len(), insn.length as usize);
         }
         assert!(covered <= code.code.len());

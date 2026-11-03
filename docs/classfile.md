@@ -2,7 +2,7 @@
 
 **Status: exists (milestone M1).** `crates/classfile` (package `jarrow-classfile`, library `jarrow_classfile`) reads and writes Java class files. It is bytecode only: it never decompiles. It knows nothing about loaders or game versions, so Fabric, NeoForge, Forge and Quilt classes on any pinned Minecraft version go through the same code; the loader and version decisions live in the crates above it (`remap`, `rules`, `rewrite`).
 
-What is measured today: every class in the JDK 21 class library round-trips byte for byte (below). What is not measured yet: the round trip on the board's 1,000-mod set, which needs the `jar` crate and the board pipeline (both M1, in progress). Until that runs, nothing here claims the board set works.
+What is measured today: every class in the JDK 21 class library round-trips byte for byte (below). What is not measured yet: the round trip on the board's 1,000-mod set, which needs the board pipeline (M1, in progress). Until that runs, nothing here claims the board set works.
 
 ## What it does
 
@@ -63,9 +63,9 @@ Measured on 2026-11-03 with Temurin 21.0.12 on Windows: 70 jmods, 27,889 classes
 | Target | What it does |
 | --- | --- |
 | `classfile_parse` | Parses arbitrary bytes. When they parse, asserts that writing gives back exactly the input, that every `Utf8` survives `decode_lossless`, and that every decoded instruction re-encodes to its own length |
-| `jar_read` | **Not built yet.** It depends on `crates/jar` by path, and that crate is not on `main` yet (M1, built in parallel). It is added to `fuzz/Cargo.toml` when the crate lands |
+| `jar_read` | Reads arbitrary bytes as a JAR with `jarrow_jar::Jar::read_with` (limits tighter than the defaults: 4,096 entries, 4 MiB per entry, 8 MiB in all, nesting depth 3), then reads nested jars and the manifest. Every `.class` entry that parses must write back to its own bytes; a jar that writes must give the same bytes twice and read back with the same entries |
 
-`fuzz/dicts/classfile_parse.dict` is a libFuzzer dictionary (magic number, constant-pool entry shapes, attribute names with their length prefixes). There is no committed seed corpus, because seeds would be class files.
+`fuzz/dicts/<target>.dict` are libFuzzer dictionaries: for `classfile_parse` the magic number, constant-pool entry shapes and attribute names with their length prefixes; for `jar_read` the zip record signatures and the entry names a mod jar uses. There is no committed seed corpus, because seeds would be class files and JARs.
 
 Run locally (needs a nightly toolchain and `cargo install cargo-fuzz`):
 
@@ -84,7 +84,6 @@ Both workflows use only the built-in token, with `contents: read` at the top and
 
 ## Not done
 
-- The board-set round trip (needs `crates/jar` and the board pipeline).
-- The `jar_read` fuzz target (needs `crates/jar`).
+- The board-set round trip (needs the board pipeline; `crates/jar` now exists).
 - Typed `Module*` attributes, kept raw.
 - Computing `max_stack` or stack map frames for rewritten code. That is the `rewrite` crate's job (M2); this crate writes back what it is given.
