@@ -1,0 +1,73 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "Renovate updates only what Dependabot does not (D-046). Dependabot keeps Cargo, npm, GitHub Actions and pip (.github/dependabot.yml), so those managers stay off here and no update arrives twice.",
+    "Renovate covers the devcontainer base image, the Rust toolchain with the MSRV, Gradle and the probe build's plugins (Fabric Loom, ModDevGradle) and test libraries, and npm tools pinned inside workflow steps.",
+    "Every update auto-merges through the merge queue once ci-ok is green; .github/workflows/deps-automerge.yml turns on the same switch."
+  ],
+  "extends": ["config:recommended"],
+  "enabledManagers": ["dockerfile", "gradle", "rust-toolchain", "custom.regex"],
+  "schedule": ["* 0-5 * * 1"],
+  "timezone": "Etc/UTC",
+  "labels": ["dependencies"],
+  "semanticCommits": "disabled",
+  "commitMessagePrefix": "deps:",
+  "automerge": true,
+  "platformAutomerge": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The workspace MSRV in Cargo.toml moves with rust-toolchain.toml.",
+      "managerFilePatterns": ["/^Cargo\\.toml$/"],
+      "matchStrings": ["\\nrust-version = \"(?<currentValue>\\d+\\.\\d+)\"\\n"],
+      "depNameTemplate": "rust",
+      "datasourceTemplate": "rust-version"
+    },
+    {
+      "customType": "regex",
+      "description": "Gradle for the probe build (no wrapper is committed).",
+      "managerFilePatterns": ["/^\\.github/workflows/harness\\.yml$/"],
+      "matchStrings": ["\\n\\s+GRADLE_VERSION: \"(?<currentValue>[^\"]+)\"\\n"],
+      "depNameTemplate": "gradle",
+      "datasourceTemplate": "gradle-version",
+      "versioningTemplate": "gradle"
+    },
+    {
+      "customType": "regex",
+      "description": "npm tools pinned in workflow steps, for example npx --yes wrangler@4.157.0.",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "npx (?:--yes |-y )?(?<depName>(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*)@(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "npm"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Of the Dockerfiles, only the devcontainer's. The ClusterFuzzLite builder (.clusterfuzzlite/Dockerfile) pairs its image with a dated nightly, and its fuzz runs are not behind ci-ok.",
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": [".clusterfuzzlite/**"],
+      "enabled": false
+    },
+    {
+      "description": "The toolchain and the MSRV in one pull request: Cargo.toml says to bump both together.",
+      "matchDatasources": ["rust-version"],
+      "groupName": "Rust toolchain"
+    },
+    {
+      "description": "Fabric Loom 1.18 and later are compiled for Java 25, and the project pins JDK 21 (docs/probes.md). harness-ok, which builds the probes, is not a required check, so ci-ok would not catch it.",
+      "matchDepNames": ["net.fabricmc.fabric-loom-remap"],
+      "allowedVersions": "<1.18"
+    },
+    {
+      "description": "Loom 1.17, the last line on Java 21, is built against Gradle 9 (docs/probes.md). A Gradle major would merge on ci-ok without a probe build.",
+      "matchDepNames": ["gradle"],
+      "allowedVersions": "<10"
+    },
+    {
+      "description": "Mirrors .github/dependabot.yml: @astrojs/check supports TypeScript 5 and 6 only (D-025).",
+      "matchDepNames": ["typescript"],
+      "allowedVersions": "<7"
+    }
+  ]
+}
