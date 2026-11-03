@@ -362,6 +362,12 @@ class _KeepHeadRedirect(urllib.request.HTTPRedirectHandler):
     """Follow redirects without turning a HEAD into a full GET."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401 - urllib signature
+        # Pins are read from what these URLs serve, so a redirect may never leave HTTPS
+        # (security review F-10).
+        if urllib.parse.urlsplit(urllib.parse.urljoin(req.full_url, newurl)).scheme != "https":
+            raise urllib.error.HTTPError(
+                newurl, code, f"refusing a redirect from {req.full_url} to a non-HTTPS URL", headers, fp
+            )
         new = super().redirect_request(req, fp, code, msg, headers, newurl)
         if new is not None:
             new.method = req.get_method()

@@ -26,8 +26,9 @@ jobs:
     name: infra-apply
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The token is set on the two steps that call wrangler, not on the job, so actions/checkout
+    # and actions/setup-node never see it (security review F-03).
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       WRANGLER: npx --yes wrangler@4.157.0
     steps:
@@ -38,6 +39,8 @@ jobs:
         with:
           node-version: "24"
       - name: Verify the Cloudflare token (wrangler whoami)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
             echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1
@@ -53,4 +56,6 @@ jobs:
           rm -f "$out"
       - name: Apply D1 migrations
         working-directory: infra
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: $WRANGLER d1 migrations apply jarrow --remote --config wrangler.toml

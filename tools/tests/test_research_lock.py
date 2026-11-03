@@ -453,3 +453,23 @@ def test_verify_cli_strict_turns_warnings_into_failure(
     out = capsys.readouterr().out
     report = json.loads(out[out.index('{\n  "results"'):])
     assert report["counts"]["WARN"] == 1 and report["passed"] is True
+
+
+def test_redirects_never_leave_https() -> None:
+    # The lock records hashes from what these URLs serve; a downgrade to plain HTTP would let
+    # anyone on the path choose a pin (security review F-10).
+    import email.message
+    import io
+    import urllib.error
+    import urllib.request
+
+    handler = rl._KeepHeadRedirect()
+    req = urllib.request.Request("https://maven.example/a.jar.sha256", method="HEAD")
+    headers = email.message.Message()
+    for target in ("http://maven.example/a.jar.sha256", "ftp://maven.example/a"):
+        with pytest.raises(urllib.error.HTTPError, match="non-HTTPS"):
+            handler.redirect_request(req, io.BytesIO(), 302, "Found", headers, target)
+    req = urllib.request.Request("https://maven.example/a.jar.sha256", method="HEAD")
+    moved = handler.redirect_request(req, io.BytesIO(), 302, "Found", headers, "https://cdn.example/a.jar.sha256")
+    assert moved is not None and moved.full_url == "https://cdn.example/a.jar.sha256"
+    assert moved.get_method() == "HEAD"

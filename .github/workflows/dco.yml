@@ -1,0 +1,61 @@
+# Developer Certificate of Origin (https://developercertificate.org/): every commit of a pull
+# request carries "Signed-off-by: Name <email>" for its author (CONTRIBUTING.md, "DCO").
+#
+# Enforcing: the job fails when a commit lacks its sign-off. tools/dco_check.py does the work and
+# writes a table of every commit to the job summary. Exempt are merge commits, bot authors (a name
+# ending in "[bot]", and jarrow-bot, the deploy-key bot) and commits whose committer date is before
+# DCO_CUTOFF below, when the requirement started (the owner's consent to sign off commits made
+# through the owner's account was given on 2026-11-03). Older commits are never rewritten.
+#
+# The checker is read from the base branch, so a pull request cannot change the rules it is
+# checked against (only a pull request against a base without the checker uses its own copy).
+# Merge-queue runs pass at once: the queue's commits are the pull request's, already checked.
+name: dco
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dco-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dco:
+    name: dco
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Merge queue
+        if: github.event_name == 'merge_group'
+        run: echo "The commits in the queue were checked on their pull request."
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        if: github.event_name == 'pull_request'
+        with:
+          python-version: "3.12"
+      - name: Every commit is signed off by its author
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DCO_CUTOFF: "2026-11-03T18:30:00Z"
+        run: |
+          set -euo pipefail
+          checker="$RUNNER_TEMP/dco_check.py"
+          if git cat-file -e "$BASE_SHA:tools/dco_check.py" 2>/dev/null; then
+            git show "$BASE_SHA:tools/dco_check.py" > "$checker"
+            echo "Using tools/dco_check.py from the base branch ($BASE_SHA)."
+          else
+            cp tools/dco_check.py "$checker"
+            echo "The base branch has no tools/dco_check.py; using this pull request's copy."
+          fi
+          # The test suite looks for this line: python tools/dco_check.py
+          python -I "$checker" --base "$BASE_SHA" --head "$HEAD_SHA" --cutoff "$DCO_CUTOFF"
