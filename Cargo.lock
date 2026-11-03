@@ -210,6 +210,7 @@ dependencies = [
 name = "jarrow-harness"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "jarrow-report",
  "regex",
  "rustls",

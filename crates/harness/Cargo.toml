@@ -12,7 +12,12 @@ publish.workspace = true
 [lib]
 name = "jarrow_harness"
 
+[[bin]]
+name = "jarrow-harness"
+path = "src/main.rs"
+
 [dependencies]
+clap.workspace = true
 jarrow-report.workspace = true
 serde.workspace = true
 serde_json.workspace = true
