@@ -1,0 +1,26 @@
+[package]
+name = "jarrow-classfile"
+description = "Java class-file parser and writer for Jarrow: constant pool, attributes, stack maps and an instruction decoder."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+name = "jarrow_classfile"
+
+# No runtime dependencies: the crate is std-only and builds for wasm32-unknown-unknown.
+[dependencies]
+
+[dev-dependencies]
+# Property tests (MUTF-8, the constant pool, random input). Without the fork and timeout
+# features, so no tempfile or process-spawning crates enter the graph.
+proptest = { version = "1.12.0", default-features = false, features = ["std"] }
+# Inflates the deflate entries of $JAVA_HOME/jmods/*.jmod in the JDK round-trip test.
+miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
+
+[lints]
+workspace = true
