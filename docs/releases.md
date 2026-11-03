@@ -7,8 +7,8 @@ From milestone M1 on, the `jarrow` CLI ships as a nightly prerelease built from 
 | Channel | What you get | Where | Status |
 | --- | --- | --- | --- |
 | Nightly | A pre-alpha build of the CLI from `main`, once a day, for Linux, Windows and macOS | GitHub prereleases tagged `nightly-YYYYMMDD`: [all releases](https://github.com/jarrow-dev/jarrow/releases) | Running from M1 (`.github/workflows/nightly.yml`) |
-| crates.io, pre-alpha | The CLI (`jarrow`) and the report model (`jarrow-report`) as source crates, version `0.1.0-alpha.1`. The CLI has `--version` and `tokens` only | [crates.io/crates/jarrow](https://crates.io/crates/jarrow), [crates.io/crates/jarrow-report](https://crates.io/crates/jarrow-report) | Published by hand with `.github/workflows/publish.yml` (D-012) |
-| npm, pre-alpha | The package `jarrow`, version `0.1.0-alpha.1`, under the dist-tag `alpha`: the design tokens (`tokens.css`, `tokens.json`), with npm provenance. No JavaScript and no engine yet; the WASM engine arrives in M3 | [npmjs.com/package/jarrow](https://www.npmjs.com/package/jarrow) | Published by hand with `.github/workflows/publish.yml` (D-012) |
+| crates.io, pre-alpha | The CLI (`jarrow`) and the report model (`jarrow-report`) as source crates, version `0.1.0-alpha.1`. The CLI has `--version` and `tokens` only | [crates.io/crates/jarrow](https://crates.io/crates/jarrow), [crates.io/crates/jarrow-report](https://crates.io/crates/jarrow-report) | Not published yet: the first run of `.github/workflows/publish.yml` stopped on an owner step (see [First run](#first-run); D-012) |
+| npm, pre-alpha | The package `jarrow`, version `0.1.0-alpha.1`, under the dist-tag `alpha`: the design tokens (`tokens.css`, `tokens.json`), with npm provenance. No JavaScript and no engine yet; the WASM engine arrives in M3 | [npmjs.com/package/jarrow](https://www.npmjs.com/package/jarrow) | Not published yet: the first run of `.github/workflows/publish.yml` stopped on an owner step (see [First run](#first-run); D-012) |
 | v0.1 and later | Versioned releases built with cargo-dist, signed on every channel | GitHub Releases, Homebrew, Scoop, winget, AUR, crates.io, and npm for the WASM package | Planned (M5) |
 
 A nightly is not a release. It can break from one day to the next, and it can only do what its own help text says. Each nightly's notes include the output of `jarrow --help` and of every subcommand's `--help` for that exact commit, so the notes always match the binary. Anything the help lists as not built yet is not in that build.
@@ -44,18 +44,20 @@ Get-FileHash -Algorithm SHA256 jarrow-x86_64-pc-windows-msvc.zip   # Windows Pow
 Check where it came from. Every archive and `SHA256SUMS` carries a Sigstore-signed SLSA build provenance attestation, made by `actions/attest-build-provenance` in the run that built it. With the GitHub CLI:
 
 ```sh
-gh attestation verify jarrow-x86_64-unknown-linux-gnu.tar.gz --repo MosheByte/jarrow \
-  --signer-workflow MosheByte/jarrow/.github/workflows/nightly.yml --source-ref refs/heads/main
+gh attestation verify jarrow-x86_64-unknown-linux-gnu.tar.gz --repo jarrow-dev/jarrow \
+  --signer-workflow jarrow-dev/jarrow/.github/workflows/nightly.yml --source-ref refs/heads/main
 ```
 
 That passes only for a file whose SHA-256 was attested by `nightly.yml` running on `main` of this repository, on a GitHub-hosted runner. The output names the commit and the workflow run. The publish job runs the same check on every asset before it publishes anything.
+
+The repository moved from `MosheByte/jarrow` to `jarrow-dev/jarrow` on 2026-11-03, and an attestation names the repository its run belonged to. `nightly-20261103` was built before the move and its attestations name `MosheByte/jarrow`, so verify its assets with `--repo MosheByte/jarrow --signer-workflow MosheByte/jarrow/.github/workflows/nightly.yml`. Every later nightly takes the command above.
 
 The binaries carry no Apple or Windows code signature and are not notarized, so macOS Gatekeeper and Windows SmartScreen may warn before the first run. Code signing comes with v0.1.
 
 ### When it runs
 
 - **Every day at 05:30 UTC**, after the board run at 02:00 UTC.
-- **By hand:** `gh workflow run nightly.yml --repo MosheByte/jarrow --ref main`.
+- **By hand:** `gh workflow run nightly.yml --repo jarrow-dev/jarrow --ref main`.
 - **The day** in the tag and title is the UTC date the run was created. Re-running an old run replaces that run's own release; it never creates a release for another day.
 - **Same day, again:** a second run on the same day replaces that day's release. The `nightly-YYYYMMDD` tag moves to the new commit, the title and notes are rewritten, every asset is replaced (`gh release upload --clobber`), and any asset the new run does not produce is deleted. Two runs never overlap: the workflow's concurrency group makes a second run wait for the first.
 - **Retention:** after publishing, the workflow keeps the 14 newest `nightly-YYYYMMDD` prereleases and deletes older ones together with their tags. It also deletes a `nightly-YYYYMMDD` tag whose release no longer exists. It never deletes any other release or tag: only names matching `^nightly-[0-9]{8}$` are touched, never `board-latest`, `board-YYYYMMDD` or `v*`, and never the tag it just published.
@@ -102,6 +104,15 @@ gh workflow run publish.yml --repo jarrow-dev/jarrow --ref main -f what=both
 A version that a registry already has is skipped, so a run that failed halfway can be run again. Versions are never deleted; a broken one is yanked (`cargo yank`) or deprecated (`npm deprecate`), and the next one is `0.1.0-alpha.2`. To publish a new pre-release, bump `version` in the root `Cargo.toml` (and `jarrow-report` in `[workspace.dependencies]`) and in `packages/npm/package.json` together; `tools/tests/test_publish.py` fails when they differ.
 
 Check the npm package's provenance with `npm audit signatures` in a project that installed it, or on its npmjs.com page, which links the workflow run that built it.
+
+### First run
+
+The first run, https://github.com/jarrow-dev/jarrow/actions/runs/41691082030 (`what=both`, on `main` at `e2f6b4e`), published nothing. Both registries refused the upload for account reasons that only the owner can fix (`infra/TODO-OWNER.md`, M5):
+
+- `crates`: both crates packaged and built. crates.io answered the upload of `jarrow-report` with "the remote server responded with an error (status 400 Bad Request): A verified email address is required to publish crates to crates.io. Visit https://crates.io/settings/profile to set and verify your email address." `jarrow` was not attempted.
+- `npm tokens` passed. `npm` packed the five files and signed the provenance statement, then npm answered the upload with "403 Forbidden ... Two-factor authentication or granular access token with bypass 2fa enabled is required to publish packages."
+
+After the owner's fix, the same command runs it again and skips anything already published: `gh workflow run publish.yml --repo jarrow-dev/jarrow --ref main -f what=both`.
 
 ## v0.1 and later (M5)
 
