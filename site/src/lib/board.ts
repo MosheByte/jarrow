@@ -1,15 +1,19 @@
 /**
- * The public board: the shape of `board.json` and the one loader every page and the
- * `/api/board.json` route use to read it.
+ * The public board: reading `board.json` and the view every page and the `/api/board.json`
+ * route use.
  *
  * `board.json` lives in the KV namespace bound as `BOARD` under the key `board.json`. The
- * nightly board pipeline (crates/board, milestone M1) writes it. Until the first nightly runs,
- * the key is missing and the site shows an empty board: zero mods, no rows. Nothing here
- * invents a row or a number.
+ * nightly board pipeline (crates/board, `jarrow-board merge`) writes it in the shape
+ * docs/board.md defines. Until the first nightly runs, the key is missing and the site shows
+ * an empty board: zero mods, no rows. Nothing here invents a row or a number.
  *
- * Tier and outcome ids match `jarrow_report::Tier` and `jarrow_report::Outcome`
- * (crates/report/src/outcome.rs): tiers are "a", "b", "unsupported"; results are "green",
- * "yellow", "red", "not-run".
+ * Tier and outcome ids match crates/report (`jarrow_report::Tier`, `jarrow_report::Outcome`)
+ * and crates/board (`BoardTier`): tiers are "a", "b", "unsupported", and "unknown" while the
+ * classifier is not built; results are "green", "yellow", "red", "not-run".
+ *
+ * The stored rows follow the contract (`project_id`, `title`, `outcome`, `report_key`, ...).
+ * `validateBoard` checks them and maps each one to the smaller `BoardRow` the pages render.
+ * `/api/board.json` serves the stored text unchanged.
  *
  * This module has no runtime dependency on Astro or Cloudflare, so its tests run with
  * `node --test` (see board.test.ts).
@@ -23,29 +27,35 @@ export const BOARD_KV_KEY = 'board.json';
 /** Version of the board.json schema this site understands. */
 export const BOARD_SCHEMA = 1;
 
-export const TIERS = ['a', 'b', 'unsupported'] as const;
+export const TIERS = ['a', 'b', 'unsupported', 'unknown'] as const;
 export type Tier = (typeof TIERS)[number];
 
 export const RESULTS = ['green', 'yellow', 'red', 'not-run'] as const;
 export type Result = (typeof RESULTS)[number];
 
-/** One mod on the board. */
+/** Loader ids a direction is made of (docs/board.md). */
+export const LOADERS = ['fabric', 'neoforge', 'forge', 'quilt'] as const;
+
+/** One mod on the board, as the pages render it. */
 export interface BoardRow {
-  /** Modrinth project id. */
+  /** Modrinth project id (`project_id` in board.json). */
   mod_id: string;
-  /** Display name, as Modrinth lists it. */
+  /** Display name, as Modrinth lists it (`title` in board.json). */
   name: string;
+  /** The conversion direction, `<source>-<target>`, for example "fabric-neoforge". */
+  direction: string;
   /** The mod's own Modrinth page. The board links here and never to a converted JAR. */
   page_url: string;
-  /** Modrinth download count when the nightly ran. */
+  /** Modrinth download count when the list was fetched. */
   downloads: number;
   tier: Tier;
+  /** The outcome on the mod's primary game version (`outcome` in board.json). */
   result: Result;
-  /** Classified reason for a yellow or red result, or why the tier was chosen. */
+  /** Classified reason for a yellow or red result. */
   reason: string | null;
-  /** ISO 8601 time of the last harness run for this mod. */
+  /** ISO 8601 time the nightly last processed this mod. */
   last_run: string | null;
-  /** Link to the full report, when one exists. */
+  /** Link to the full report page. The site has no report page yet, so this is null. */
   report_url: string | null;
 }
 
@@ -56,7 +66,7 @@ export interface BoardTotals {
   red: number;
 }
 
-/** The whole board as stored in KV and served at /api/board.json. */
+/** The board as the pages render it. */
 export interface BoardJson {
   schema: typeof BOARD_SCHEMA;
   /** ISO 8601 time the nightly wrote this file; null before the first nightly. */
@@ -127,22 +137,45 @@ function isHttpsUrl(value: unknown): value is string {
   }
 }
 
-function checkRow(row: unknown, index: number): string | null {
+/** Whether `value` is `<source>-<target>` with two different known loaders. */
+export function isDirection(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const parts = value.split('-');
+  return (
+    parts.length === 2 &&
+    parts[0] !== parts[1] &&
+    parts.every((p) => (LOADERS as readonly string[]).includes(p))
+  );
+}
+
+/** Checks one stored row (docs/board.md) and maps it to the view; a string is the problem. */
+function readRow(row: unknown, index: number): BoardRow | string {
   const at = `rows[${index}]`;
   if (!isObject(row)) return `${at} is not an object`;
-  if (typeof row.mod_id !== 'string' || row.mod_id === '') return `${at}.mod_id must be a non-empty string`;
-  if (typeof row.name !== 'string' || row.name === '') return `${at}.name must be a non-empty string`;
+  if (typeof row.project_id !== 'string' || row.project_id === '') return `${at}.project_id must be a non-empty string`;
+  if (typeof row.title !== 'string' || row.title === '') return `${at}.title must be a non-empty string`;
+  if (!isDirection(row.direction)) return `${at}.direction must be <source>-<target> with two different loaders`;
   if (!isHttpsUrl(row.page_url)) return `${at}.page_url must be an https URL`;
   if (!isCount(row.downloads)) return `${at}.downloads must be a non-negative integer`;
   if (!TIERS.includes(row.tier as Tier)) return `${at}.tier must be one of ${TIERS.join(', ')}`;
-  if (!RESULTS.includes(row.result as Result)) return `${at}.result must be one of ${RESULTS.join(', ')}`;
+  if (!RESULTS.includes(row.outcome as Result)) return `${at}.outcome must be one of ${RESULTS.join(', ')}`;
   if (!isNullableString(row.reason)) return `${at}.reason must be a string or null`;
   if (row.last_run !== null && !isIsoTime(row.last_run)) return `${at}.last_run must be an ISO 8601 time or null`;
-  if (row.report_url !== null && !isHttpsUrl(row.report_url)) return `${at}.report_url must be an https URL or null`;
-  return null;
+  return {
+    mod_id: row.project_id,
+    name: row.title,
+    direction: row.direction,
+    page_url: row.page_url,
+    downloads: row.downloads,
+    tier: row.tier as Tier,
+    result: row.outcome as Result,
+    reason: row.reason,
+    last_run: row.last_run,
+    report_url: null,
+  };
 }
 
-/** Validates a parsed value against the board.json schema. Extra fields are allowed. */
+/** Validates a parsed board.json (docs/board.md) and maps it to the view. Extra fields are allowed. */
 export function validateBoard(value: unknown): ParseResult {
   if (!isObject(value)) return { ok: false, problem: 'board.json is not a JSON object' };
   if (value.schema !== BOARD_SCHEMA) {
@@ -164,11 +197,22 @@ export function validateBoard(value: unknown): ParseResult {
     return { ok: false, problem: 'totals.green + totals.yellow + totals.red exceeds totals.mods' };
   }
   if (!Array.isArray(value.rows)) return { ok: false, problem: 'rows must be an array' };
+  const rows: BoardRow[] = [];
   for (let i = 0; i < value.rows.length; i++) {
-    const problem = checkRow(value.rows[i], i);
-    if (problem) return { ok: false, problem };
+    const row = readRow(value.rows[i], i);
+    if (typeof row === 'string') return { ok: false, problem: row };
+    rows.push(row);
   }
-  return { ok: true, board: value as unknown as BoardJson };
+  return {
+    ok: true,
+    board: {
+      schema: BOARD_SCHEMA,
+      generated_at: value.generated_at as string | null,
+      game_versions: [...(value.game_versions as string[])],
+      totals: { mods: t.mods, green: t.green, yellow: t.yellow, red: t.red },
+      rows,
+    },
+  };
 }
 
 /** Parses and validates the text stored under the board.json key. */
@@ -218,6 +262,7 @@ export const TIER_LABEL: Record<Tier, string> = {
   a: 'Tier A',
   b: 'Tier B',
   unsupported: 'Unsupported',
+  unknown: 'Not classified yet',
 };
 
 export const RESULT_LABEL: Record<Result, string> = {
