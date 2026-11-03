@@ -1,0 +1,11 @@
+tsrg2 obf srg id
+net/ net/ net/
+a net/minecraft/demo/Widget 1
+	a f_1_ 2
+	b Lb; f_2_ 3
+	a (Lb;I)La; m_1_ 4
+		static
+		0 o p_1_0_ 5
+		1 o p_1_1_ 6
+b net/minecraft/demo/Gadget 7
+	a ()Lb; m_2_ 8

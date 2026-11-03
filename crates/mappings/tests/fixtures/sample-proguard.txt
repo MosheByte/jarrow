@@ -1,0 +1,16 @@
+# Hand-written fixture for the jarrow-mappings tests. These are not Mojang's mappings.
+net.minecraft.demo.Widget -> a:
+# {"fileName":"Widget.java","id":"sourceFile"}
+    int size -> a
+    net.minecraft.demo.Gadget gadget -> b
+    10:12:void <init>() -> <init>
+    15:15:net.minecraft.demo.Widget combine(net.minecraft.demo.Gadget,int) -> a
+    16:18:net.minecraft.demo.Widget combine(net.minecraft.demo.Gadget,int) -> a
+    20:20:void tick():40:42 -> c
+    21:21:void net.minecraft.demo.Gadget.helper():7:7 -> c
+    java.lang.String toString() -> toString
+net.minecraft.demo.Gadget -> b:
+    3:3:net.minecraft.demo.Gadget copy() -> a
+    boolean[][] flags(java.lang.String[],long) -> b
+net.minecraft.demo.Widget$Part -> a$a:
+    long[][] matrix -> a
