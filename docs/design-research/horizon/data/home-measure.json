@@ -1,0 +1,677 @@
+{
+ "cardAndContainer": {
+  "card": {
+   "cls": "rise w-full max-w-2xl scroll-mt-24 rounded-2xl bg-white/[0.04] p-6 backdrop-blur-xl ring-inset sm:p-8 lg:justify-self-end",
+   "bg": "oklab(0.999994 0.0000455678 0.0000200868 / 0.04)",
+   "border": "0px solid rgb(244, 241, 255)",
+   "radius": "16px",
+   "shadow": "none",
+   "backdrop": "blur(24px)",
+   "padding": "32px",
+   "w": 416,
+   "h": 458.9375,
+   "left": 840,
+   "top": 125.53125
+  },
+  "cardParent": {
+   "cls": "mx-auto grid w-full max-w-6xl flex-1 content-center items-start gap-x-16 gap-y-16 px-6 pt-12 pb-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-center lg:px-10 xl:gap-x-20",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": "0px solid rgb(244, 241, 255)",
+   "radius": "0px",
+   "shadow": "none",
+   "backdrop": "none",
+   "padding": "48px 40px 40px",
+   "w": 1152,
+   "h": 558,
+   "left": 144,
+   "top": 72
+  },
+  "container": {
+   "cls": "mx-auto flex h-18 w-full max-w-6xl items-center gap-12 px-6 lg:px-10",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": "0px solid rgb(244, 241, 255)",
+   "radius": "0px",
+   "shadow": "none",
+   "backdrop": "none",
+   "padding": "0px 40px",
+   "w": 1152,
+   "h": 72,
+   "left": 144,
+   "top": 0
+  },
+  "header": {
+   "cls": "fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter] duration-300 ",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": "0px solid rgb(244, 241, 255)",
+   "radius": "0px",
+   "shadow": "none",
+   "backdrop": "none",
+   "padding": "0px",
+   "w": 1440,
+   "h": 72,
+   "left": 0,
+   "top": 0
+  },
+  "heroInner": {
+   "cls": "mx-auto grid w-full max-w-6xl flex-1 content-center items-start gap-x-16 gap-y-16 px-6 pt-12 pb-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-center lg:px-10 xl:gap-x-20",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": "0px solid rgb(244, 241, 255)",
+   "radius": "0px",
+   "shadow": "none",
+   "backdrop": "none",
+   "padding": "48px 40px 40px",
+   "w": 1152,
+   "h": 558,
+   "left": 144,
+   "top": 72
+  },
+  "heroH": 900,
+  "cardChildren": [
+   {
+    "cls": "text-sm font-medium text-white/60",
+    "text": "Benchmarks",
+    "h": 20
+   },
+   {
+    "cls": "mt-4 font-display text-[2rem] leading-[1.1] font-semibold tracking-[-0.02em] text-white",
+    "text": "3× the frame rate.",
+    "h": 35.1875
+   },
+   {
+    "cls": "mt-3 text-[15px] leading-relaxed text-pretty text-white/60",
+    "text": "Average frames per second in vanilla 26.",
+    "h": 48.75
+   },
+   {
+    "cls": "mt-10 space-y-8",
+    "text": "Horizon148148fpsStandard launcher5050fps",
+    "h": 152
+   },
+   {
+    "cls": "mt-8 text-xs leading-relaxed text-white/50",
+    "text": "Drag the standard launcher bar to try yo",
+    "h": 39
+   }
+  ]
+ },
+ "headerScrolled": {
+  "bg": "lab(3.75719 5.56427 -12.107 / 0.75)",
+  "backdrop": "blur(12px)",
+  "border": "0px solid rgb(244, 241, 255)",
+  "cls": "fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter] duration-300 bg-[#100a1f]/75 backdrop-blur-md"
+ },
+ "heroCanvas": [
+  {
+   "w": 1440,
+   "h": 900,
+   "cssW": "1440px",
+   "cssH": "900px",
+   "cls": "absolute top-0 left-0 opacity-0 transition-opacity duration-700 group-data-ready:opacity-100",
+   "parent": "group overflow-hidden bg-[linear-gradient(to_bottom,#0a0919_0%,#151136_38%,#361b5b_62%,#902f76_80%,#100a1f_86%)] absolute inset-0 -z-10",
+   "parentH": 900
+  },
+  {
+   "w": 360,
+   "h": 225,
+   "cssW": "1440px",
+   "cssH": "900px",
+   "cls": "absolute top-0 left-0 opacity-0 transition-opacity duration-700 [image-rendering:pixelated] group-data-ready:opacity-100",
+   "parent": "group overflow-hidden bg-[linear-gradient(to_bottom,#0a0919_0%,#151136_38%,#361b5b_62%,#902f76_80%,#100a1f_86%)] absolute inset-0 -z-10",
+   "parentH": 900
+  },
+  {
+   "w": 360,
+   "h": 140,
+   "cssW": "1440px",
+   "cssH": "560px",
+   "cls": "opacity-0 transition-opacity duration-700 [image-rendering:pixelated] data-ready:opacity-100 absolute top-0 left-0 -z-10",
+   "parent": "relative isolate mb-8 scroll-mt-14 overflow-hidden py-16  sm:py-24",
+   "parentH": 559.578125
+  }
+ ],
+ "textSamples": {
+  "lede": {
+   "text": "The Minecraft: Java Edition 26.3 client and its ga",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.7)",
+   "bg": "rgb(16, 10, 31)",
+   "fontSize": "18px",
+   "weight": "400",
+   "cls": "rise mt-6 max-w-xl text-lg leading-relaxed text-white/70"
+  },
+  "cardLede": {
+   "text": "Average frames per second in vanilla 26.3 with no ",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.6)",
+   "bg": "rgb(16, 10, 31)",
+   "fontSize": "15px",
+   "weight": "400",
+   "cls": "mt-3 text-[15px] leading-relaxed text-pretty text-white/60"
+  },
+  "cardHint": {
+   "text": "Drag the standard launcher bar to try your own fra",
+   "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+   "bg": "rgb(16, 10, 31)",
+   "fontSize": "12px",
+   "weight": "400",
+   "cls": "mt-8 text-xs leading-relaxed text-white/50"
+  },
+  "nav": {
+   "text": "Hub",
+   "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+   "bg": "rgb(16, 10, 31)",
+   "fontSize": "14px",
+   "weight": "400",
+   "cls": "inline-flex items-center gap-1.5 transition-colors hover:text-white"
+  },
+  "footerPara": {
+   "text": "Horizon is made by Ludovic Marie; reach him throug",
+   "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+   "bg": "rgb(16, 10, 31)",
+   "fontSize": "14px",
+   "weight": "400",
+   "cls": "mt-3"
+  },
+  "footerLabel": {
+   "text": "Who makes it",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+   "bg": "rgb(16, 10, 31)",
+   "fontSize": "14px",
+   "weight": "500",
+   "cls": "text-sm font-medium text-white/80"
+  },
+  "featBody": {
+   "text": "Install Java Edition with the official launcher an",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.6)",
+   "bg": "rgb(16, 10, 31)",
+   "fontSize": "15px",
+   "weight": "400",
+   "cls": "mt-3 text-[15px] leading-relaxed text-pretty text-white/60"
+  },
+  "platformLine": {
+   "text": "234,132",
+   "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+   "bg": "rgb(16, 10, 31)",
+   "fontSize": "14px",
+   "weight": "400",
+   "cls": "tabular-nums"
+  }
+ },
+ "resolved": {
+  "lede": {
+   "text": "The Minecraft: Java Edition 26.3 client ",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.7)",
+   "onPageBg": [
+    183,
+    182,
+    188
+   ],
+   "fontSize": "18px",
+   "weight": "400"
+  },
+  "cardLede": {
+   "text": "Average frames per second in vanilla 26.",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.6)",
+   "onPageBg": [
+    159,
+    157,
+    165
+   ],
+   "fontSize": "15px",
+   "weight": "400"
+  },
+  "cardHint": {
+   "text": "Drag the standard launcher bar to try yo",
+   "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+   "onPageBg": [
+    136,
+    133,
+    143
+   ],
+   "fontSize": "12px",
+   "weight": "400"
+  },
+  "nav": {
+   "text": "Hub",
+   "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+   "onPageBg": [
+    171,
+    169,
+    177
+   ],
+   "fontSize": "14px",
+   "weight": "400"
+  },
+  "footerPara": {
+   "text": "Horizon is made by Ludovic Marie; reach ",
+   "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+   "onPageBg": [
+    136,
+    133,
+    143
+   ],
+   "fontSize": "14px",
+   "weight": "400"
+  },
+  "featBody": {
+   "text": "Install Java Edition with the official l",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.6)",
+   "onPageBg": [
+    159,
+    157,
+    165
+   ],
+   "fontSize": "15px",
+   "weight": "400"
+  },
+  "platformLine": {
+   "text": "234,132",
+   "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+   "onPageBg": [
+    136,
+    133,
+    143
+   ],
+   "fontSize": "14px",
+   "weight": "400"
+  },
+  "benchLabel": {
+   "text": "Benchmarks",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.6)",
+   "onPageBg": [
+    159,
+    157,
+    165
+   ],
+   "fontSize": "14px",
+   "weight": "500"
+  },
+  "cardBg": {
+   "css": "oklab(0.999994 0.0000455678 0.0000200868 / 0.04)",
+   "composite": [
+    26,
+    20,
+    40
+   ]
+  }
+ },
+ "focus": [
+  {
+   "tag": "A",
+   "text": "Horizon",
+   "aria": null,
+   "outline": "rgb(238, 238, 238) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "About",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.65) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Hub",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.65) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Benchmarks",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.65) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Mods",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.65) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Releases9+, 40 new",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.65) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Docs",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.65) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Players",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.65) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "GitHub",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.65) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Download",
+   "aria": null,
+   "outline": "rgb(255, 255, 255) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Rust",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.8) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Download the launcher",
+   "aria": null,
+   "outline": "rgb(255, 255, 255) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "View on GitHub",
+   "aria": null,
+   "outline": "rgb(255, 255, 255) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  },
+  {
+   "tag": "A",
+   "text": "Windows",
+   "aria": null,
+   "outline": "rgba(255, 255, 255, 0.75) auto 1px",
+   "outlineOffset": "1px",
+   "boxShadow": "none",
+   "cls": null
+  }
+ ],
+ "slider": {
+  "before": {
+   "v": "50",
+   "txt": "50 fps",
+   "fps": [
+    "9+",
+    "234,132",
+    "147147fps",
+    "5050fps",
+    "281",
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "08",
+    "09",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "0",
+    "0.25",
+    "0.5",
+    "0.75",
+    "1"
+   ]
+  },
+  "after": {
+   "v": "100",
+   "txt": "100 fps",
+   "fps": [
+    "9+",
+    "234,132",
+    "303303fps",
+    "100100fps",
+    "281",
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "08",
+    "09",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "0",
+    "0.25",
+    "0.5",
+    "0.75",
+    "1"
+   ],
+   "live": true,
+   "liveText": ""
+  }
+ },
+ "hover": {
+  "nav-link": {
+   "before": {
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "transform": "none",
+    "transition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), borde",
+    "shadow": "none"
+   },
+   "after": {
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "transform": "none",
+    "shadow": "none",
+    "imgTransform": null
+   }
+  },
+  "primary-button": {
+   "before": {
+    "color": "rgb(255, 255, 255)",
+    "bg": "rgb(107, 75, 255)",
+    "transform": "none",
+    "transition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), borde",
+    "shadow": "none"
+   },
+   "after": {
+    "color": "rgb(255, 255, 255)",
+    "bg": "rgb(107, 75, 255)",
+    "transform": "none",
+    "shadow": "none",
+    "imgTransform": null
+   }
+  },
+  "discord-card": {
+   "before": {
+    "color": "rgb(244, 241, 255)",
+    "bg": "rgb(88, 101, 242)",
+    "transform": "none",
+    "transition": "color 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), borde",
+    "shadow": "none"
+   },
+   "after": {
+    "color": "rgb(244, 241, 255)",
+    "bg": "rgb(88, 101, 242)",
+    "transform": "none",
+    "shadow": "none",
+    "imgTransform": null
+   }
+  },
+  "gallery-figure": {
+   "before": {
+    "color": "rgb(244, 241, 255)",
+    "bg": "oklab(0.999994 0.0000455678 0.0000200868 / 0.04)",
+    "transform": "matrix(1, 0, 0, 1, 0, 0)",
+    "transition": "all",
+    "shadow": "none"
+   },
+   "after": {
+    "color": "rgb(244, 241, 255)",
+    "bg": "oklab(0.999994 0.0000455678 0.0000200868 / 0.04)",
+    "transform": "matrix(1, 0, 0, 1, 0, 0)",
+    "shadow": "none",
+    "imgTransform": "none"
+   }
+  }
+ },
+ "footerSvgs": [
+  {
+   "aria": null,
+   "hidden": "true",
+   "role": null,
+   "w": 32,
+   "h": 32,
+   "cls": "size-8",
+   "outer": "<svg viewBox=\"0 0 16 16\" aria-hidden=\"true\" class=\"size-8\"><path class=\"fill-white\" d=\"M4 3h2v4H4zM10 3h2v4h-2z\"></path><path class=\"fill-white/40\" d=\"M4 8h2v4H4zM10 8h2v4h-2z\"></path><path class=\"fill-[#a98fff]\" d=\"M1 7h14v1H1z\"></path></svg>",
+   "parentHref": "https://playhorizon.dev/",
+   "parentTitle": null
+  },
+  {
+   "aria": null,
+   "hidden": "true",
+   "role": null,
+   "w": 24,
+   "h": 24,
+   "cls": "size-6",
+   "outer": "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-6\"><path d=\"M12.484 2.077a3.725 3.725 0 1 0 3.725 3.726 3.725 3.725 0 0 0-3.725-3.726zm-12.23.091a.182.182 0 0 0-.181.182v6.905a.182.182 0 0 0 .182.182h1.453a.182.182 0 0 0 .182-.182V4.44a.454.454 0 0 1 .455-.454h.454a.454.454 0 0 1 .454.454v2.994a.182.182 0 0 0 .182.182h1.453a.182.182 0 0 0 .182-.182V4.44a.454.454 0 0 1 .454-.454h.453a.454.454 0 0 1 .454.454l.002 4.816a.182.182 0 0 0 .182.182h1.453a.182.182 0 0 0 .182-.182V4.167a.182.182 0 0 0-.181-.182H7.34a.909.909 0 0 1-.908-.91l.001-.725a.182.182 0 0 0-.182-.182zm18.375 0a.182.182 0 0 0-.182.182v1.454a.182.182 0 0 0 .182.181h3.453v3.18a.454.454 0 0 1-.454.455h-1"
+  },
+  {
+   "aria": null,
+   "hidden": "true",
+   "role": null,
+   "w": 20,
+   "h": 20,
+   "cls": "size-5",
+   "outer": "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-5\"><path d=\"M0 0v11.408h11.408V0zm12.594 0v11.408H24V0zM0 12.594V24h11.408V12.594zm12.594 0V24H24V12.594z\"></path></svg>"
+  },
+  {
+   "aria": null,
+   "hidden": "true",
+   "role": null,
+   "w": 16,
+   "h": 16,
+   "cls": "size-4",
+   "outer": "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-4\"><path d=\"M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00-.2278-.1873l.0415-1.1845a.3442.3442 0 00-.49-.328l-1.076.491c-.0872-.0476-.1742-.0952-.2623-.1407l-.1903-1.1673A.3483.3483 0 0016.256.955l-.9597.6905a8.4867 8.4867 0 00-.2855-.086l-.414-1.1066a.3483."
+  },
+  {
+   "aria": null,
+   "hidden": "true",
+   "role": null,
+   "w": 16,
+   "h": 16,
+   "cls": "size-4",
+   "outer": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-4\"><path d=\"M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z\"></path></svg>",
+   "parentHref": "https://github.com/horizon-rust/horizon",
+   "parentTitle": null
+  }
+ ],
+ "sculkCard": {
+  "cardCls": "relative flow-root rounded-2xl bg-[radial-gradient(ellipse_at_78%_60%,rgba(92,201,242,0.2),transparent_55%),linear-gradient(100deg,#0a0f17,#0d151f_50%,#10283a)]",
+  "aria": null,
+  "role": null,
+  "labels": [
+   "24/7 Online.",
+   "Get your server now in under ~60 seconds!",
+   "(opens in a new tab)",
+   "HORIZON15Coupon copied to clipboard",
+   "HORIZON15",
+   "Coupon copied to clipboard"
+  ],
+  "wordmark": "<img alt=\"Sculk\" loading=\"lazy\" width=\"751\" height=\"164\" decoding=\"async\" data-nimg=\"1\" class=\"h-5 w-auto @[48rem]:h-6\" style=\"color:transparent\" srcset=\"/_next/image?url=%2Fmedia%2Fsculk-wordmark.webp&amp;w=828&amp;q=75 1x, /_next/image?url=%2Fmedia%2Fsculk-wordmark.webp&amp;w=1920&amp;q=75 2x\" src",
+  "closeBtn": "Hide this partner"
+ },
+ "hiddenClaude": {
+  "html": "<h2 id=\"contributors-title\" class=\"group mt-5 font-display text-[clamp(2rem,3.6vw,3rem)] leading-[1.08] font-semibold tracking-[-0.03em] text-balance text-white\"><span class=\"relative\">Built by <!-- -->199<!-- --> people.<span aria-hidden=\"true\" class=\"pointer-events-none absolute bottom-[0.2em] left-full ml-3 hidden translate-y-1 items-center gap-1.5 font-sans text-lg font-medium tracking-normal whitespace-nowrap text-[#d97757] opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:flex\">…and<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-[1.1em] transition-transform duration-700 group-hover:rotate-90\"><path d=\"m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-",
+  "spanStyle": "0",
+  "spanCls": "pointer-events-none absolute bottom-[0.2em] left-full ml-3 hidden translate-y-1 items-center gap-1.5 font-sans text-lg font-medium tracking-normal whitespace-nowrap text-[#d97757] opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:flex"
+ },
+ "drawnBy": "<div class=\"mx-auto w-full max-w-6xl px-6 lg:px-10\"><div class=\"grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-[auto_12rem_14rem]\"><div class=\"reveal mb-6 sm:col-span-2 lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:mb-0 lg:pl-4\"><p class=\"flex items-center gap-2.5 text-sm font-medium text-white/60\">Drawn by<svg viewBox=\"0 0 448 496\" aria-hidden=\"true\" class=\"h-4 w-auto\"><path fill=\"#702bfa\" d=\"M291 114v105l53-52h104L186 416v-95L0 496V277h118z\"></path><path fill=\"#efe9fb\" stroke=\"#efe9fb\" stroke-width=\"1.5\" d=\"M0 0h159v113L0 272zM291 0h157v167H344l-53 52zM448 167v329H291V316zM186 321v175H0z\"></path></svg><span class=\"sr-only\">Horizon</span></p><h2 id=\"gallery-title\" class=\"mt-5 font-display text-[clamp(2rem,3.6vw,3rem)] leading-[1.08] font-semibold tracking-[-0.03em] text-balance text-white\">The same game you love, <span class=\"text-accent\">6× faster.</span></h2><p class=\"mt-4 max-w-md text-[15px] leading-relaxed text-pretty text-white/60\">Every frame here was rendered by Horizon, with vanilla's block models, lighting, sky and fog.</p></div><figure class=\"reveal group relative aspect-video [clip-path:inset(0_round_1rem)] bg-white/[0.04] lg:aspect-auto sm:col-span-2 lg:col-start-1 lg:row-span-2 lg:row-start-1\"><img alt=\"A piglin with a golden sword in a crimson forest above a sea of lava in the Nether\" loading=\"lazy\" decoding=\"async\" data-nimg=\"fill\" class=\"object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03]\" style=\"position:abso",
+ "jsonld": [
+  "{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"WebSite\",\"@id\":\"https://playhorizon.dev/#website\",\"url\":\"https://playhorizon.dev\",\"name\":\"Horizon\",\"alternateName\":[\"Minecraft Rust Edition\",\"Horizon Minecraft\",\"Horizon launcher\"],\"description\":\"Minecraft: Java Edition 26.3 rewritten in Rust. Free, open source and tested against vanilla. Get the Horizon launcher for Windows, macOS and Linux.\",\"inLanguage\":\"en\",\"publisher\":{\"@id\":\"https://playhorizon.dev/#organization\"}},{\"@type\":\"Organization\",\"@id\":\"https://playhorizon.dev/#organization\",\"name\":\"Horizon\",\"url\":\"https://playhorizon.dev\",\"logo\":\"https://playhorizon.dev/icon-512.png\",\"founder\":{\"@type\":\"Person\",\"name\":\"Ludovic Marie\",\"url\":\"https://lu4ovic.com\"},\"sameAs\":[\"https://github.com/horizon-rust/horizon\",\"https://github.com/horizon-rust\",\"https://discord.gg/HcTeMZxe5E\"]},{\"@type\":\"SoftwareApplication\",\"@id\":\"https://playhorizon.dev/#horizon\",\"name\":\"Horizon\",\"alternateName\":[\"Minecraft Rust Edition\",\"Horizon Minecraft\",\"Horizon launcher\"],\"description\":\"Minecraft: Java Edition 26.3 rewritten in Rust. Free, open source and tested against vanilla. Get the Horizon launcher for Windows, macOS and Linux.\",\"url\":\"https://playhorizon.dev\",\"applicationCategory\":\"GameApplication\",\"applicationSubCategory\":\"Minecraft: Java Edition client\",\"operatingSystem\":\"Windows x64, macOS 11 or later on Apple Silicon, Linux x86-64\",\"softwareVersion\":\"0.2.97\",\"softwareRequirements\":\"A legally obtained copy of Minecraft: Java Edition 26.3\",\""
+ ],
+ "metaTags": [
+  "null=",
+  "viewport=width=device-width, initial-scale=1",
+  "theme-color=#100a1f",
+  "color-scheme=dark",
+  "next-size-adjust=",
+  "description=Minecraft: Java Edition 26.3 rewritten in Rust. Free, open source and tested against vanilla. Get the Horizon launcher f",
+  "application-name=Horizon",
+  "author=Ludovic Marie",
+  "keywords=Minecraft Rust Edition,Minecraft in Rust,Minecraft rewritten in Rust,Horizon Minecraft,Horizon launcher,Rust Minecraft c",
+  "creator=Ludovic Marie",
+  "publisher=Horizon",
+  "robots=index, follow",
+  "googlebot=index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1",
+  "category=games",
+  "format-detection=telephone=no, address=no, email=no",
+  "og:title=Horizon: Minecraft Rust Edition, Java 26.3 rewritten in Rust",
+  "og:description=Minecraft: Java Edition 26.3 rewritten in Rust. Free, open source and tested against vanilla. Get the Horizon launcher f",
+  "og:url=https://playhorizon.dev",
+  "og:site_name=Horizon",
+  "og:locale=en_US",
+  "og:image=https://playhorizon.dev/opengraph-image",
+  "og:image:width=1200",
+  "og:image:height=630",
+  "og:image:alt=Horizon: Minecraft: Java Edition 26.3, rebuilt in Rust",
+  "og:type=website",
+  "twitter:card=summary_large_image",
+  "twitter:title=Horizon: Minecraft Rust Edition, Java 26.3 rewritten in Rust",
+  "twitter:description=Minecraft: Java Edition 26.3 rewritten in Rust. Free, open source and tested against vanilla. Get the Horizon launcher f",
+  "twitter:image=https://playhorizon.dev/opengraph-image",
+  "twitter:image:alt=Horizon: Minecraft: Java Edition 26.3, rebuilt in Rust",
+  "twitter:image:width=1200",
+  "twitter:image:height=630"
+ ],
+ "linksRel": [
+  "stylesheet  /_next/static/chunks/1b5g4h2mnvmk2.css ",
+  "stylesheet  /_next/static/chunks/1954ozk_cgkuy.css ",
+  "preload script /_next/static/chunks/0om590q-tq0l9.js ",
+  "author  https://lu4ovic.com ",
+  "manifest  /manifest.webmanifest ",
+  "canonical  https://playhorizon.dev ",
+  "icon  /favicon.ico?favicon.0pxofhtp7svlu.ico image/x-icon",
+  "icon  /icon.svg?icon.3mw0fm7qhft3c.svg image/svg+xml",
+  "apple-touch-icon  /apple-icon.png?apple-icon.2yqc486e9-4gi.png image/png",
+  "preload font /_next/static/media/07a39a8a4660cc7c-s.p.0r6juujl39pe6.woff2 font/woff2",
+  "preload font /_next/static/media/605ce01b664af129-s.p.0wgildi0cnwt9.woff2 font/woff2",
+  "preload font /_next/static/media/8056169c9d560660-s.p.41rroleoq1br7.woff2 font/woff2"
+ ]
+}
