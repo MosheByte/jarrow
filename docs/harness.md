@@ -161,7 +161,7 @@ Runs one server with the probe and the mods under test and copies its dump to `-
 | `--mods <JARS>` | none | Mods under test, comma-separated or repeated. Omit for a probe-only run. A path that contains a comma must be given with its own `--mods` |
 | `--out <FILE>` | | Where the dump is written (only when the run completed) |
 | `--record <FILE>` | `--out` with `.run.json` | Where the run record is written (always). The server log is copied next to it as `<record>.log` |
-| `--work <DIR>` | `<cache>/work/<loader>-<game version>` | The server directory. It is cleared before the run, so it must be new, empty, or one `jarrow-harness` made (it holds a `.jarrow-harness-work` marker); anything else is refused |
+| `--work <DIR>` | `<cache>/work/<loader>-<game version>` | The server directory. It is cleared before the run, so it must be new, empty, inside `<cache>/work/`, or one `jarrow-harness` made elsewhere (it holds a `.jarrow-harness-work` marker); anything else is refused |
 
 What a run does, in order: hash the inputs; read the pinned loader version; check the EULA gate (closed: write a `not-run` record and stop); check `JAVA_HOME` and `java -version`; provision (a download failure gives a `not-run` record with `download_failed`); build a fresh server directory from the installed template (hard links, falling back to copies); put the loader's own mods (Fabric API on Fabric), the probe and the mods under test into `mods/`; write the fixed `server.properties` and `eula.txt`; start `java -Xmx3G -Djava.awt.headless=true -Djarrow.dump=<absolute path of jarrow-dump.json> <launch> nogui`; wait for a complete `jarrow-dump.json`; send `stop` on the console (kill after 60 s); classify the log and any crash reports; validate the dump against the schema and check that its loader, game version and seed are the run's.
 
@@ -272,7 +272,7 @@ Every download is pinned in `research-lock.json` with its publisher's hashes. A 
 <cache>/logs/                                    java -version output
 ```
 
-An install is reused when its record matches the loader, loader version and game version, its launch target exists, and its loader mods still hash as recorded; otherwise it is removed and installed again.
+An install is reused when its record matches the loader, loader version and game version, every file it recorded at install time is still there with the same size, and its loader mods still hash as recorded; otherwise it is removed and installed again. CI caches that save `target/` (the default cache lives in `target/jarrow-harness-cache`) can restore a cache with files missing, which is why the whole file list is checked.
 
 ## Loader noise and baselines
 
