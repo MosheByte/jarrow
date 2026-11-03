@@ -1,0 +1,21 @@
+tiny	2	0	official	intermediary	named
+	jarrow-fixture	hand-written for jarrow-mappings tests
+c	a	net/minecraft/class_1	net/minecraft/demo/Widget
+	c	A widget.\nIts second line has a tab:\there and a backslash: \\.
+	f	I	a	field_1	size
+		c	How big it is.
+	f	Lb;	b	field_2	gadget
+	m	(Lb;I)La;	a	method_1	combine
+		c	Combines a gadget with this widget.
+		p	1			gadget
+			c	The gadget to add.
+		p	2			amount
+		v	3	12	-1			result
+		v	4	20	2			counter
+			c	Counts loops.
+	m	()V	<init>	<init>	<init>
+c	b	net/minecraft/class_2	net/minecraft/demo/Gadget
+	m	()Lb;	a	method_2	copy
+	m	([Ljava/lang/String;J)[[Z	b	method_3	
+c	a$a	net/minecraft/class_1$class_3	net/minecraft/demo/Widget$Part
+	f	[[J	a	field_3	matrix

@@ -1,0 +1,477 @@
+# The nightly board (docs/board-pipeline.md, contract in docs/board.md).
+#
+#   build -> list -> shard x10 -> merge -> publish-cloudflare, publish-release, publish-ledger
+#                \-> list-release (only when the list was refetched)      -> publish-discussion
+#
+# One direction per run for now: DIRECTION below (Fabric to NeoForge first). Milestone M1, wave
+# 1: no converter exists, so every mod is red with "No converter yet (milestone M2)"; nothing
+# is green without a harness result.
+#
+# Secrets reach only their own service and only the step that needs them:
+#   CLOUDFLARE_API_TOKEN  wrangler (Cloudflare API) in publish-cloudflare; never echoed (D-021)
+#   BOT_DEPLOY_KEY        git push to github.com in publish-ledger; a 0600 file in RUNNER_TEMP,
+#                         removed by a trap, used only through GIT_SSH_COMMAND
+#   github.token          gh (GitHub API) for releases and the Discussion
+# The workflow has no pull_request trigger, so forks never see a secret; Dependabot runs skip
+# every job that needs one. Only main publishes.
+name: board
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      top:
+        description: "How many mods to list (a cached list with another size is refetched)"
+        type: string
+        default: "1000"
+      refresh_list:
+        description: "Refetch board-list.json from Modrinth even if the cached one is younger than 7 days"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: board
+  cancel-in-progress: false
+
+env:
+  DIRECTION: fabric-neoforge
+  GAME_VERSIONS: "1.21.1,1.21.11"
+  # Must equal the length of the shard matrix below.
+  SHARDS: "10"
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      run_id: ${{ steps.run.outputs.run_id }}
+      date: ${{ steps.run.outputs.date }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the toolchain from rust-toolchain.toml
+        run: rustup toolchain install && rustc --version
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Build jarrow-board
+        run: cargo build --release --locked -p jarrow-board
+      - name: Name the run
+        id: run
+        run: |
+          set -euo pipefail
+          day=$(date -u +%Y%m%d)
+          echo "run_id=nightly-$day" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          echo "Run nightly-$day"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: jarrow-board
+          path: target/release/jarrow-board
+          if-no-files-found: error
+          retention-days: 3
+
+  list:
+    name: list
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      refreshed: ${{ steps.cached.outputs.fresh != 'true' }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: jarrow-board
+          path: bin
+      - run: chmod +x bin/jarrow-board
+      - name: Reuse the cached list when it is younger than 7 days
+        id: cached
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TOP: ${{ inputs.top || '1000' }}
+          REFRESH: ${{ inputs.refresh_list || false }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$TOP" =~ ^[1-9][0-9]{0,3}$|^10000$ ]]; then
+            echo "::error::top must be a whole number from 1 to 10000"; exit 1
+          fi
+          fresh=false
+          if [ "$REFRESH" != "true" ] && gh release download board-list --repo "$REPO" \
+              --pattern board-list.json --dir cached 2>/dev/null; then
+            fetched=$(jq -r '.fetched_at' cached/board-list.json)
+            age=$(( $(date -u +%s) - $(date -u -d "$fetched" +%s) ))
+            same=$(jq -r --arg d "$DIRECTION" --arg v "$GAME_VERSIONS" --argjson t "$TOP" \
+              '(.direction == $d) and ((.game_versions | join(",")) == $v) and (.top == $t)' \
+              cached/board-list.json)
+            if [ "$age" -lt 604800 ] && [ "$same" = "true" ]; then
+              cp cached/board-list.json board-list.json
+              fresh=true
+              echo "Using the cached list fetched at $fetched."
+            else
+              echo "The cached list (fetched at $fetched) is stale or for other settings."
+            fi
+          else
+            echo "No cached list used."
+          fi
+          echo "fresh=$fresh" >> "$GITHUB_OUTPUT"
+      - name: Fetch the list from Modrinth
+        if: steps.cached.outputs.fresh != 'true'
+        env:
+          TOP: ${{ inputs.top || '1000' }}
+        run: |
+          bin/jarrow-board list --direction "$DIRECTION" --top "$TOP" \
+            --game-versions "$GAME_VERSIONS" --out board-list.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: board-list
+          path: board-list.json
+          if-no-files-found: error
+          retention-days: 7
+
+  list-release:
+    name: list-release
+    needs: list
+    if: needs.list.outputs.refreshed == 'true' && github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # the board-list release asset
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: board-list
+          path: list
+      - name: Keep the list as the asset of the board-list release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! gh release view board-list --repo "$REPO" > /dev/null 2>&1; then
+            gh release create board-list --repo "$REPO" --target "$GITHUB_SHA" --latest=false \
+              --title "Board mod list" \
+              --notes "board-list.json for the nightly board (docs/board.md): the mods and files the board tests, fetched from Modrinth at most once a week. Metadata only: no JAR."
+          fi
+          gh release upload board-list list/board-list.json --repo "$REPO" --clobber
+
+  shard:
+    name: shard (${{ matrix.shard }}/10)
+    needs: [build, list]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: rules
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: jarrow-board
+          path: bin
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: board-list
+          path: list
+      - name: Run the shard
+        env:
+          SHARD: ${{ matrix.shard }}
+          RUN_ID: ${{ needs.build.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          chmod +x bin/jarrow-board
+          # JARs go to a temporary directory and are deleted right after each one is processed.
+          bin/jarrow-board shard --list list/board-list.json --shard "$SHARD/$SHARDS" \
+            --out "shard-$SHARD.json" --reports-dir reports --run-id "$RUN_ID" \
+            --git-sha "$GITHUB_SHA" --rules-dir rules --work-dir "$RUNNER_TEMP/jars"
+          if find "$RUNNER_TEMP/jars" -name '*.jar' | grep -q .; then
+            echo "::error::a JAR was left behind"; exit 1
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: shard-${{ matrix.shard }}
+          path: |
+            shard-${{ matrix.shard }}.json
+            reports/
+          if-no-files-found: error
+          retention-days: 7
+
+  merge:
+    name: merge
+    needs: [build, shard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: jarrow-board
+          path: bin
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: shard-*
+          merge-multiple: true
+          path: in
+      - name: Merge the shards
+        run: |
+          set -euo pipefail
+          chmod +x bin/jarrow-board
+          bin/jarrow-board merge in --reports-dir in/reports --out-dir out
+          {
+            echo "### Board $(jq -r .run_id out/board.json)"
+            echo ""
+            echo "| Direction | Mods | Green | Yellow | Red | Top reason |"
+            echo "| --- | --- | --- | --- | --- | --- |"
+            jq -r '.directions[] | "| \(.direction) | \(.totals.mods) | \(.totals.green) | \(.totals.yellow) | \(.totals.red) | \(.top_reasons[0].label // "none") |"' out/board.json
+            echo ""
+            jq -r '"\(.stats.files) files, \(.stats.downloaded_bytes) bytes downloaded, \(.stats.download_failures) download failures; slowest shard \(.stats.max_shard_wall_ms / 1000 | floor) s."' out/board.json
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: board-out
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-cloudflare:
+    name: publish-cloudflare
+    needs: [build, merge]
+    if: github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER: npx --yes wrangler@4.157.0
+      KV_NAMESPACE_ID: c04b064aa29d46468c8573ea7072cdf8
+      RUN_ID: ${{ needs.build.outputs.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: infra
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: board-out
+          path: out
+      - name: Verify the Cloudflare token (wrangler whoami)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1
+          fi
+          # whoami prints the account e-mail; keep its output out of the public log.
+          out="$RUNNER_TEMP/whoami.txt"
+          if $WRANGLER whoami > "$out" 2>&1 && grep -q "$CLOUDFLARE_ACCOUNT_ID" "$out"; then
+            echo "Cloudflare token verified: wrangler whoami lists account $CLOUDFLARE_ACCOUNT_ID"
+          else
+            echo "::error::wrangler whoami failed or does not list account $CLOUDFLARE_ACCOUNT_ID"
+            rm -f "$out"
+            exit 1
+          fi
+          rm -f "$out"
+      - name: D1 board_runs and board_rows
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: $WRANGLER d1 execute jarrow --remote --yes --config infra/wrangler.toml --file out/cloudflare/d1-board.sql
+      - name: KV per-mod reports (report:<direction>:<project_id>:<game_version>)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: $WRANGLER kv bulk put out/cloudflare/kv-reports.json --namespace-id "$KV_NAMESPACE_ID" --remote
+      - name: R2 reports tarball
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          $WRANGLER r2 object put "jarrow-reports/reports/$RUN_ID.tar.gz" --file out/reports.tar.gz \
+            --content-type application/gzip --remote
+      # Last, so the site switches to the new board only once its reports are in place.
+      - name: KV board.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: $WRANGLER kv key put board.json --path out/board.json --namespace-id "$KV_NAMESPACE_ID" --remote
+
+  publish-release:
+    name: publish-release
+    needs: [build, merge]
+    if: github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # the board-latest and board-YYYYMMDD releases
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: board-out
+          path: out
+      - name: Replace the assets of board-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ needs.build.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          if ! gh release view board-latest --repo "$REPO" > /dev/null 2>&1; then
+            gh release create board-latest --repo "$REPO" --target "$GITHUB_SHA" --latest=false \
+              --title "Board: latest nightly" \
+              --notes "The latest nightly board (docs/board.md): board.json, board-summary.json and reports.tar.gz, replaced every night. Results and reports only: never a JAR, never decompiled code."
+          fi
+          gh release view board-latest --repo "$REPO" --json assets --jq '.assets[].name' |
+            while read -r asset; do
+              case "$asset" in
+                board.json|board-summary.json|reports.tar.gz) ;;
+                *) gh release delete-asset board-latest "$asset" --repo "$REPO" --yes ;;
+              esac
+            done
+          gh release upload board-latest out/board.json out/board-summary.json out/reports.tar.gz \
+            --repo "$REPO" --clobber
+          echo "board-latest now holds the assets of $RUN_ID."
+      - name: Keep board.json in the dated release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ needs.build.outputs.run_id }}
+          DATE: ${{ needs.build.outputs.date }}
+        run: |
+          set -euo pipefail
+          tag="board-${RUN_ID#nightly-}"
+          if gh release view "$tag" --repo "$REPO" > /dev/null 2>&1; then
+            gh release upload "$tag" out/board.json --repo "$REPO" --clobber
+          else
+            gh release create "$tag" out/board.json --repo "$REPO" --target "$GITHUB_SHA" --latest=false \
+              --title "Board $DATE" \
+              --notes "board.json of the nightly board run $RUN_ID, kept as history (docs/board.md)."
+          fi
+
+  publish-ledger:
+    name: publish-ledger
+    needs: [build, merge]
+    if: github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: board-out
+          path: ${{ runner.temp }}/board-out
+      - name: Commit the ledger as jarrow-bot and push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOT_DEPLOY_KEY: ${{ secrets.BOT_DEPLOY_KEY }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ needs.build.outputs.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          outputs=(ledger/inputs/board-summary.json LEDGER.md)
+          key="$RUNNER_TEMP/jarrow-bot-key"
+          hosts="$RUNNER_TEMP/github-known-hosts"
+          msg="$RUNNER_TEMP/commit-message.txt"
+          trap 'rm -f "$key"' EXIT
+          apply() {
+            mkdir -p ledger/inputs
+            cp "$RUNNER_TEMP/board-out/board-summary.json" ledger/inputs/board-summary.json
+            python tools/ledger.py
+          }
+          apply
+          if [ -z "$(git status --porcelain -- "${outputs[@]}")" ]; then
+            echo "The ledger is up to date."
+            exit 0
+          fi
+          if [ -z "$BOT_DEPLOY_KEY" ]; then
+            echo "::error::BOT_DEPLOY_KEY is missing, so the ledger cannot be pushed"
+            exit 1
+          fi
+          (umask 077 && printf '%s\n' "$BOT_DEPLOY_KEY" > "$key")
+          chmod 600 "$key"
+          unset BOT_DEPLOY_KEY
+          # GitHub's SSH host keys, read over HTTPS from the API rather than trusted on first use.
+          gh api meta --jq '.ssh_keys[] | "github.com " + .' > "$hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
+          remote="git@github.com:${REPO}.git"
+          git config user.name "jarrow-bot"
+          git config user.email "jarrow-bot@noreply.invalid"
+          {
+            echo "chore(ledger): nightly board $RUN_ID"
+            echo ""
+            echo "ledger/inputs/board-summary.json from the nightly board run"
+            echo "$RUN_URL, and LEDGER.md regenerated by tools/ledger.py."
+            echo ""
+            echo "Jarrow-Generated: board"
+            echo "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+          } > "$msg"
+          for attempt in 1 2 3; do
+            if [ -z "$(git status --porcelain -- "${outputs[@]}")" ]; then
+              echo "The ledger is up to date."
+              exit 0
+            fi
+            git add -- "${outputs[@]}"
+            git commit -q -F "$msg"
+            if git push -q "$remote" HEAD:main; then
+              echo "Pushed $(git rev-parse --short HEAD) to main as jarrow-bot."
+              exit 0
+            fi
+            echo "Push attempt $attempt failed; fetching main and applying the ledger on top of it."
+            git fetch -q "$remote" main
+            git reset -q --hard FETCH_HEAD
+            apply
+          done
+          echo "::error::Could not push the ledger after 3 attempts"
+          exit 1
+
+  publish-discussion:
+    name: publish-discussion
+    needs: [merge, publish-cloudflare, publish-release, publish-ledger]
+    if: github.ref == 'refs/heads/main' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      discussions: write # the "Nightly results" post
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: tools
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: board-out
+          path: out
+      - name: Post the nightly summary (once per date and direction)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/board_summary.py --board out/board.json
