@@ -106,18 +106,127 @@ def test_workflow_rules(name: str) -> None:
     assert "guaranteed" not in text.lower()
 
 
-def test_ci_runs_on_bot_branches() -> None:
-    text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
-    assert 'branches: [main, "bot/**"]' in text
+def on_block(text: str) -> str:
+    """The workflow's `on:` block, up to the next top-level key."""
+    m = re.search(r"^on:\n((?:[ #].*\n|\n)*)", text, re.MULTILINE)
+    assert m, "the workflow has an on: block"
+    return m.group(1)
+
+
+@pytest.mark.parametrize("name", ["ci.yml", "harness.yml"])
+def test_bot_pull_requests_can_start_ci_by_dispatch(name: str) -> None:
+    # tools/bot_pr.sh pushes with the workflow token, which starts no push or pull_request
+    # run, so it starts these two with `gh workflow run`.
+    text = (WORKFLOWS / name).read_text(encoding="utf-8")
+    assert re.search(r"^  workflow_dispatch:", on_block(text), re.MULTILINE), name
+    assert '"bot/**"' not in text
+
+
+def bot_pr_jobs(text: str) -> list[str]:
+    """The jobs (as text) that call tools/bot_pr.sh."""
+    jobs = re.split(r"^  (?=[a-z][\w-]*:\n)", text.split("\njobs:\n", 1)[1], flags=re.MULTILINE)
+    return [job for job in jobs if "tools/bot_pr.sh" in job]
+
+
+@pytest.mark.parametrize("name", ["contributors.yml", "board.yml"])
+def test_bot_commits_go_through_bot_pr_with_the_workflow_token(name: str) -> None:
+    text = (WORKFLOWS / name).read_text(encoding="utf-8")
+    jobs = bot_pr_jobs(text)
+    assert len(jobs) == 1, f"{name}: one job calls tools/bot_pr.sh"
+    job = jobs[0]
+    assert "if: github.ref == 'refs/heads/main'" in job
+    for permission in ("contents: write", "pull-requests: write", "actions: write"):
+        assert permission in job, f"{name}: the bot_pr job needs {permission}"
+    assert "GH_TOKEN: ${{ github.token }}" in job
+    # The deploy key and direct pushes are gone; GITHUB_TOKEN pushes the bot/ branch.
+    assert "BOT_DEPLOY_KEY" not in text and "GIT_SSH_COMMAND" not in text
+    assert "HEAD:main" not in text and "git push" not in text
+    assert "persist-credentials: false" in job
 
 
 def test_contributors_workflow_opens_a_pull_request_instead_of_pushing() -> None:
     text = (WORKFLOWS / "contributors.yml").read_text(encoding="utf-8")
     assert "bash tools/bot_pr.sh contributors" in text
-    assert "HEAD:main" not in text and "git push" not in text
     assert "python tools/contributors.py --ledger" in text and "python tools/ledger.py" in text
     for path in ("ledger/inputs/contributors.json", "LEDGER.md", "site/src/data/team.json"):
         assert path in text
+
+
+def test_deps_automerge_only_enables_auto_merge_for_the_dependency_bots() -> None:
+    text = (WORKFLOWS / "deps-automerge.yml").read_text(encoding="utf-8")
+    assert "\r" not in text
+    assert re.search(r"^permissions:\n  contents: read\n", text, re.MULTILINE)
+    assert re.search(r"^  pull_request_target:\n    types: \[opened, reopened, synchronize\]\n", on_block(text), re.M)
+    # pull_request_target runs with a write token: never check out, build or run PR code.
+    assert "actions/checkout" not in text and "uses:" not in text
+    assert "github.event.pull_request.head.sha" not in text and "head.ref" not in text
+    assert "github.event.pull_request.user.login == 'dependabot[bot]'" in text
+    assert "github.event.pull_request.user.login == 'renovate[bot]'" in text
+    assert "github.event.pull_request.head.repo.full_name == github.repository" in text
+    for permission in ("contents: write", "pull-requests: write"):
+        assert permission in text
+    commands = [line.strip() for block in run_blocks(text) for line in block.splitlines()]
+    gh_calls = [c for c in commands if c.startswith("gh ") or "$(gh " in c]
+    assert len(gh_calls) == 2
+    assert 'gh pr merge "$PR" --repo "$REPO" --auto' in gh_calls
+    # Untrusted values reach the script through env only, never through ${{ }} in run.
+    for block in run_blocks(text):
+        assert "${{" not in block
+
+
+def test_renovate_leaves_dependabot_ecosystems_alone() -> None:
+    config = json.loads((ROOT / "renovate.json").read_text(encoding="utf-8"))
+    managers = set(config["enabledManagers"])
+    # Dependabot keeps these (.github/dependabot.yml); Renovate must not open the same updates.
+    assert not managers & {"cargo", "npm", "github-actions", "pip_requirements", "pip-compile", "pep621"}
+    assert {"dockerfile", "gradle", "rust-toolchain", "custom.regex"} <= managers
+    dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    assert set(re.findall(r"package-ecosystem: ([\w-]+)", dependabot)) == {"cargo", "npm", "github-actions", "pip"}
+    assert config["automerge"] is True and config["platformAutomerge"] is True
+    # Of the Dockerfiles, only the devcontainer's: the ClusterFuzzLite builder is switched off.
+    off = [r for r in config["packageRules"] if r.get("enabled") is False]
+    assert len(off) == 1 and off[0]["matchManagers"] == ["dockerfile"]
+    assert off[0]["matchFileNames"] == [".clusterfuzzlite/**"]
+    rules = {rule.get("matchDepNames", [""])[0]: rule for rule in config["packageRules"]}
+    assert rules["typescript"]["allowedVersions"] == "<7"
+    assert rules["net.fabricmc.fabric-loom-remap"]["allowedVersions"] == "<1.18"
+
+
+def renovate_matches(manager: dict, path: str) -> list[dict[str, str]]:
+    """What one regex custom manager extracts from a repository file, like Renovate does."""
+    text = (ROOT / path).read_text(encoding="utf-8")
+    found = []
+    for pattern in manager["matchStrings"]:
+        # Renovate's matchStrings are JavaScript regexes; apart from the named groups, these use
+        # only syntax Python shares.
+        for m in re.finditer(pattern.replace("(?<", "(?P<"), text):
+            found.append(m.groupdict())
+    return found
+
+
+@pytest.mark.parametrize(
+    "path, dep, value",
+    [
+        ("Cargo.toml", "rust", None),
+        (".github/workflows/harness.yml", "gradle", None),
+        (".github/workflows/board.yml", "wrangler", "4.157.0"),
+        (".github/workflows/infra.yml", "wrangler", "4.157.0"),
+    ],
+)
+def test_renovate_regex_managers_find_their_pins(path: str, dep: str, value: str | None) -> None:
+    config = json.loads((ROOT / "renovate.json").read_text(encoding="utf-8"))
+    hits = []
+    for manager in config["customManagers"]:
+        patterns = [p.strip("/") for p in manager["managerFilePatterns"]]
+        if not any(re.search(p, path) for p in patterns):
+            continue
+        for groups in renovate_matches(manager, path):
+            name = groups.get("depName") or manager.get("depNameTemplate")
+            if name == dep:
+                hits.append(groups["currentValue"])
+    assert len(hits) == 1, (path, dep, hits)
+    if value is not None:
+        assert hits == [value]
 
 
 # ------------------------------------------------------------------ welcome.yml

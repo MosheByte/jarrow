@@ -7,9 +7,10 @@ The list is never edited by hand. This script writes four outputs from one set o
                               custom contribution types "agent", "bot" and "ci". It is also the
                               cache that --offline runs and failed GitHub lookups fall back on.
     README.md                 the all-contributors table between the ALL-CONTRIBUTORS-LIST
-                              markers, one sub-heading per group, the role line under each
-                              name. Only the text between the markers changes.
-    docs/team.md              the same three groups as a page, with roles and commit counts
+                              markers, one sub-heading per group, the commit count and the
+                              role line under each name. Only the text between the markers
+                              changes.
+    docs/team.md              the same three groups as a page, with commit counts and roles
     site/src/data/team.json   the same data for the site's /contributors and /about pages
 
 Usage:
@@ -55,8 +56,9 @@ Where the data comes from:
              left out, and the warning names only a commit SHA.
     Agents   every distinct agent named by a Co-Authored-By trailer (or as author): a model
              name (Claude Opus, Claude Sonnet, GPT, Codex, Gemini, Copilot, ...) or an agent
-             no-reply address. Count: commits that name it. Agents have no GitHub account of
-             their own here; they commit through the owner's account.
+             no-reply address. Count: commits that name it, the bots' commits included (they
+             keep the trailer). Agents have no GitHub account of their own here; they commit
+             through the owner's account.
     Bots     what acts on the repository: GitHub App installations when the token can list
              them (gh api repos/<repo>/installations, then user/installations; both need a
              GitHub App token and normally fail, which is logged), the apps behind the check
@@ -67,13 +69,21 @@ Where the data comes from:
              the jarrow-bot deploy key (gh api repos/<repo>/keys), and the automation defined in
              .github/: workflows (github-actions), dependabot.yml (dependabot), CodeQL, and
              Renovate, release-please or Socket only when their config file or app exists.
+             Count: commits on --rev whose author is the bot, by name ("...[bot]", or
+             jarrow-bot). A squash merge is authored by the pull request's author, so every
+             merged pull request that github-actions[bot] (tools/bot_pr.sh), dependabot[bot] or
+             renovate[bot] opened counts once for that bot.
+
+Every person, agent and bot shows its commit count, 0 included.
 
 Determinism: no clock (except the default --as-of day of --ledger) and no randomness, sorted
 output, LF line endings. "generated_at" is
 the committer date (UTC) of the newest counted commit, so reruns on the same history and the
-same GitHub state give identical bytes. Commits whose message carries the trailer
-"Jarrow-Generated: contributors" (the refresh commits .github/workflows/contributors.yml
-makes) are not counted at all, so a refresh never triggers another one.
+same GitHub state give identical bytes. Refresh commits (the trailer "Jarrow-Generated:
+contributors", made by .github/workflows/contributors.yml) newer than every other commit are
+left out, so a refresh never triggers another one. Once another commit lands on top of one,
+it counts like any commit: for github-actions[bot], its author, and for the agent its
+trailers name.
 
 When a GitHub lookup fails (no gh, no network, or a token without the scope: the nightly's
 token cannot list deploy keys), members that only that lookup could confirm are kept as
@@ -109,6 +119,7 @@ README_PATH = "README.md"
 TEAM_MD_PATH = "docs/team.md"
 TEAM_JSON_PATH = "site/src/data/team.json"
 KEY_ICON_PATH = "docs/assets/key.svg"
+DEPLOY_KEY_DOC = "docs/community-automation.md#the-deploy-key"
 OUTPUT_PATHS = (RC_PATH, README_PATH, TEAM_MD_PATH, TEAM_JSON_PATH)
 LEDGER_INPUT_PATH = "ledger/inputs/contributors.json"
 LEDGER_SCHEMA = 1
@@ -154,7 +165,8 @@ GROUPS = (
     (
         "bots",
         "Bots and automation",
-        "Every GitHub App, bot and workflow that acts on the repository, and what it does.",
+        "Every GitHub App, bot and workflow that acts on the repository, what it does, and the "
+        "commits on main it authored. A squash merge counts for the pull request's author.",
     ),
 )
 
@@ -266,7 +278,13 @@ def parse_person(value: str) -> tuple[str, str]:
 
 
 def read_history(root: Path, rev: str) -> list[Commit]:
-    """Commits reachable from rev, newest first, without the refresh commits."""
+    """Commits reachable from rev, newest first, without the refresh commits at the tip.
+
+    A refresh commit that no other commit has landed on top of yet is left out, so the refresh
+    it made stays up to date and never causes another one. Once another commit lands, the
+    refresh commit counts like any other (for github-actions[bot], and for the agent its
+    trailers name), so the counts follow GitHub's.
+    """
     fmt = (
         "%H%x1f%aN%x1f%aE%x1f%cN%x1f%cE%x1f%cI%x1f"
         "%(trailers:key=Co-Authored-By,valueonly,unfold,separator=%x1d)%x1f"
@@ -280,7 +298,7 @@ def read_history(root: Path, rev: str) -> list[Commit]:
             continue
         parts = (record.split("\x1f") + [""] * 8)[:8]
         sha, an, ae, cn, ce, date, coauthors, refresh = parts
-        if REFRESH_TRAILER_VALUE in {v.strip().lower() for v in refresh.split("\x1d")}:
+        if not commits and REFRESH_TRAILER_VALUE in {v.strip().lower() for v in refresh.split("\x1d")}:
             continue
         people = [parse_person(v) for v in coauthors.split("\x1d") if v.strip()]
         commits.append(Commit(sha.strip(), (an, ae), (cn, ce), date.strip(), people))
@@ -412,6 +430,7 @@ class RepoFiles:
     renovate: list[str]
     socket: list[str]
     release_please_files: list[str]
+    renovate_text: dict[str, str] = field(default_factory=dict)  # config path -> text
 
 
 RENOVATE_FILES = (
@@ -443,12 +462,14 @@ def read_repo_files(root: Path) -> RepoFiles:
         if text is not None:
             dependabot = text
             break
+    renovate = [p for p in RENOVATE_FILES if (root / p).is_file()]
     return RepoFiles(
         workflows=workflows,
         dependabot=dependabot,
-        renovate=[p for p in RENOVATE_FILES if (root / p).is_file()],
+        renovate=renovate,
         socket=[p for p in SOCKET_FILES if (root / p).is_file()],
         release_please_files=[p for p in RELEASE_PLEASE_FILES if (root / p).is_file()],
+        renovate_text={p: read_text(root / p) or "" for p in renovate},
     )
 
 
@@ -465,6 +486,7 @@ WORKFLOW_PURPOSES = {
     "codeql.yml": "CodeQL",
     "contributors.yml": "this list",
     "deploy-site.yml": "site deploy",
+    "deps-automerge.yml": "dependency auto-merge",
     "infra.yml": "infra apply",
     "labeler.yml": "PR labels",
     "mirror.yml": "GitLab mirror",
@@ -481,6 +503,7 @@ DEPLOY_KEY_PURPOSES = {
     "board.yml": "LEDGER and board-data commits",
     "contributors.yml": "the nightly refresh of this list",
 }
+BOT_COMMIT_PURPOSES = DEPLOY_KEY_PURPOSES
 ECOSYSTEMS = {
     "bundler": "Bundler", "cargo": "Cargo", "composer": "Composer", "docker": "Docker",
     "github-actions": "GitHub Actions", "gomod": "Go modules", "gradle": "Gradle",
@@ -524,20 +547,70 @@ def deploy_key_workflows(files: RepoFiles) -> list[str]:
     return [n for n, t in files.workflows.items() if re.search(r"secrets\.BOT_DEPLOY_KEY\b", t)]
 
 
+BOT_PR_CALL = re.compile(r"^[ \t]*(?:-[ \t]*)?(?:run:[ \t]*)?(?:bash |sh )?tools/bot_pr\.sh\b", re.MULTILINE)
+
+
+def bot_pr_workflows(files: RepoFiles) -> list[str]:
+    """Workflows that run tools/bot_pr.sh (a mention in a comment does not count)."""
+    return [n for n, t in files.workflows.items() if BOT_PR_CALL.search(t)]
+
+
 def role_github_actions(files: RepoFiles) -> str:
     if not files.workflows:
         return "Runs GitHub Actions jobs for this repository."
     purposes = dedupe([workflow_purpose(n, t) for n, t in files.workflows.items()])
-    return f"Runs the workflows in .github/workflows: {and_join(purposes)}."
+    role = f"Runs the workflows in .github/workflows: {and_join(purposes)}."
+    committers = bot_pr_workflows(files)
+    if committers:
+        what = and_join(
+            [f"{BOT_COMMIT_PURPOSES.get(n, workflow_purpose(n, files.workflows[n]))} ({n})" for n in committers]
+        )
+        role += f" Commits as github-actions[bot] through bot pull requests (tools/bot_pr.sh): {what}."
+    return role
+
+
+def automerge_note(files: RepoFiles, bot: str) -> str:
+    """How BOT's pull requests merge, when a workflow turns on auto-merge for them."""
+    workflows = [n for n, t in files.workflows.items() if f"'{bot}[bot]'" in t and "gh pr merge" in t]
+    if not workflows:
+        return ""
+    return f" They merge through the merge queue once ci-ok passes ({', '.join(workflows)})."
 
 
 def role_dependabot(files: RepoFiles) -> str:
     if files.dependabot is None:
-        return "Opens dependency update pull requests."
+        return "Opens dependency update pull requests." + automerge_note(files, "dependabot")
     found = re.findall(r"package-ecosystem:\s*['\"]?([\w-]+)", files.dependabot)
     names = dedupe([ECOSYSTEMS.get(e, e) for e in found])
     target = f" for {and_join(names)}" if names else ""
-    return f"Opens dependency update pull requests{target} (.github/dependabot.yml)."
+    return (
+        f"Opens dependency update pull requests{target} (.github/dependabot.yml)."
+        + automerge_note(files, "dependabot")
+    )
+
+
+RENOVATE_MANAGERS = {
+    "dockerfile": "Docker base images",
+    "gradle": "Gradle plugins and libraries",
+    "rust-toolchain": "the Rust toolchain",
+    "custom.regex": "versions its regex managers find in other files",
+}
+
+
+def role_renovate(files: RepoFiles) -> str:
+    managers: list[str] = []
+    for rel in files.renovate:
+        try:
+            config = json.loads(files.renovate_text.get(rel) or "")
+        except json.JSONDecodeError:
+            continue
+        if isinstance(config, dict) and isinstance(config.get("enabledManagers"), list):
+            managers = [m for m in config["enabledManagers"] if isinstance(m, str)]
+        break
+    names = dedupe([RENOVATE_MANAGERS.get(m, m) for m in managers])
+    target = f" for {and_join(names)}" if names else ""
+    where = f" ({files.renovate[0]})" if files.renovate else ""
+    return f"Opens dependency update pull requests{target}{where}." + automerge_note(files, "renovate")
 
 
 def role_codeql(files: RepoFiles) -> str:
@@ -556,11 +629,15 @@ def role_codeql(files: RepoFiles) -> str:
 def role_deploy_key(files: RepoFiles) -> str:
     users = deploy_key_workflows(files)
     if not users:
-        return "SSH deploy key with write access for jarrow-bot commits from Actions; no workflow uses it yet."
+        return (
+            "SSH deploy key with write access, kept only for a push to a protected branch, which "
+            "the workflow token cannot make. No workflow uses it; bot commits are made as "
+            "github-actions[bot]."
+        )
     def uses(names: list[str]) -> str:
         return "; ".join(f"{DEPLOY_KEY_PURPOSES.get(n, n)} ({n})" for n in names)
 
-    via_pr = [n for n in users if "tools/bot_pr.sh" in files.workflows[n]]
+    via_pr = [n for n in users if n in bot_pr_workflows(files)]
     direct = [n for n in users if n not in via_pr]
     parts = []
     if via_pr:
@@ -647,7 +724,7 @@ KNOWN_BOTS: tuple[KnownBot, ...] = (
         app_slugs=("renovate",),
         bot_logins=("renovate",),
         app_id=2740,
-        static_role="Opens dependency update pull requests.",
+        role=role_renovate,
     ),
     KnownBot(
         login="release-please",
@@ -1111,7 +1188,7 @@ class Collector:
                 profile = (
                     f"https://github.com/{self.repo_slug}/blob/{DEFAULT_BRANCH}/.github/workflows/{users[0]}"
                     if users
-                    else f"https://github.com/{self.repo_slug}/blob/{DEFAULT_BRANCH}/{TEAM_MD_PATH}"
+                    else f"https://github.com/{self.repo_slug}/blob/{DEFAULT_BRANCH}/{DEPLOY_KEY_DOC}"
                 )
             return Member(
                 login=known.login,
@@ -1249,10 +1326,6 @@ def contribution_links(m: Member, group_id: str, repo_slug: str) -> str:
     return " ".join(links)
 
 
-def show_commits(group_id: str, m: Member) -> bool:
-    return group_id in ("people", "agents") or m.commits > 0
-
-
 def render_readme_block(team: Team, repo_slug: str) -> str:
     width = f"{int(100 / PER_LINE * 100) / 100:.2f}%"
     lines = ["<!-- prettier-ignore-start -->", "<!-- markdownlint-disable -->"]
@@ -1272,10 +1345,13 @@ def render_readme_block(team: Team, repo_slug: str) -> str:
                     label = f"{img}<br />{label}"
                 if m.profile_url:
                     label = f'<a href="{esc(m.profile_url)}">{label}</a>'
-                parts = [label, f"<sub>{esc(m.role)}</sub>"]
-                if show_commits(group.id, m):
-                    parts.append(f"<sub>{commits_text(m.commits)}</sub>")
-                parts.append(contribution_links(m, group.id, repo_slug))
+                # The commit count sits right under the name, for every member, 0 included.
+                parts = [
+                    label,
+                    f"<sub>{commits_text(m.commits)}</sub>",
+                    f"<sub>{esc(m.role)}</sub>",
+                    contribution_links(m, group.id, repo_slug),
+                ]
                 lines.append(
                     f'      <td align="center" valign="top" width="{width}">{"<br />".join(parts)}</td>'
                 )
@@ -1322,8 +1398,12 @@ def render_team_md(team: Team) -> str:
         "[About](https://jarrow.pages.dev/about/) pages.",
         "",
         "Commit counts come from `git log` on `main`, up to the newest counted commit "
-        f"({team.generated_at}). The refresh commits that update this list are not counted. "
-        "A commit counts for every agent its trailers name.",
+        f"({team.generated_at}), and every member shows one, 0 included. A commit counts for "
+        "every agent its trailers name. A bot's count is the commits it authored: a squash merge "
+        "is authored by the pull request's author, so each merged pull request from Dependabot, "
+        "Renovate or a bot branch (github-actions[bot]) counts once. The refresh commit that "
+        "updates this list counts once another commit lands on top of it, so a refresh never "
+        "causes another one.",
         "",
     ]
     for group in team.groups:
@@ -1331,7 +1411,7 @@ def render_team_md(team: Team) -> str:
         if not group.members:
             out += ["None yet.", ""]
             continue
-        out += ["| | Who | Role | Commits | Contributions |", "| --- | --- | --- | ---: | --- |"]
+        out += ["| | Who | Commits | Role | Contributions |", "| --- | --- | ---: | --- | --- |"]
         for m in group.members:
             if m.icon == "key":
                 src = "assets/key.svg"
@@ -1344,7 +1424,7 @@ def render_team_md(team: Team) -> str:
             )
             who = f"[{md_cell(m.name)}]({m.profile_url})" if m.profile_url else md_cell(m.name)
             types = "; ".join(f"{TYPES[t].symbol} {TYPES[t].description}" for t in m.contributions)
-            out.append(f"| {img} | {who} | {md_cell(m.role)} | {m.commits} | {md_cell(types)} |")
+            out.append(f"| {img} | {who} | {m.commits} | {md_cell(m.role)} | {md_cell(types)} |")
         out.append("")
     return "\n".join(out)
 
