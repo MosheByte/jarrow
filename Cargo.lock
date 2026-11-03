@@ -384,6 +384,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "jarrow-classfile"
+version = "0.1.0"
+dependencies = [
+ "miniz_oxide",
+ "proptest",
+]
+
+[[package]]
 name = "jarrow-jar"
 version = "0.1.0"
 dependencies = [

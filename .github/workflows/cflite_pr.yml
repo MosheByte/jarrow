@@ -1,0 +1,54 @@
+# ClusterFuzzLite on pull requests: builds the cargo-fuzz targets in fuzz/ with
+# AddressSanitizer and fuzzes them for five minutes (docs/classfile.md, "Fuzzing").
+# A crash fails this workflow. It is not one of the jobs behind the required ci-ok check.
+# Only the built-in token is used (read-only, so fork and Dependabot PRs work the same way).
+# google/clusterfuzzlite publishes a single moving tag, v1; the SHA pins what it pointed at
+# on 2026-11-03.
+name: cflite-pr
+
+on:
+  pull_request:
+    paths:
+      - "crates/**"
+      - "fuzz/**"
+      - ".clusterfuzzlite/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/cflite_pr.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cflite-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    name: cflite-pr (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      # Reads the corpus that the weekly batch run stores as workflow artifacts.
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address]
+    steps:
+      - name: Build fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          language: rust
+          github-token: ${{ github.token }}
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          github-token: ${{ github.token }}
+          fuzz-seconds: 300
+          mode: code-change
+          sanitizer: ${{ matrix.sanitizer }}

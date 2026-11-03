@@ -1,0 +1,45 @@
+# ClusterFuzzLite batch fuzzing: once a week, fuzz every cargo-fuzz target in fuzz/ for an
+# hour with AddressSanitizer (docs/classfile.md, "Fuzzing"). The corpus and any crashes are
+# kept as workflow artifacts, which the pull-request run (cflite_pr.yml) starts from.
+# Only the built-in token is used. google/clusterfuzzlite publishes a single moving tag, v1;
+# the SHA pins what it pointed at on 2026-11-03.
+name: cflite-batch
+
+on:
+  schedule:
+    - cron: "41 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cflite-batch
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    name: cflite-batch (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      # Lists and downloads the previous run's corpus artifact.
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address]
+    steps:
+      - name: Build fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          language: rust
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          github-token: ${{ github.token }}
+          fuzz-seconds: 3600
+          mode: batch
+          sanitizer: ${{ matrix.sanitizer }}
