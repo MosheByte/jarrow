@@ -79,4 +79,20 @@ None of this exists yet. Until it does, the nightly is the only way to get a bui
 
 ## First nightly
 
-The first run starts right after `nightly.yml` merges into `main`. Its release, run and attestation links are recorded here once it has finished.
+`nightly.yml` merged on 2026-11-03 as [`ea0af33`](https://github.com/MosheByte/jarrow/commit/ea0af33aa4f245d05d026e4a1f424c9be0574b4d) and was then run twice by hand on `main` that day. The second run checked the same-day path: it moved the tag (to the same commit), rewrote the notes and replaced all five assets.
+
+| | Link |
+| --- | --- |
+| Release | [nightly-20261103](https://github.com/MosheByte/jarrow/releases/tag/nightly-20261103), "Nightly 2026-11-03 (ea0af33)" |
+| First run (created the release) | https://github.com/MosheByte/jarrow/actions/runs/41670170206 |
+| Same-day rerun (replaced it) | https://github.com/MosheByte/jarrow/actions/runs/41670924062 |
+| Attestation, first run | https://github.com/MosheByte/jarrow/attestations/63185312 |
+| Attestation, rerun (the current assets) | https://github.com/MosheByte/jarrow/attestations/63187171 |
+
+Checked from a maintainer machine after the runs:
+
+- `gh release view nightly-20261103 --repo MosheByte/jarrow`: a prerelease, not a draft and not "Latest", tag on `ea0af33`, with the four archives and `SHA256SUMS`.
+- `sha256sum --check --ignore-missing SHA256SUMS` passed for the downloaded `jarrow-x86_64-pc-windows-msvc.zip` and `jarrow-x86_64-unknown-linux-gnu.tar.gz`.
+- `gh attestation verify <archive> --repo MosheByte/jarrow --signer-workflow MosheByte/jarrow/.github/workflows/nightly.yml --source-ref refs/heads/main` exited 0 for both. The verified SLSA v1 provenance names `ea0af33`, `refs/heads/main` and the run that built the file.
+
+The two runs built the same commit on fresh runners. The Linux and both macOS archives came out byte-identical, so `gh attestation verify` on the Linux archive finds both runs' attestations. The Windows zip differed between the runs. Only 24 bytes of `jarrow.exe` differ, all written by the MSVC linker: the link timestamp in the PE header and debug directory, and the PDB GUID.
