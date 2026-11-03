@@ -1,0 +1,74 @@
+// The Fabric probe, built with Fabric Loom against Mojang's official names and remapped to
+// intermediary for production, like any Fabric mod.
+
+plugins {
+    id 'net.fabricmc.fabric-loom-remap'
+}
+
+def probe = rootProject.jarrowProbe
+def pins = rootProject.jarrowPins('fabric')
+
+base {
+    archivesName = "jarrow-probe-fabric-${probe.gameVersion}"
+}
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs(probe.commonDirs)
+        }
+    }
+    test {
+        java {
+            srcDirs(probe.testDirs)
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${probe.gameVersion}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${pins.loader.version}"
+    // Only the lifecycle events module is needed at compile time. The harness puts the full,
+    // hash-pinned Fabric API jar from research-lock.json next to the probe at run time.
+    modImplementation fabricApi.module('fabric-lifecycle-events-v1', pins.api.version)
+
+    testImplementation platform('org.junit:junit-bom:6.1.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+def metadata = [
+        version      : project.version,
+        gameVersion  : probe.gameVersion,
+        loaderVersion: pins.loader.version,
+        javaRelease  : probe.javaRelease,
+]
+
+processResources {
+    inputs.properties(metadata)
+    filesMatching('fabric.mod.json') {
+        expand(metadata)
+    }
+    from(probe.license)
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(probe.javaRelease)
+    targetCompatibility = JavaVersion.toVersion(probe.javaRelease)
+}
+
+// The shared tests (common/src/test/java) run here; the code under test is the same source on
+// every loader. This block comes after the Loom plugin's own test set-up, so it wins.
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    // The game's log4j2.xml is on the test classpath and writes logs/ into the working
+    // directory, so the tests run inside build/.
+    def work = layout.buildDirectory.dir('test-work').get().asFile
+    workingDir = work
+    doFirst { work.mkdirs() }
+}

@@ -1,0 +1,61 @@
+// The NeoForge probe, built with ModDevGradle. NeoForge runs on Mojang's names, so the jar is
+// used as compiled; there is no remapping step.
+
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev'
+}
+
+def probe = rootProject.jarrowProbe
+def pins = rootProject.jarrowPins('neoforge')
+def modsToml = pins.mods_toml
+if (modsToml == null) {
+    throw new GradleException("research-lock.json has no neoforge.mods_toml pins for game version ${probe.gameVersion}.")
+}
+
+base {
+    archivesName = "jarrow-probe-neoforge-${probe.gameVersion}"
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs(probe.commonDirs)
+        }
+    }
+}
+
+neoForge {
+    enable {
+        version = pins.version
+        // The probe only needs to compile against NeoForge. Skipping NeoForm's decompile and
+        // recompile step keeps the build fast and keeps decompiled game sources off this machine.
+        disableRecompilation = true
+    }
+    mods {
+        jarrow_probe {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+def metadata = [
+        version          : project.version,
+        modLoader        : modsToml.modLoader,
+        loaderVersion    : modsToml.loaderVersion,
+        neoforgeRange    : modsToml.neoforge_dependency_range,
+        minecraftRange   : modsToml.minecraft_dependency_range,
+]
+
+processResources {
+    inputs.properties(metadata)
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(metadata)
+    }
+    from(probe.license)
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(probe.javaRelease)
+    targetCompatibility = JavaVersion.toVersion(probe.javaRelease)
+}
