@@ -20,7 +20,7 @@ Status columns:
 | GitHub Pages | Rustdoc API reference | `POST repos/MosheByte/jarrow/pages build_type=workflow` returned `https://moshebyte.github.io/jarrow/` | Connected | Deployed by `pages.yml`. |
 | Cloudflare (wrangler 4.157.0, OAuth) | Pages site, Workers, D1, KV, R2, Turnstile, Browser Rendering | `wrangler whoami`: one standard account, scopes include pages, workers, d1, workers_kv, browser, challenge-widgets. `d1 list`, `kv namespace list`, `r2 bucket list`, `pages project list` succeeded | Connected | Account id `e9b8acf2e89a1de289a1ee4abb0f3f8d` (repo variable `CLOUDFLARE_ACCOUNT_ID`). The account also hosts unrelated projects, so every Jarrow resource is prefixed `jarrow`. Jarrow never touches them. |
 | Cloudflare API token for CI | Deploys, infra apply and board writes from GitHub Actions | The owner set the secret `CLOUDFLARE_API_TOKEN` on 2026-11-03 (a broad account token). Every workflow verifies it with `wrangler whoami` before use | Connected | Used by deploy-site.yml and infra.yml, and later by board.yml (D-021). |
-| crates.io | Publish the `jarrow` crate | `~/.cargo/credentials.toml` absent. `GET crates.io/api/v1/crates/jarrow` returned "does not exist" (the name is free) | Needs the owner | Owner creates a token. The `claim-names.yml` workflow publishes once it is set (D-012). |
+| crates.io | Publish the `jarrow` crate | `~/.cargo/credentials.toml` absent. `GET crates.io/api/v1/crates/jarrow` returned "does not exist" (the name is free) | Needs the owner | Owner creates a token. A publish workflow (M5, not written yet) uses it (D-012). |
 | npm | Publish the `jarrow` WASM package | `npm whoami` returned `ENEEDAUTH`. `GET registry.npmjs.org/jarrow` returned "Not found" (the name is free) | Needs the owner | Same flow as crates.io (D-012). |
 | Rust 1.99.1, rustup 1.29.1 | Engine | `cargo --version`, `rustc --version` | Connected | Target `wasm32-unknown-unknown` comes from `rust-toolchain.toml`. |
 | Node 24.20 / npm 11.19 | Site build | `node --version` | Connected | |
@@ -81,12 +81,12 @@ Status columns:
 | `CLOUDFLARE_ACCOUNT_ID` | Actions variable | MosheByte/jarrow | agent | deploy-site.yml, board ingest |
 | `SITE_URL` | Actions variable | MosheByte/jarrow | agent | site build, board summary |
 | `CLOUDFLARE_API_TOKEN` | Actions secret | MosheByte/jarrow | owner (set 2026-11-03) | deploy-site.yml, infra.yml, board.yml |
-| `CARGO_REGISTRY_TOKEN` | Actions secret | MosheByte/jarrow | owner | claim-names.yml, release.yml |
-| `NPM_TOKEN` | Actions secret | MosheByte/jarrow | owner | claim-names.yml, release.yml |
+| `CARGO_REGISTRY_TOKEN` | Actions secret | MosheByte/jarrow | owner | release.yml (M5, not written yet) |
+| `NPM_TOKEN` | Actions secret | MosheByte/jarrow | owner | release.yml (M5, not written yet) |
 | `GITLAB_MIRROR_TOKEN` | Actions secret | MosheByte/jarrow | owner | mirror.yml |
 | `GITLAB_MIRROR_PATH` | Actions variable | MosheByte/jarrow | agent (M5) | mirror.yml |
 | `DISCORD_WEBHOOK_URL` | Actions secret | MosheByte/jarrow | owner | board.yml, release.yml |
 | `MINECRAFT_EULA_ACCEPTED` | Actions secret | MosheByte/jarrow | owner (set 2026-11-03) | harness.yml, board.yml |
-| `BOT_DEPLOY_KEY` | Actions secret (SSH deploy key, write) | MosheByte/jarrow | agent (generated 2026-11-03; rotate by replacing the deploy key) | board.yml pushes `board-data` and bot commits of LEDGER.md |
+| `BOT_DEPLOY_KEY` | Actions secret (SSH deploy key, write) | MosheByte/jarrow | agent (generated 2026-11-03; rotate by replacing the deploy key) | board.yml pushes `board-data` and bot commits of LEDGER.md; contributors.yml pushes the nightly refresh of the "Who works on Jarrow" list |
 | `HOMEBREW_TAP_TOKEN` | Actions secret | MosheByte/jarrow | owner | release.yml |
 | `PROJECT_TOKEN` | Actions secret | MosheByte/jarrow | owner (optional) | roadmap project sync |

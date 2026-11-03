@@ -54,9 +54,9 @@ When you create a crate, add or update its row here and in `docs/architecture.md
 | `rules/fabric-neoforge/<game-version>/` | Rule tables (TOML), one file per API area, plus `rules/SOURCES.md` |
 | `site/` | Astro + Starlight site on Cloudflare Pages; `site/wrangler.toml` holds the Pages bindings (amendment A-5) |
 | `site/src/styles/tokens.css` | Generated from `crates/report`. Never edit it by hand: change the tokens in `crates/report/src/tokens.rs`, then run `JARROW_BLESS=1 cargo test -p jarrow-report --test tokens_current`. Without `JARROW_BLESS`, that test fails when the file drifts. `jarrow tokens` prints the same CSS |
-| `tools/` | Python tools: `pr_ready.py`, `ledger.py`, `board_summary.py`, research scripts; tests in `tools/tests/`; Tier B job in `tools/tierb/` (M4) |
+| `tools/` | Python tools: `pr_ready.py`, `ledger.py`, `board_summary.py`, `contributors.py` (the "Who works on Jarrow" list, D-028), research scripts; tests in `tools/tests/`; Tier B job in `tools/tierb/` (M4) |
 | `tests/fixtures/` | Permissively licensed sample mods, vendored with their LICENSE, and golden outputs |
-| `docs/` | `architecture.md`, `harness.md`, `rules.md`, `legal.md`, `telemetry.md`, `spec-amendments.md`, `research/`, `journal/` |
+| `docs/` | `architecture.md`, `harness.md`, `rules.md`, `legal.md`, `telemetry.md`, `spec-amendments.md`, `team.md` (generated), `research/`, `journal/` |
 | `infra/` | `INVENTORY.md`, `TODO-OWNER.md`, Worker configs other than the Pages one, D1 migrations, dashboards and monitors as code |
 | `.github/` | Workflows, issue forms, PR template, CODEOWNERS, FUNDING.yml, labeler and Dependabot config |
 
@@ -102,6 +102,7 @@ In each case: write what you need in `infra/TODO-OWNER.md`, use the fallback, an
 - Never commit decompiled source, and never let it reach a log, an issue, a model outside the Tier B job, or an analytics or error service.
 - Never touch `research-lock.json` without a `D-` entry in `DECISIONS.md` that says why.
 - Never hand-edit `LEDGER.md`. It is written only by running `tools/ledger.py`.
+- Never hand-edit the "Who works on Jarrow" list: the README section between the `ALL-CONTRIBUTORS-LIST` markers, `docs/team.md`, `site/src/data/team.json` and `.all-contributorsrc`. `tools/contributors.py` writes all four, and `contributors.yml` refreshes them every night. To change a role or a group, change the script.
 - Every commit carries `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - After M0, pull requests only. Branch, open a PR, let CI merge it with auto-merge (squash, linear history). Never push to `main`.
 - Re-run the environment discovery protocol at the start of each session and update `infra/INVENTORY.md`.
@@ -124,5 +125,6 @@ In each case: write what you need in `infra/TODO-OWNER.md`, use the fallback, an
 | `infra/INVENTORY.md` | Every service: Connected, Self-configurable or Needs the owner | The lead agent, every session |
 | `infra/TODO-OWNER.md` | Exact steps only the owner can take | The lead agent |
 | `LEDGER.md` | Numbers from the last nightly | `tools/ledger.py` only |
+| `docs/team.md` | Who works on Jarrow: people, agents, bots and automation | `tools/contributors.py` only |
 | `ROADMAP.md` | Milestones and their status | Updated when a milestone moves |
 | `docs/journal/<date>.md` | Weekly two-paragraph note for the owner | The agent |

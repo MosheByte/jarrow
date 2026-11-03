@@ -318,8 +318,9 @@ class FakePublishers:
         self._artifact(vf)
 
     def _key(self, url: str) -> str:
-        if "/version?" in url and "api.modrinth.com" in url:
-            query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+        parts = urllib.parse.urlsplit(url)
+        if parts.hostname == "api.modrinth.com" and parts.path.endswith("/version") and parts.query:
+            query = urllib.parse.parse_qs(parts.query)
             game = json.loads(query["game_versions"][0])[0]
             assert json.loads(query["loaders"][0]) == ["fabric"]
             return url.split("?", 1)[0] + "?" + game

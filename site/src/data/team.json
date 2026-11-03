@@ -1,0 +1,165 @@
+{
+  "generated_at": "2026-11-03T15:26:28Z",
+  "groups": [
+    {
+      "id": "people",
+      "title": "People",
+      "note": "Every person who authored or committed a commit on main, shown by GitHub login, plus the project owner.",
+      "members": [
+        {
+          "login": "MosheByte",
+          "name": "MosheByte",
+          "avatar_url": "https://avatars.githubusercontent.com/u/348820118?v=4",
+          "profile_url": "https://github.com/MosheByte",
+          "role": "Owner: sets direction, holds the accounts. Commits through this account are written by the agent and disclosed in their trailers.",
+          "contributions": [
+            "ideas",
+            "projectManagement"
+          ],
+          "commits": 3,
+          "icon": null
+        }
+      ]
+    },
+    {
+      "id": "agents",
+      "title": "Agents",
+      "note": "Agents have no GitHub account of their own here. They act through the owner's account, and every commit they write names them in a Co-Authored-By trailer; the counts come from those trailers.",
+      "members": [
+        {
+          "login": "claude-opus-5-5",
+          "name": "Claude Opus 5.5",
+          "avatar_url": "https://avatars.githubusercontent.com/u/76263028?v=4",
+          "profile_url": "https://www.anthropic.com/claude",
+          "role": "Engineering: writes the code, docs and infrastructure; co-author of every commit it touches",
+          "contributions": [
+            "agent",
+            "code",
+            "doc",
+            "test",
+            "infra"
+          ],
+          "commits": 3,
+          "icon": null
+        }
+      ]
+    },
+    {
+      "id": "bots",
+      "title": "Bots and automation",
+      "note": "Every GitHub App, bot and workflow that acts on the repository, and what it does.",
+      "members": [
+        {
+          "login": "github-advanced-security",
+          "name": "CodeQL",
+          "avatar_url": "https://avatars.githubusercontent.com/in/57789?v=4",
+          "profile_url": "https://codeql.github.com",
+          "role": "Code scanning with CodeQL (codeql.yml) for Actions workflows, JavaScript/TypeScript, Python and Rust.",
+          "contributions": [
+            "ci",
+            "security"
+          ],
+          "commits": 0,
+          "icon": null
+        },
+        {
+          "login": "dependabot",
+          "name": "Dependabot",
+          "avatar_url": "https://avatars.githubusercontent.com/in/29110?v=4",
+          "profile_url": "https://github.com/apps/dependabot",
+          "role": "Opens dependency update pull requests for Cargo, npm, GitHub Actions and pip (.github/dependabot.yml).",
+          "contributions": [
+            "bot",
+            "maintenance"
+          ],
+          "commits": 0,
+          "icon": null
+        },
+        {
+          "login": "github-actions",
+          "name": "GitHub Actions",
+          "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
+          "profile_url": "https://github.com/apps/github-actions",
+          "role": "Runs the workflows in .github/workflows: CI, CodeQL, this list, site deploy, infra apply, PR labels, GitLab mirror, API docs, Scorecard and stale sweep.",
+          "contributions": [
+            "ci",
+            "infra"
+          ],
+          "commits": 0,
+          "icon": null
+        },
+        {
+          "login": "jarrow-bot",
+          "name": "jarrow-bot (deploy key)",
+          "avatar_url": null,
+          "profile_url": "https://github.com/MosheByte/jarrow/blob/main/.github/workflows/contributors.yml",
+          "role": "SSH deploy key with write access. Actions pushes jarrow-bot commits with it: the nightly refresh of this list (contributors.yml).",
+          "contributions": [
+            "bot"
+          ],
+          "commits": 0,
+          "icon": "key"
+        },
+        {
+          "login": "socket-security",
+          "name": "Socket Security",
+          "avatar_url": "https://avatars.githubusercontent.com/in/156372?v=4",
+          "profile_url": "https://github.com/apps/socket-security",
+          "role": "Dependency review: reports supply-chain risk in the project's dependencies and in those a pull request adds or changes.",
+          "contributions": [
+            "bot",
+            "security"
+          ],
+          "commits": 0,
+          "icon": null
+        }
+      ]
+    }
+  ],
+  "types": {
+    "agent": {
+      "symbol": "🤖",
+      "description": "AI agent"
+    },
+    "bot": {
+      "symbol": "⚙️",
+      "description": "Bot or GitHub App"
+    },
+    "ci": {
+      "symbol": "🔁",
+      "description": "CI and scheduled workflows"
+    },
+    "code": {
+      "symbol": "💻",
+      "description": "Code"
+    },
+    "doc": {
+      "symbol": "📖",
+      "description": "Documentation"
+    },
+    "test": {
+      "symbol": "⚠️",
+      "description": "Tests"
+    },
+    "infra": {
+      "symbol": "🚇",
+      "description": "Infrastructure (Hosting, Build-Tools, etc)"
+    },
+    "security": {
+      "symbol": "🛡️",
+      "description": "Security"
+    },
+    "maintenance": {
+      "symbol": "🚧",
+      "description": "Maintenance"
+    },
+    "ideas": {
+      "symbol": "🤔",
+      "description": "Ideas, Planning, & Feedback"
+    },
+    "projectManagement": {
+      "symbol": "📆",
+      "description": "Project Management"
+    }
+  }
+}
