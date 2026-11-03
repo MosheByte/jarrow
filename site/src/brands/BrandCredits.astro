@@ -1,0 +1,36 @@
+---
+// The credit lines the licences of the marks on a page ask for (CC BY for the Rust logo, the
+// MIT notice for the Octicon), as plain sentences. Put it in the footer's licences paragraph of
+// every page that shows one of those marks, listing the brands the page shows:
+//
+//   <BrandCredits brands={['github', 'rust']} />
+//
+// Brands without a credit (every text brand) render nothing. Links leave the site, so they open
+// in a new tab and say so to screen readers.
+import { brand, type BrandId } from './brands.ts';
+
+interface Props {
+  brands: BrandId[];
+  class?: string;
+}
+
+const { brands, class: className } = Astro.props;
+const credits = [...new Set(brands)].flatMap((id) => {
+  const credit = brand(id).mark?.credit;
+  return credit ? [credit] : [];
+});
+const newTab = ' (opens in a new tab)';
+---
+
+{
+  credits.length > 0 && (
+    <p class:list={['brand-credits', className]}>
+      {credits.map((credit, i) => (
+        <>
+          {i > 0 && ' '}
+          {credit.text} Files: <a href={credit.sourceUrl} target="_blank" rel="noopener noreferrer">{credit.sourceLabel}<span class="sr-only">{newTab}</span></a>. Licence: <a href={credit.licenceUrl} target="_blank" rel="noopener noreferrer">{credit.licenceLabel}<span class="sr-only">{newTab}</span></a>.
+        </>
+      ))}
+    </p>
+  )
+}
