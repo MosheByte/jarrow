@@ -1,13 +1,15 @@
 # Refreshes "Who works on Jarrow" every night: the README section between the all-contributors
 # markers, .all-contributorsrc, docs/team.md and site/src/data/team.json. tools/contributors.py
-# writes all four; nobody edits them by hand. The same job writes the contributor numbers for
-# LEDGER.md (tools/contributors.py --ledger, then tools/ledger.py).
+# writes all four, with each member's commit count on main; nobody edits them by hand. The same
+# job writes the contributor numbers for LEDGER.md (tools/contributors.py --ledger, then
+# tools/ledger.py).
 # Every change goes through a pull request, the bot's included. tools/bot_pr.sh commits the
-# outputs as jarrow-bot on a bot/contributors-<date> branch, pushes it with the BOT_DEPLOY_KEY
-# deploy key (so ci.yml runs on the push and the head commit gets ci-ok), opens the pull request
-# with the workflow token and turns on auto-merge. Nothing is pushed to main. The commit carries
-# the trailer "Jarrow-Generated: contributors", which tools/contributors.py leaves out of every
-# count, so a refresh never causes another refresh. See docs/community-automation.md.
+# outputs as github-actions[bot] on a bot/contributors-<date> branch, pushes it and opens the
+# pull request with the workflow token, turns on auto-merge, and starts ci.yml and harness.yml
+# on the branch with workflow_dispatch (a push made with the workflow token starts no
+# workflow), so the head commit gets ci-ok. Nothing is pushed to main. The commit carries the
+# trailer "Jarrow-Generated: contributors", which tools/contributors.py leaves out of every
+# count, so a refresh never causes another one. See docs/community-automation.md.
 name: contributors
 
 on:
@@ -25,14 +27,15 @@ concurrency:
 jobs:
   refresh:
     name: refresh
-    # Only main's copy of this workflow may use the deploy key.
+    # Only main's copy of this workflow opens refresh pull requests.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      # Enabling auto-merge needs write access to contents. The token never pushes: the branch
-      # goes up with the deploy key, and the main ruleset accepts changes only through a PR.
+      # Push the bot/ branch and enable auto-merge. The main ruleset accepts changes to main
+      # only through a pull request, so the token cannot push to main itself.
       contents: write
+      actions: write # gh workflow run ci.yml and harness.yml on the bot branch
       checks: read # the GitHub Apps behind check suites and check runs on main
       pull-requests: write # open the bot pull request; read bot and merged PR authors
     steps:
@@ -55,7 +58,6 @@ jobs:
       - name: Open the refresh pull request
         env:
           GH_TOKEN: ${{ github.token }}
-          BOT_DEPLOY_KEY: ${{ secrets.BOT_DEPLOY_KEY }}
         run: |
           set -euo pipefail
           body="$RUNNER_TEMP/contributors-pr.md"
