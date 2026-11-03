@@ -10,6 +10,7 @@ Every icon, logo and typeface on the site, where it comes from, and its license.
 | Favicon | Lucide [`arrow-right-left`](https://lucide.dev/icons/arrow-right-left), paths unmodified, stroke width 2.5 for small sizes, coloured with `--jw-text` (`public/favicon.svg`) | ISC | Browser tab |
 | GitHub mark | [Simple Icons](https://simpleicons.org) via the `simple-icons` package (`siGithub`) | Package [CC0-1.0](https://github.com/simple-icons/simple-icons/blob/develop/LICENSE.md); the mark itself is GitHub's, used under [GitHub's logo guidelines](https://github.com/logos) to label links to the repository | Header, docs header, home page button |
 | Docs interface icons (search, menu, theme select, chevrons) | Built into [Starlight](https://starlight.astro.build) | MIT | Docs pages only. They are part of the docs framework, not drawn for this project |
+| Deploy-key icon | Lucide [`key`](https://lucide.dev/icons/key), unmodified, from lucide 1.67.0: `docs/assets/key.svg` for the README and docs/team.md, `@lucide/astro` on the site; Lucide marks this icon as derived from Feather | [ISC](https://lucide.dev/license) (Feather part: MIT) | Avatar of the jarrow-bot deploy key in the README, docs/team.md and the /about page |
 
 Lucide removed brand icons from its set, so the GitHub mark comes from Simple Icons, the project's source for brand logos.
 
@@ -41,6 +42,11 @@ Self-hosted through [Fontsource](https://fontsource.org); no font is loaded from
 
 ## Third-party images
 
-One: the GitHub Actions status badge for `ci.yml` on the home page, loaded from github.com. It is the repository's own CI status. Everything else on the site is text and CSS.
+Two kinds, both from GitHub:
+
+- The GitHub Actions status badge for `ci.yml` on the home page, loaded from github.com. It is the repository's own CI status.
+- The avatars in "Who works on Jarrow" on the /about page (and in the README and docs/team.md), hot-linked from avatars.githubusercontent.com: each GitHub account's or GitHub App's own avatar, as GitHub serves it. The agents' avatar is the avatar of their maker's GitHub organization. The build fails if `site/src/data/team.json` names an avatar on any other host. The deploy key has no avatar and gets the Lucide icon above.
+
+Everything else on the site is text and CSS.
 
 Mod icons on the board, once it has rows, will be hot-linked from each mod's Modrinth page with attribution and a link back, never copied into the repository.

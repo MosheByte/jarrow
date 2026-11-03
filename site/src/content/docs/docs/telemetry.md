@@ -3,7 +3,7 @@ title: Telemetry
 description: What Jarrow collects (nothing yet) and what it plans to collect.
 ---
 
-**Nothing is collected today.** This site loads no analytics script, sets no cookies, and has no accounts. The only data it serves is the public board, which holds no information about visitors. One request goes elsewhere: the home page shows the CI status badge, which your browser loads from github.com.
+**Nothing is collected today.** This site loads no analytics script, sets no cookies, and has no accounts. The only data it serves is the public board, which holds no information about visitors. Two kinds of request go elsewhere, both to GitHub: the home page shows the CI status badge, which your browser loads from github.com, and the [About](/about/) page shows the avatars of the people, agents and bots that work on Jarrow, which your browser loads from GitHub without sending a referrer.
 
 ## What is planned
 

@@ -93,7 +93,7 @@ Every default the build agent takes is logged here. The project requires this lo
 ## D-012 — Name claims on crates.io and npm ship real code, published by a workflow
 
 **Date:** 2026-11-03
-**Decision:** The 0.0.1 releases that claim `jarrow` contain working code from this repository, not an empty placeholder: the CLI (`--version`, `tokens`) and `jarrow-report` on crates.io, and the design tokens package on npm. `claim-names.yml` publishes them once the owner sets `CARGO_REGISTRY_TOKEN` and `NPM_TOKEN`.
+**Decision:** The 0.0.1 releases that claim `jarrow` contain working code from this repository, not an empty placeholder: the CLI (`--version`, `tokens`) and `jarrow-report` on crates.io, and the design tokens package on npm. A publish workflow, written in M5, publishes them once `CARGO_REGISTRY_TOKEN` and `NPM_TOKEN` exist. It does not exist yet.
 **Why:** No registry token is present on this machine. Both registries discourage reserving names without content, so the claim ships something real and honest.
 **Reversal cost:** None. Yanking is possible, deletion is not.
 **Links:** infra/TODO-OWNER.md M5
@@ -218,3 +218,10 @@ Every default the build agent takes is logged here. The project requires this lo
 **Reversal cost:** Low: change the matrix label back once arm64 capacity is reliable.
 **Links:** .github/workflows/ci.yml
 
+## D-028 — "Who works on Jarrow" is generated, never edited by hand
+
+**Date:** 2026-11-03
+**Decision:** `tools/contributors.py` builds the list in three groups (people, agents, bots and automation) from `git log`, the GitHub API and `.github/`. It writes `.all-contributorsrc` (the all-contributors spec, with the custom contribution types `agent`, `bot` and `ci`), the README section between the all-contributors markers, `docs/team.md`, and `site/src/data/team.json`, which the site's `/about` page renders. `.github/workflows/contributors.yml` regenerates the list at 02:30 UTC and pushes any change as jarrow-bot with the `BOT_DEPLOY_KEY` deploy key. The all-contributors app and its bot are not installed.
+**Why:** People are shown by GitHub login only, and the project owner is always listed. Agents have no account here, so they are counted from the Co-Authored-By trailers of the commits they wrote. A bot or app is listed only when something shows that it acts on the repository: a check run or a non-empty check suite, a pull request, a commit, the deploy key, or its config in `.github/`. Listing installed apps directly (`gh api repos/MosheByte/jarrow/installations`, then `user/installations`) needs a GitHub App token and fails with 404 and 403 for a user token, so check suites stand in. GitHub creates an empty check suite for every installed app on each push, so an empty suite does not count: on 2026-11-03 the Claude GitHub App was installed but had no check run, pull request or comment here, so it is not listed. Renovate is not enabled (D-014), release-please is not used, and the stale sweep is a GitHub Actions workflow. Refresh commits carry the trailer `Jarrow-Generated: contributors` and are not counted, so a refresh never causes another one.
+**Reversal cost:** Low: delete the workflow, the script and the four generated files.
+**Links:** tools/contributors.py, .github/workflows/contributors.yml, docs/team.md, .all-contributorsrc, site/src/pages/about.astro
