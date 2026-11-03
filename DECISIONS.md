@@ -225,3 +225,19 @@ Every default the build agent takes is logged here. The project requires this lo
 **Why:** People are shown by GitHub login only, and the project owner is always listed. Agents have no account here, so they are counted from the Co-Authored-By trailers of the commits they wrote. A bot or app is listed only when something shows that it acts on the repository: a check run or a non-empty check suite, a pull request, a commit, the deploy key, or its config in `.github/`. Listing installed apps directly (`gh api repos/MosheByte/jarrow/installations`, then `user/installations`) needs a GitHub App token and fails with 404 and 403 for a user token, so check suites stand in. GitHub creates an empty check suite for every installed app on each push, so an empty suite does not count: on 2026-11-03 the Claude GitHub App was installed but had no check run, pull request or comment here, so it is not listed. Renovate is not enabled (D-014), release-please is not used, and the stale sweep is a GitHub Actions workflow. Refresh commits carry the trailer `Jarrow-Generated: contributors` and are not counted, so a refresh never causes another one.
 **Reversal cost:** Low: delete the workflow, the script and the four generated files.
 **Links:** tools/contributors.py, .github/workflows/contributors.yml, docs/team.md, .all-contributorsrc, site/src/pages/about.astro
+
+## D-046 — Token-saving regime for the build agent
+
+**Date:** 2026-11-03
+**Decision:** At most one subagent runs at a time, on Sonnet, and only for a closed task (a check, a point lookup, a review); parallel work means parallel pull requests, not parallel agents. No file over 20 KB is read whole: the build specification and `docs/design-research/horizon.md` are read once per session and only by section (grep the heading, then read the range), and only the one screenshot needed is opened. Unchanged code is not read; `git diff` and `grep -n` come before `cat`, and a file read once in a session is not read again. CI, clippy and tests run once at the end of a pull request, scoped (`cargo test -p <crate>`). Journal entries are at most 120 words, with links instead of quoted code or logs, and no interim summaries. A failed command is not retried as it is: read the error, make one fix. Every session ends with a journal line giving the estimated tokens and what used the most.
+**Why:** The owner set this regime on 2026-11-03, with no loss of quality or scope.
+**Reversal cost:** None: it governs how the agent works, not the code.
+**Links:** docs/journal/2026-11-03.md
+
+## D-047 — README.md has a fixed order and generated numbers
+
+**Date:** 2026-11-03
+**Decision:** README.md keeps this order only: the banner `docs/media/banner.webp` (1600×600, at most 60 KB, from the sunrise scene by `site/scripts/render-banner.mjs`), one link row, the badges (CI, nightly, parity from `/api/badge/parity.json`, Scorecard, Best Practices, MIT), a 25-word intro and one status line, Try it, How it's proven, Who works on Jarrow, Built by an agent, and a footer (licence, the Rust logo line, the disclaimer). It stays within 70 lines, and every sentence in How it's proven carries a number taken from the code. `tools/contributors.py` writes the team grids (three per row, 48 px faces for people, one original 16 px pixel icon per heading for agents and bots, five-word roles, commit counts) and the agent line (commits, squash-merged pull requests and test functions whose blamed commit names the agent).
+**Why:** The owner asked for a visual pass on the README as GitHub renders it, at 1440 and 390 px wide.
+**Reversal cost:** Low: README.md and two render functions.
+**Links:** README.md, tools/contributors.py, site/src/pages/api/badge/parity.json.ts, site/public/icons/pixel/
