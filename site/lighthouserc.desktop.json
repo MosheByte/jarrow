@@ -1,0 +1,29 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://127.0.0.1:8788/", "http://127.0.0.1:8788/board/", "http://127.0.0.1:8788/docs/"],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "desktop",
+        "chromeFlags": "--headless=new --no-sandbox --disable-dev-shm-usage",
+        "onlyCategories": ["performance", "accessibility", "best-practices", "seo"]
+      }
+    },
+    "assert": {
+      "assertMatrix": [
+        {
+          "matchingUrlPattern": ".*",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.98, "aggregationMethod": "median-run" }],
+            "categories:accessibility": ["error", { "minScore": 1, "aggregationMethod": "median-run" }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0, "aggregationMethod": "median-run" }]
+          }
+        }
+      ]
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": "./out/lighthouse/desktop"
+    }
+  }
+}
