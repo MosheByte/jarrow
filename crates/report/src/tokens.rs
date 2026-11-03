@@ -20,6 +20,9 @@
 //! mark result tiers (the board's green, amber and red, and the badges) and warnings, and are
 //! never decorative. The brand amber ([`ACCENT`], `#ffb454`) and the tier amber ([`TIER_AMBER`],
 //! `#f2c46b`) are different colours and are never swapped.
+//!
+//! [`json`] renders the same tokens as JSON. `jarrow tokens` prints the CSS and
+//! `jarrow tokens --json` the JSON; the npm package `jarrow` ships both files.
 
 use std::fmt;
 use std::fmt::Write as _;
@@ -214,6 +217,26 @@ impl Group {
         Group::Button,
         Group::Motion,
     ];
+
+    /// Lower-case name, as written to the JSON: `page`, `text`, `surface`, ...
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Group::Page => "page",
+            Group::Text => "text",
+            Group::Surface => "surface",
+            Group::Action => "action",
+            Group::Tier => "tier",
+            Group::Sky => "sky",
+            Group::Sun => "sun",
+            Group::Type => "type",
+            Group::Space => "space",
+            Group::Layout => "layout",
+            Group::Radius => "radius",
+            Group::Card => "card",
+            Group::Button => "button",
+            Group::Motion => "motion",
+        }
+    }
 
     /// The comment line written above the group.
     pub const fn heading(self) -> &'static str {
@@ -1115,9 +1138,118 @@ pub fn css() -> String {
     out
 }
 
+/// Renders the tokens as JSON: the `tokens.json` of the npm package `jarrow`.
+///
+/// Top-level keys: `generated_by`, `color_scheme` (`dark`; there is no light theme),
+/// `selector` (`:root`, where `site/tokens.css` declares every token) and `tokens`, in
+/// [`TOKENS`] order. Each token has `name`, `property`, `group` ([`Group::as_str`]), `value`
+/// (the CSS value, exactly as `site/tokens.css` writes it) and `usage`.
+pub fn json() -> String {
+    let mut out = String::from("{\n  \"generated_by\": ");
+    push_json_str(&mut out, "crates/report (jarrow_report::tokens::json)");
+    out.push_str(",\n  \"color_scheme\": ");
+    push_json_str(&mut out, "dark");
+    out.push_str(",\n  \"selector\": ");
+    push_json_str(&mut out, ":root");
+    out.push_str(",\n  \"tokens\": [\n");
+    for (i, token) in TOKENS.iter().enumerate() {
+        out.push_str("    { \"name\": ");
+        push_json_str(&mut out, token.name);
+        out.push_str(", \"property\": ");
+        push_json_str(&mut out, &token.property());
+        out.push_str(", \"group\": ");
+        push_json_str(&mut out, token.group.as_str());
+        out.push_str(", \"value\": ");
+        push_json_str(&mut out, &token.value.to_string());
+        out.push_str(", \"usage\": ");
+        push_json_str(&mut out, token.usage);
+        out.push_str(if i + 1 < TOKENS.len() {
+            " },\n"
+        } else {
+            " }\n"
+        });
+    }
+    out.push_str("  ]\n}\n");
+    out
+}
+
+/// Appends `s` as a JSON string literal (RFC 8259), quotes included.
+fn push_json_str(out: &mut String, s: &str) {
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            // Writing to a String cannot fail.
+            c if u32::from(c) < 0x20 => {
+                let _ = write!(out, "\\u{:04x}", u32::from(c));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn json_lists_every_token_with_its_css_value() {
+        let doc: serde_json::Value = serde_json::from_str(&json()).unwrap();
+        assert_eq!(doc.as_object().unwrap().len(), 4);
+        assert_eq!(doc["color_scheme"], "dark");
+        assert_eq!(doc["selector"], ":root");
+        let tokens = doc["tokens"].as_array().unwrap();
+        assert_eq!(tokens.len(), TOKENS.len());
+        let css = css();
+        for (entry, token) in tokens.iter().zip(TOKENS) {
+            assert_eq!(entry.as_object().unwrap().len(), 5, "{entry}");
+            assert_eq!(entry["name"], token.name);
+            assert_eq!(entry["property"], token.property());
+            assert_eq!(entry["group"], token.group.as_str());
+            assert_eq!(entry["value"], token.value.to_string());
+            assert_eq!(entry["usage"], token.usage);
+            // The JSON and the CSS carry the same value.
+            let decl = format!("  {}: {};", token.property(), token.value);
+            assert!(css.contains(&decl), "{decl}");
+        }
+        assert_eq!(tokens[0]["name"], "jw-page");
+        assert_eq!(tokens[0]["value"], "#0b0f1f");
+        let accent = tokens.iter().find(|t| t["name"] == "jw-accent").unwrap();
+        assert_eq!(accent["value"], "#ffb454");
+        assert_eq!(accent["group"], "action");
+    }
+
+    #[test]
+    fn json_is_deterministic() {
+        let json = json();
+        assert_eq!(json, super::json());
+        assert!(json.ends_with("}\n"));
+        assert!(!json.contains('\r'));
+    }
+
+    #[test]
+    fn json_strings_are_escaped() {
+        let mut out = String::new();
+        push_json_str(&mut out, "a\"b\\c\nd\u{1}é");
+        assert_eq!(out, r#""a\"b\\c\nd\u0001é""#);
+        let back: String = serde_json::from_str(&out).unwrap();
+        assert_eq!(back, "a\"b\\c\nd\u{1}é");
+    }
+
+    #[test]
+    fn group_names_are_unique_lower_case_words() {
+        for (i, a) in Group::ALL.iter().enumerate() {
+            assert!(a.as_str().chars().all(|c| c.is_ascii_lowercase()), "{a:?}");
+            for b in &Group::ALL[i + 1..] {
+                assert_ne!(a.as_str(), b.as_str());
+            }
+        }
+    }
 
     fn page() -> Rgb {
         PAGE_RGB

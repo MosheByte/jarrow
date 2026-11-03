@@ -1,0 +1,4 @@
+# Written by .github/workflows/publish.yml at publish time (`jarrow tokens`, `jarrow tokens --json`).
+# Never committed: crates/report is their only source.
+tokens.css
+tokens.json

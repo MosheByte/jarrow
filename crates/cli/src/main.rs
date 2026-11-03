@@ -1,6 +1,6 @@
 //! `jarrow`: the command-line shell around the Jarrow engine.
 //!
-//! Built so far: `jarrow --version` and `jarrow tokens`. The `check` command arrives with the
+//! Built so far: `jarrow --version` and `jarrow tokens` (CSS, or JSON with `--json`). The `check` command arrives with the
 //! classifier (milestone M1) and `convert` with the engine (milestone M2); until then they do
 //! not exist, rather than pretending to work.
 
@@ -16,7 +16,7 @@ Not built yet:
   jarrow check     classify a JAR into Tier A, Tier B or unsupported (milestone M1)
   jarrow convert   convert a Fabric JAR to NeoForge with a report (milestone M2)
 
-Progress: https://github.com/MosheByte/jarrow/blob/main/LEDGER.md";
+Progress: https://github.com/jarrow-dev/jarrow/blob/main/LEDGER.md";
 
 /// Jarrow converts Minecraft Fabric mod JARs to NeoForge and proves the result with a
 /// behaviour harness. This build has no converter yet.
@@ -37,14 +37,23 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Print the design tokens as CSS (the source of site/tokens.css).
-    Tokens,
+    Tokens {
+        /// Print them as JSON instead (the tokens.json of the npm package `jarrow`).
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 fn run(cli: Cli) -> io::Result<()> {
     match cli.command {
-        Command::Tokens => {
+        Command::Tokens { json } => {
+            let text = if json {
+                jarrow_report::tokens::json()
+            } else {
+                jarrow_report::tokens::css()
+            };
             let mut stdout = io::stdout().lock();
-            stdout.write_all(jarrow_report::tokens::css().as_bytes())?;
+            stdout.write_all(text.as_bytes())?;
             stdout.flush()
         }
     }
