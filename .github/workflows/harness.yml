@@ -1,0 +1,233 @@
+# The harness workflow: builds the probe mods (harness/probe) for every pinned game version and,
+# when the owner's EULA gate is open, runs the harness baseline with them. docs/probes.md
+# describes every job.
+#
+# It runs on every pull request and every push to main, so "harness-ok" can become a required
+# check. "harness-ok" fails when any job below failed or was cancelled, and passes when they
+# succeeded or were skipped. The "changes" job skips the work on pull requests that touch none
+# of crates/, harness/, rules/ or this file.
+#
+# Secrets: only MINECRAFT_EULA_ACCEPTED, read through env by the baseline step, never echoed.
+# Pull requests from forks and Dependabot get no secrets, so the baseline job skips for them.
+name: harness
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Gradle for the probe build (no wrapper is committed, because .jar files never are).
+  # Fabric Loom 1.17.21 needs Gradle 9.5 or later on Java 21; ModDevGradle 2.0.148 runs on it.
+  GRADLE_VERSION: "9.5.1"
+  # The game versions with a probe (harness/probe/common/src/mc-<version>). Every one of them
+  # must be pinned in research-lock.json.
+  PROBE_GAME_VERSIONS: '["1.21.1", "1.21.11"]'
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+      versions: ${{ steps.decide.outputs.versions }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Decide whether the harness runs
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          echo "versions=$PROBE_GAME_VERSIONS" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Event $EVENT: the harness always runs."
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          matches=$(printf '%s\n' "$changed" | grep -E '^(crates/|harness/|rules/|\.github/workflows/harness\.yml$)' || true)
+          if [ -n "$matches" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "The harness runs: this pull request changes"
+            printf '%s\n' "$matches" | sed -n '1,20s/^/  /p'
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No change under crates/, harness/, rules/ or this workflow: the harness jobs skip."
+          fi
+
+  probes:
+    name: probes (${{ matrix.game-version }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        game-version: ${{ fromJSON(needs.changes.outputs.versions) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      # "basic" is the open-source cache on GitHub Actions cache; the default "enhanced" provider
+      # is a commercial service with its own terms.
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          cache-provider: basic
+      - name: Build both probes (Fabric and NeoForge)
+        env:
+          GAME_VERSION: ${{ matrix.game-version }}
+        run: gradle -p harness/probe -PgameVersion="$GAME_VERSION" build
+      - name: Collect the probe jars
+        env:
+          GAME_VERSION: ${{ matrix.game-version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp harness/probe/fabric/build/libs/jarrow-probe-fabric-"$GAME_VERSION"-*.jar dist/
+          cp harness/probe/neoforge/build/libs/jarrow-probe-neoforge-"$GAME_VERSION"-*.jar dist/
+          (cd dist && sha256sum ./*.jar > SHA256SUMS)
+          {
+            echo "### Probe jars for $GAME_VERSION"
+            echo ""
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: probes-${{ matrix.game-version }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  baseline:
+    name: baseline
+    needs: [changes, probes]
+    # Secrets are needed, so never for fork pull requests or Dependabot.
+    if: >-
+      needs.changes.outputs.run == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Look for crates/harness
+        id: crate
+        run: |
+          if [ -f crates/harness/Cargo.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "crates/harness not on main yet"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install the toolchain from rust-toolchain.toml
+        if: steps.crate.outputs.present == 'true'
+        run: rustup toolchain install && rustc --version
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        if: steps.crate.outputs.present == 'true'
+      - name: Build jarrow-harness
+        id: build
+        if: steps.crate.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          cargo build --locked --release -p jarrow-harness
+          if [ -x target/release/jarrow-harness ]; then
+            echo "bin=$PWD/target/release/jarrow-harness" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::crates/harness builds no jarrow-harness binary yet"
+          fi
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        if: steps.build.outputs.bin != ''
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: probes-*
+          path: probes
+      - name: Run the baseline, or record why it did not run
+        env:
+          MINECRAFT_EULA_ACCEPTED: ${{ secrets.MINECRAFT_EULA_ACCEPTED }}
+          HARNESS_BIN: ${{ steps.build.outputs.bin }}
+          VERSIONS: ${{ join(fromJSON(needs.changes.outputs.versions), ' ') }}
+        run: bash harness/probe/ci/baseline.sh --harness "$HARNESS_BIN" --probes probes --out baseline --versions "$VERSIONS"
+      # Dumps, noise reports, status files and logs only. Never a jar: server directories can
+      # hold the Minecraft server jar, which is never redistributed.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: baseline
+          path: |
+            baseline/**/*.json
+            baseline/**/*.md
+            baseline/**/*.log
+            !baseline/**/*.jar
+            !baseline/**/libraries/**
+            !baseline/**/versions/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  harness-ok:
+    name: harness-ok
+    if: always()
+    needs: [changes, probes, baseline]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    steps:
+      # needs.*.result hides matrix legs: a cancelled leg can leave the aggregate "success".
+      # So this gate reads every job of the run and accepts only success or skipped.
+      - name: Every job in this run passed or was skipped
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          ATTEMPT: ${{ github.run_attempt }}
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          jobs=$(gh api "repos/$REPO/actions/runs/$RUN_ID/attempts/$ATTEMPT/jobs?per_page=100" \
+            --jq '.jobs[] | select(.name != "harness-ok") | "\(.name)|\(.conclusion)"')
+          echo "$jobs"
+          {
+            echo "### harness-ok"
+            echo ""
+            echo "| Job | Conclusion |"
+            echo "| --- | --- |"
+            printf '%s\n' "$jobs" | awk -F'|' 'NF { print "| " $1 " | " $2 " |" }'
+          } >> "$GITHUB_STEP_SUMMARY"
+          bad=$(printf '%s\n' "$jobs" | awk -F'|' 'NF && $2 != "success" && $2 != "skipped"')
+          if [ -n "$bad" ]; then
+            echo "::error::Jobs that did not pass:"
+            printf '%s\n' "$bad"
+            exit 1
+          fi
+          echo "All jobs passed or were skipped."

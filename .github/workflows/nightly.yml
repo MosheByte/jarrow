@@ -1,0 +1,446 @@
+# Nightly prerelease of the jarrow CLI (docs/releases.md).
+# Every day at 05:30 UTC, after the board, this builds the CLI from main for four targets,
+# packages each with LICENSE and README.md, writes SHA256SUMS, attests SLSA build provenance
+# for every artefact (Sigstore-signed, checked with `gh attestation verify`), and publishes the
+# GitHub prerelease nightly-YYYYMMDD. It keeps the 14 newest nightly prereleases and deletes
+# older nightly-YYYYMMDD releases and their tags. No other release or tag is ever touched.
+# Running it again on the same day replaces that day's release: the tag moves to the new
+# commit and every asset is replaced.
+# The day is the UTC date the run was created, so a re-run of an old run replaces that run's
+# own release instead of creating a new one.
+# Only main publishes. Pull requests that change this file, and manual runs on any other
+# branch, are dry runs: they build, package and smoke-test, and skip the publish job.
+# The workflow uses no repository secret; the publish job's token is the only one that can
+# write, and it reaches only GitHub.
+name: nightly
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/nightly.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  meta:
+    name: meta
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read # the run's creation time names the day
+    outputs:
+      date: ${{ steps.meta.outputs.date }}
+      tag: ${{ steps.meta.outputs.tag }}
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+    steps:
+      - name: Name the day, the tag and the commit
+        id: meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          created=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq .created_at)
+          day=${created:0:10}
+          if ! [[ "$day" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "::error::Could not read the run's creation date (got '$created')"
+            exit 1
+          fi
+          tag="nightly-${day//-/}"
+          short_sha=${SHA:0:7}
+          {
+            echo "date=$day"
+            echo "tag=$tag"
+            echo "short_sha=$short_sha"
+          } >> "$GITHUB_OUTPUT"
+          echo "Day $day, tag $tag, commit $short_sha ($SHA)"
+          if [ "$EVENT" = pull_request ] || [ "$REF" != refs/heads/main ]; then
+            echo "::notice::Dry run ($EVENT on $REF): the CLI is built and packaged, nothing is published"
+          fi
+
+  build:
+    name: build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            runnable: true
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            runnable: true
+          - target: x86_64-apple-darwin
+            os: macos-15-intel
+            runnable: true
+          # Cross-compiled on the Intel image: arm64 runners lack capacity (D-027). The binary
+          # cannot run there, so the smoke test checks its architecture instead.
+          - target: aarch64-apple-darwin
+            os: macos-15-intel
+            runnable: false
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install the toolchain from rust-toolchain.toml and the target
+        run: |
+          set -euo pipefail
+          rustup toolchain install
+          rustup target add "$TARGET"
+          rustc --version
+      # No build cache: release artefacts are built from a clean tree every night.
+      - name: Build the CLI
+        run: |
+          set -euo pipefail
+          if [ "$TARGET" = x86_64-pc-windows-msvc ]; then
+            # Link the C runtime statically, so jarrow.exe needs no Visual C++ redistributable.
+            export RUSTFLAGS="-C target-feature=+crt-static"
+          fi
+          cargo build --release -p jarrow --locked --target "$TARGET"
+      - name: Smoke-test the binary
+        env:
+          RUNNABLE: ${{ matrix.runnable }}
+        run: |
+          set -euo pipefail
+          bin="target/$TARGET/release/jarrow"
+          if [ "$TARGET" = x86_64-pc-windows-msvc ]; then bin="$bin.exe"; fi
+          if [ "$RUNNABLE" = true ]; then
+            "$bin" --version
+            "$bin" --help > /dev/null
+          else
+            archs=$(lipo -archs "$bin")
+            echo "$bin: $archs"
+            if [ "$archs" != arm64 ]; then
+              echo "::error::$bin is built for '$archs', expected arm64"
+              exit 1
+            fi
+          fi
+      - name: Package jarrow-${{ matrix.target }} with LICENSE and README.md
+        run: |
+          set -euo pipefail
+          bin="target/$TARGET/release/jarrow"
+          if [ "$TARGET" = x86_64-pc-windows-msvc ]; then bin="$bin.exe"; fi
+          epoch=$(git log -1 --format=%ct)
+          python - "$TARGET" "$bin" dist "$epoch" <<'PY'
+          """Writes dist/jarrow-<target>.tar.gz (.zip on Windows) with a fixed layout and timestamps."""
+          import gzip
+          import io
+          import sys
+          import tarfile
+          import time
+          import zipfile
+          from pathlib import Path
+
+          target, binary, out_dir, epoch = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3]), int(sys.argv[4])
+          root = f"jarrow-{target}"
+          members = sorted(
+              [(binary.name, binary, 0o755), ("LICENSE", Path("LICENSE"), 0o644), ("README.md", Path("README.md"), 0o644)]
+          )
+          out_dir.mkdir(parents=True, exist_ok=True)
+          if target.endswith("-windows-msvc"):
+              out = out_dir / f"{root}.zip"
+              stamp = time.gmtime(max(epoch, 315532800))[:6]  # zip dates start in 1980
+              with zipfile.ZipFile(out, "w") as archive:
+                  for name, path, mode in members:
+                      info = zipfile.ZipInfo(f"{root}/{name}", date_time=stamp)
+                      info.compress_type = zipfile.ZIP_DEFLATED
+                      info.create_system = 3
+                      info.external_attr = (0o100000 | mode) << 16
+                      archive.writestr(info, path.read_bytes(), compresslevel=9)
+          else:
+              out = out_dir / f"{root}.tar.gz"
+              buffer = io.BytesIO()
+              with tarfile.open(fileobj=buffer, mode="w", format=tarfile.USTAR_FORMAT) as tar:
+                  directory = tarfile.TarInfo(root)
+                  directory.type, directory.mode, directory.mtime = tarfile.DIRTYPE, 0o755, epoch
+                  tar.addfile(directory)
+                  for name, path, mode in members:
+                      data = path.read_bytes()
+                      info = tarfile.TarInfo(f"{root}/{name}")
+                      info.size, info.mode, info.mtime = len(data), mode, epoch
+                      tar.addfile(info, io.BytesIO(data))
+              with open(out, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0, compresslevel=9) as gz:
+                  gz.write(buffer.getvalue())
+          print(f"{out}: {out.stat().st_size} bytes")
+          PY
+      - name: Record what the CLI can do at this commit (Linux binary, from the archive)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          set -euo pipefail
+          unpacked="$RUNNER_TEMP/unpacked"
+          out="$RUNNER_TEMP/cli-help"
+          mkdir -p "$unpacked" "$out"
+          tar -xzf "dist/jarrow-$TARGET.tar.gz" -C "$unpacked"
+          bin="$unpacked/jarrow-$TARGET/jarrow"
+          {
+            echo "\$ jarrow --version"
+            "$bin" --version
+            echo
+            echo "\$ jarrow --help"
+            "$bin" --help
+            "$bin" --help \
+              | awk '/^Commands:/ {on = 1; next} on && (/^$/ || /^[^ ]/) {on = 0} on && /^  [a-z]/ {print $1}' \
+              | while read -r cmd; do
+                  if [ "$cmd" != help ]; then
+                    echo
+                    echo "\$ jarrow $cmd --help"
+                    "$bin" "$cmd" --help < /dev/null
+                  fi
+                done
+          } > "$out/help.txt"
+          cat "$out/help.txt"
+          # The newest glibc symbol version the binary links against is the oldest glibc it runs on.
+          objdump -T "$bin" | grep -o 'GLIBC_[0-9][0-9.]*' | sed 's/^GLIBC_//' | sort -V | tail -n 1 > "$out/glibc.txt"
+          echo "Needs glibc $(cat "$out/glibc.txt") or newer"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: jarrow-${{ matrix.target }}
+          path: dist/jarrow-${{ matrix.target }}.*
+          if-no-files-found: error
+          retention-days: 5
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        with:
+          name: cli-help
+          path: ${{ runner.temp }}/cli-help/
+          if-no-files-found: error
+          retention-days: 5
+
+  publish:
+    name: publish
+    needs: [meta, build]
+    # Only main publishes; pull requests and other branches stop after the build.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # the release, its assets and nightly-* tags
+      id-token: write # the Sigstore signing certificate for the attestations
+      attestations: write # store the attestations
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SHA: ${{ github.sha }}
+      DATE: ${{ needs.meta.outputs.date }}
+      TAG: ${{ needs.meta.outputs.tag }}
+      SHORT_SHA: ${{ needs.meta.outputs.short_sha }}
+      # Keep in step with the build matrix.
+      TARGETS: aarch64-apple-darwin x86_64-apple-darwin x86_64-pc-windows-msvc x86_64-unknown-linux-gnu
+      KEEP: "14"
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: jarrow-*
+          merge-multiple: true
+          path: dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cli-help
+          path: ${{ runner.temp }}/cli-help
+      - name: Check the archives and write SHA256SUMS
+        run: |
+          set -euo pipefail
+          cd dist
+          expected=()
+          for target in $TARGETS; do
+            case "$target" in
+              *-windows-msvc) expected+=("jarrow-$target.zip") ;;
+              *) expected+=("jarrow-$target.tar.gz") ;;
+            esac
+          done
+          want=$(printf '%s\n' "${expected[@]}" | LC_ALL=C sort)
+          have=$(find . -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)
+          if [ "$have" != "$want" ]; then
+            echo "::error::dist/ does not hold exactly the expected archives"
+            diff <(echo "$want") <(echo "$have") || true
+            exit 1
+          fi
+          for file in "${expected[@]}"; do
+            if [ ! -s "$file" ]; then
+              echo "::error::$file is empty"
+              exit 1
+            fi
+          done
+          printf '%s\n' "${expected[@]}" | LC_ALL=C sort | xargs sha256sum > SHA256SUMS
+          cat SHA256SUMS
+      - name: Write the release notes
+        env:
+          HELP_DIR: ${{ runner.temp }}/cli-help
+          NOTES: ${{ runner.temp }}/notes.md
+          SERVER: ${{ github.server_url }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          env = os.environ
+          repo, sha, short, day = env["GH_REPO"], env["SHA"], env["SHORT_SHA"], env["DATE"]
+          help_text = (Path(env["HELP_DIR"]) / "help.txt").read_text(encoding="utf-8").rstrip()
+          glibc = (Path(env["HELP_DIR"]) / "glibc.txt").read_text(encoding="utf-8").strip()
+          base = f"{env['SERVER']}/{repo}"
+          fence = "`" * 3
+          notes = f"""\
+          **Pre-alpha build of the Jarrow command-line tool.** Built from [`{short}`]({base}/commit/{sha}) on `main`, {day} (UTC), by the nightly workflow ([run]({base}/actions/runs/{env['RUN_ID']})).
+
+          This is a nightly prerelease, not a release. The help text below is what this build can do; anything it lists as not built yet is not in it. This workflow checked the build only by running each binary with `--version` and `--help`, and the Apple silicon binary is cross-compiled and was not run. A new nightly comes out every day, and only the {env['KEEP']} newest are kept.
+
+          ## What the CLI can do at this commit
+
+          Output of `jarrow-x86_64-unknown-linux-gnu` from this prerelease:
+
+          {fence}text
+          {{help}}
+          {fence}
+
+          ## Downloads
+
+          | Platform | Archive | Notes |
+          | --- | --- | --- |
+          | Linux x86_64 | `jarrow-x86_64-unknown-linux-gnu.tar.gz` | Needs glibc {glibc} or newer |
+          | Windows x86_64 | `jarrow-x86_64-pc-windows-msvc.zip` | Static C runtime |
+          | macOS Intel | `jarrow-x86_64-apple-darwin.tar.gz` | |
+          | macOS Apple silicon | `jarrow-aarch64-apple-darwin.tar.gz` | Cross-compiled on an Intel runner, not run in CI |
+
+          Each archive holds `jarrow` (`jarrow.exe` on Windows), `LICENSE` and `README.md` in a `jarrow-<target>/` directory. The binaries carry no Apple or Windows code signature yet, so macOS and Windows may warn before the first run.
+
+          ## Verify a download
+
+          {fence}sh
+          sha256sum --check --ignore-missing SHA256SUMS
+          gh attestation verify jarrow-x86_64-unknown-linux-gnu.tar.gz --repo {repo} \\
+            --signer-workflow {repo}/.github/workflows/nightly.yml --source-ref refs/heads/main
+          {fence}
+
+          Every archive and `SHA256SUMS` has a Sigstore-signed SLSA build provenance attestation from this workflow run. Release channels and the plan for signed v0.1 releases: [docs/releases.md]({base}/blob/main/docs/releases.md).
+          """
+          notes = notes.replace("{help}", help_text)
+          Path(env["NOTES"]).write_text(notes, encoding="utf-8")
+          print(notes)
+          PY
+      - name: Attest build provenance for every artefact
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Verify the attestations
+        run: |
+          set -euo pipefail
+          for file in dist/*; do
+            gh attestation verify "$file" --repo "$GH_REPO" \
+              --signer-workflow "$GH_REPO/.github/workflows/nightly.yml" \
+              --source-ref refs/heads/main --deny-self-hosted-runners > /dev/null
+            echo "Verified the provenance of $file"
+          done
+      - name: Publish the prerelease ${{ needs.meta.outputs.tag }}
+        env:
+          NOTES: ${{ runner.temp }}/notes.md
+        run: |
+          set -euo pipefail
+          if ! [[ "$TAG" =~ ^nightly-[0-9]{8}$ ]]; then
+            echo "::error::Refusing to publish under the tag '$TAG'"
+            exit 1
+          fi
+          title="Nightly $DATE ($SHORT_SHA)"
+          # A same-day rerun moves the day's tag to this commit (or a tag left without a release).
+          if gh api "repos/$GH_REPO/git/ref/tags/$TAG" > /dev/null 2>&1; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/$TAG" -f sha="$SHA" -F force=true > /dev/null
+            echo "Moved the tag $TAG to $SHA"
+          fi
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --title "$title" --notes-file "$NOTES" \
+              --prerelease --latest=false --draft=false
+            gh release upload "$TAG" --clobber dist/*
+            # Drop assets an earlier run uploaded that this run does not produce.
+            gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r name; do
+              if [ ! -e "dist/$name" ]; then
+                gh release delete-asset "$TAG" "$name" --yes
+                echo "Deleted the stale asset $name"
+              fi
+            done
+            echo "Replaced the release $TAG"
+          else
+            gh release create "$TAG" --target "$SHA" --title "$title" --notes-file "$NOTES" \
+              --prerelease --latest=false dist/*
+            echo "Created the release $TAG"
+          fi
+      - name: Check the published assets
+        run: |
+          set -euo pipefail
+          check="$RUNNER_TEMP/published"
+          mkdir -p "$check"
+          gh release download "$TAG" --dir "$check"
+          (cd "$check" && sha256sum --check SHA256SUMS)
+          tagged=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG" --jq .object.sha)
+          if [ "$tagged" != "$SHA" ]; then
+            echo "::error::$TAG points at $tagged, expected $SHA"
+            exit 1
+          fi
+          url=$(gh release view "$TAG" --json url --jq .url)
+          {
+            echo "### Nightly $DATE ($SHORT_SHA)"
+            echo
+            echo "Release: $url"
+            echo
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Published $url"
+      - name: Keep the ${{ env.KEEP }} newest nightly prereleases
+        run: |
+          set -euo pipefail
+          pattern='^nightly-[0-9]{8}$'
+          releases=$(gh api --paginate "repos/$GH_REPO/releases?per_page=100" \
+            --jq '.[] | [.tag_name, (.prerelease | tostring)] | @tsv')
+          # Newest first: nightly-YYYYMMDD sorts by date.
+          mapfile -t nightlies < <(printf '%s\n' "$releases" | awk -F'\t' '$2 == "true" {print $1}' \
+            | { grep -E "$pattern" || true; } | LC_ALL=C sort -r -u)
+          echo "Nightly prereleases: ${#nightlies[@]}; keeping the newest $KEEP"
+          for tag in "${nightlies[@]:$KEEP}"; do
+            if [[ "$tag" =~ $pattern ]] && [ "$tag" != "$TAG" ]; then
+              gh release delete "$tag" --cleanup-tag --yes
+              echo "Deleted the release $tag and its tag"
+            fi
+          done
+          # A nightly-YYYYMMDD tag whose release is gone (deleted by hand, say) goes too.
+          mapfile -t tags < <(gh api --paginate "repos/$GH_REPO/git/matching-refs/tags/nightly-" \
+            --jq '.[].ref | sub("^refs/tags/"; "")' | { grep -E "$pattern" || true; })
+          with_release=$(gh api --paginate "repos/$GH_REPO/releases?per_page=100" --jq '.[].tag_name')
+          for tag in "${tags[@]}"; do
+            if [ "$tag" != "$TAG" ] && ! grep -qxF -- "$tag" <<< "$with_release"; then
+              # The listing can lag a deletion made a moment ago, so a failure here only warns.
+              if gh api -X DELETE "repos/$GH_REPO/git/refs/tags/$tag" > /dev/null; then
+                echo "Deleted the tag $tag, which had no release"
+              else
+                echo "::warning::Could not delete the tag $tag, which has no release"
+              fi
+            fi
+          done

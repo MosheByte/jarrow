@@ -1,0 +1,32 @@
+{
+  "name": "Jarrow",
+  "image": "ghcr.io/moshebyte/jarrow-devcontainer:latest",
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "ASTRO_TELEMETRY_DISABLED": "1"
+  },
+  "postCreateCommand": {
+    "cargo": "cargo fetch --locked",
+    "site": "cd site && npm ci",
+    "python": "python -m pip install --require-hashes -r tools/requirements-dev.txt && python -m pip check"
+  },
+  "forwardPorts": [4321],
+  "portsAttributes": {
+    "4321": {
+      "label": "site (npm run dev)",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "ms-python.python"
+      ]
+    },
+    "codespaces": {
+      "openFiles": ["docs/contributing/README.md"]
+    }
+  }
+}

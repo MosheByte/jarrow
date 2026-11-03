@@ -1,0 +1,78 @@
+// Shared configuration for the probe subprojects.
+//
+// The game version is an input (-PgameVersion=...). Everything version-specific is read from
+// research-lock.json, the project's single source of pins, by jarrowPins() below. A subproject
+// asks for its own loader's pins (jarrowPins('fabric'), jarrowPins('neoforge'), ...), so adding a
+// loader or a game version means adding its pins to the lock and a probe directory here, not
+// editing version numbers in build scripts.
+
+import groovy.json.JsonSlurper
+
+def lockFile = rootProject.file('../../research-lock.json')
+if (!lockFile.isFile()) {
+    throw new GradleException("research-lock.json not found at ${lockFile}")
+}
+def lock = new JsonSlurper().parse(lockFile)
+def pinnedVersions = (lock.game_versions ?: [:]).keySet().sort()
+
+def gameVersion = providers.gradleProperty('gameVersion').getOrNull()
+if (!gameVersion) {
+    throw new GradleException(
+            "Pass the game version: -PgameVersion=<version>. research-lock.json pins ${pinnedVersions.join(', ')}.")
+}
+def gamePins = lock.game_versions[gameVersion]
+if (gamePins == null) {
+    throw new GradleException(
+            "research-lock.json has no pins for game version ${gameVersion}. It pins ${pinnedVersions.join(', ')}.")
+}
+
+def javaRelease = (gamePins.mojang?.java_major ?: lock.jdk?.major) as Integer
+if (javaRelease == null) {
+    throw new GradleException("research-lock.json gives no Java version for ${gameVersion}")
+}
+
+// The version-specific half of the shared dump code. One directory per game version, shared by
+// every loader, so the dump logic stays identical across loaders.
+def shimDir = rootProject.file("common/src/mc-${gameVersion}/java")
+if (!shimDir.isDirectory()) {
+    throw new GradleException(
+            "No probe code for game version ${gameVersion} yet: add ${rootProject.relativePath(shimDir)}.")
+}
+
+ext.jarrowProbe = [
+        gameVersion: gameVersion,
+        javaRelease: javaRelease,
+        version    : providers.gradleProperty('probe_version').get(),
+        lockFile   : lockFile,
+        commonDirs : [rootProject.file('common/src/main/java'), shimDir],
+        testDirs   : [rootProject.file('common/src/test/java')],
+        license    : rootProject.file('../../LICENSE'),
+]
+
+// The pins of one loader for the selected game version, or a clear error when the lock has none.
+ext.jarrowPins = { String loader ->
+    def pins = gamePins[loader]
+    if (pins == null) {
+        throw new GradleException("research-lock.json has no ${loader} pins for game version ${gameVersion}.")
+    }
+    return pins
+}
+
+subprojects {
+    group = 'io.github.moshebyte.jarrow'
+    version = rootProject.jarrowProbe.version
+
+    tasks.withType(JavaCompile).configureEach {
+        options.release = rootProject.jarrowProbe.javaRelease
+        options.encoding = 'UTF-8'
+        // Warnings are errors. "classfile" is off because the game's log4j jars reference
+        // annotation classes that are not on the classpath; that is not our code.
+        options.compilerArgs.addAll(['-Xlint:all,-classfile,-processing,-serial', '-Werror'])
+    }
+
+    // Byte-stable archives: no file timestamps, a fixed entry order.
+    tasks.withType(AbstractArchiveTask).configureEach {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+    }
+}

@@ -1,0 +1,10 @@
+v1	official	intermediary
+# INTERMEDIARY-COUNTER class 4
+CLASS	a	net/minecraft/class_1
+CLASS	b	net/minecraft/class_2
+FIELD	a	I	a	field_1
+FIELD	a	Lb;	b	field_2
+METHOD	a	(Lb;I)La;	a	method_1
+METHOD	b	()Lb;	a	method_2
+METHOD	c	()V	a	method_4
+CLASS	a$a	net/minecraft/class_1$class_3
