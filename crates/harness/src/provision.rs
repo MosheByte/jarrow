@@ -16,7 +16,7 @@
 //! Layout under the cache directory:
 //!
 //! ```text
-//! downloads/<algorithm>-<hash>/<file>        verified downloads, keyed by their pin
+//! downloads/<algorithm>-<hash prefix>/<file> verified downloads, keyed by their strongest pin
 //! servers/<loader>-<version>-mc<game>/       an installed server, used as a template
 //!     jarrow-install.json                    written last: how to launch it
 //! work/<loader>-<game>/                      the default per-run directory
@@ -197,6 +197,18 @@ pub fn provision(
 ) -> Result<InstalledServer, HarnessError> {
     let profile = profile(loader);
     let loader_version = profile.loader_version(ctx)?;
+    // Installers run in the server directory, so every path they are given (their own jar,
+    // the target directory) must be absolute, whatever `--cache` was.
+    let cache = std::path::absolute(ctx.cache)
+        .map_err(|e| HarnessError::io_at("resolve the cache directory", ctx.cache, e))?;
+    let ctx = &ProvisionContext {
+        lock: ctx.lock,
+        game_version: ctx.game_version,
+        cache: &cache,
+        fetcher: ctx.fetcher,
+        host: ctx.host,
+        java: ctx.java,
+    };
     let dir = server_dir(ctx.cache, loader, &loader_version, ctx.game_version);
     if let Some(installed) = reusable(&dir, loader, &loader_version, ctx.game_version) {
         return Ok(installed);
@@ -361,21 +373,41 @@ fn run_installer(
         .map_err(|e| HarnessError::io(format!("start {what}"), e))?;
     if outcome.timed_out {
         return Err(HarnessError::Install(format!(
-            "{what} ran longer than {} minutes and was stopped; see {}",
+            "{what} ran longer than {} minutes and was stopped; see {}{}",
             INSTALLER_TIMEOUT.as_secs() / 60,
-            spec.log.display()
+            spec.log.display(),
+            log_tail(&spec.log)
         )));
     }
     if outcome.exit_code != Some(0) {
         return Err(HarnessError::Install(format!(
-            "{what} exited with {}; see {}",
+            "{what} exited with {}; see {}{}",
             outcome
                 .exit_code
                 .map_or_else(|| "no exit code".to_owned(), |c| format!("code {c}")),
-            spec.log.display()
+            spec.log.display(),
+            log_tail(&spec.log)
         )));
     }
     Ok(())
+}
+
+/// The last lines of an installer log, indented, for an error message: the log itself lives
+/// in the cache, which CI does not upload.
+fn log_tail(log: &Path) -> String {
+    const LINES: usize = 25;
+    let Ok(bytes) = fs::read(log) else {
+        return String::new();
+    };
+    let text = String::from_utf8_lossy(&bytes);
+    let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
+    let start = lines.len().saturating_sub(LINES);
+    let mut out = String::from("\nlast lines of the installer log:");
+    for line in &lines[start..] {
+        out.push_str("\n    ");
+        out.push_str(line);
+    }
+    out
 }
 
 struct NeoForgeProfile;
@@ -697,6 +729,8 @@ pub(crate) mod tests {
             Some("--installServer")
         );
         assert_eq!(runs[0].cwd, installed.dir);
+        // The installer runs in the server directory, so its own jar must be named absolutely.
+        assert!(Path::new(&runs[0].args_lossy()[1]).is_absolute());
     }
 
     #[test]

@@ -264,7 +264,7 @@ Every download is pinned in `research-lock.json` with its publisher's hashes. A 
 - **Forge, Quilt**: not built yet. Their provisioning will come from loader profiles (`loaders/*.toml`); `provision` and `run` say so and exit 2.
 
 ```text
-<cache>/downloads/<algorithm>-<hash>/<file>     verified downloads, keyed by their strongest pin
+<cache>/downloads/<algorithm>-<16 hex>/<file>  verified downloads, keyed by the first 16 hex digits of their strongest pin
 <cache>/servers/<loader>-<version>-mc<game>/    an installed server, the template for runs
     jarrow-install.json                          written last: launch method, files and hashes
 <cache>/work/<loader>-<game>/                   the default run directory

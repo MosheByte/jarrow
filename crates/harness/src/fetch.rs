@@ -105,11 +105,15 @@ pub struct Artifact {
 impl Artifact {
     /// The cache directory name for this artifact: its strongest pinned hash, so a pin change
     /// never reuses an old file.
+    ///
+    /// Only the first 16 hex digits name the directory, which keeps cache paths well under the
+    /// 260-character limit Java still hits on Windows; the file in it is always checked against
+    /// the full pins before use.
     pub fn cache_key(&self) -> String {
         self.hashes
             .iter()
             .max_by_key(|h| h.algorithm)
-            .map(|h| format!("{}-{}", h.algorithm, h.hex))
+            .map(|h| format!("{}-{}", h.algorithm, h.hex.get(..16).unwrap_or(&h.hex)))
             .unwrap_or_else(|| "unpinned".to_owned())
     }
 }
@@ -756,5 +760,10 @@ pub(crate) mod tests {
             &[HashAlgorithm::Sha1, HashAlgorithm::Sha512],
         );
         assert!(a.cache_key().starts_with("sha512-"));
+        assert_eq!(
+            a.cache_key().len(),
+            "sha512-".len() + 16,
+            "short enough for Windows paths"
+        );
     }
 }
