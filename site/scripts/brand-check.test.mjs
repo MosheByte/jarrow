@@ -14,6 +14,7 @@ import {
   attribute,
   checkText,
   contextFrom,
+  escapeRegExp,
   formatViolation,
   lucideBindings,
   parseBrandSources,
@@ -66,6 +67,12 @@ describe('tagEnd and attribute', () => {
   it('skips ">" inside quotes and expressions', () => {
     const text = '<svg width={a > b ? 1 : 2} title="x > y" data-brand-source="u">rest';
     assert.equal(text.slice(0, tagEnd(text, 0)), '<svg width={a > b ? 1 : 2} title="x > y" data-brand-source="u">');
+  });
+
+  it('escapes every regular-expression metacharacter', () => {
+    const s = 'a\\b^c$d.e*f+g?h(i)j[k]l{m}n|o';
+    assert.ok(new RegExp(`^${escapeRegExp(s)}$`).test(s));
+    assert.equal(escapeRegExp('Icons.'), 'Icons\\.');
   });
 
   it('reads literal and expression values', () => {

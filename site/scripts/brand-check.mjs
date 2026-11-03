@@ -103,13 +103,17 @@ export function parseBrandSources(markdown) {
   return brands;
 }
 
+/** A string as a literal inside a regular expression. */
+export function escapeRegExp(s) {
+  return s.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+}
+
 /** Everything the per-file check needs from BRAND-SOURCES.md. */
 export function contextFrom(brands) {
   const names = [...new Set(brands.flatMap((b) => b.names))].sort((a, b) => b.length - a.length);
-  const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return {
     sources: new Set(brands.filter((b) => b.shownAs === 'logo').map((b) => b.source)),
-    nameRegex: new RegExp(`(?<![\\p{L}\\p{N}_])(?:${names.map(escape).join('|')})(?![\\p{L}\\p{N}_])`, 'gu'),
+    nameRegex: new RegExp(`(?<![\\p{L}\\p{N}_])(?:${names.map(escapeRegExp).join('|')})(?![\\p{L}\\p{N}_])`, 'gu'),
     glyphNames: new Set(names.map((n) => n.toLowerCase().replace(/[^a-z0-9]/g, ''))),
   };
 }
@@ -246,7 +250,7 @@ export function checkText(file, text, context) {
     if (glyph && context.glyphNames.has(glyph)) {
       add(text.indexOf(binding.icon), 'lucide-brand-glyph', binding.icon, `Lucide's "${binding.icon}" glyph stands in for a brand; use the official mark`);
     }
-    const escaped = binding.local.replace(/[.$]/g, '\\$&');
+    const escaped = escapeRegExp(binding.local);
     const usage = new RegExp(`<${escaped}${binding.local.endsWith('.') ? '[\\w$]+' : ''}(?=[\\s/>])`, 'g');
     for (const u of text.matchAll(usage)) {
       const end = tagEnd(text, u.index);
