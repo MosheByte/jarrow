@@ -1,0 +1,31 @@
+# cargo-fuzz project for Jarrow. It is its own workspace (the empty [workspace] table below),
+# so the root workspace (members = ["crates/*"]), its lockfile and cargo-deny never see it.
+# Run locally with a nightly toolchain: cargo +nightly fuzz run classfile_parse
+# ClusterFuzzLite builds every target listed here (.clusterfuzzlite/build.sh, docs/classfile.md).
+#
+# Not built yet: the jar_read target. It depends on crates/jar by path, and crates/jar is not
+# on main yet (milestone M1, built in parallel). Add it here once that crate lands.
+
+[package]
+name = "jarrow-fuzz"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+jarrow-classfile = { path = "../crates/classfile" }
+
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "classfile_parse"
+path = "fuzz_targets/classfile_parse.rs"
+test = false
+doc = false
+bench = false
