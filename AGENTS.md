@@ -58,7 +58,7 @@ When you create a crate, add or update its row here and in `docs/architecture.md
 | `packages/npm/` | The npm package `jarrow` (design tokens now, the WASM engine from M3). `tokens.css` and `tokens.json` are written by `publish.yml` at publish time and never committed |
 | `tools/` | Python tools: `pr_ready.py`, `ledger.py`, `board_summary.py`, `contributors.py` (the "Who works on Jarrow" list, D-028), research scripts; tests in `tools/tests/`; Tier B job in `tools/tierb/` (M4) |
 | `tests/fixtures/` | Permissively licensed sample mods, vendored with their LICENSE, and golden outputs |
-| `docs/` | `architecture.md`, `harness.md`, `rules.md`, `legal.md`, `telemetry.md`, `spec-amendments.md`, `team.md` (generated), `research/`, `journal/` |
+| `docs/` | `architecture.md`, `harness.md`, `rules.md`, `legal.md`, `telemetry.md`, `spec-amendments.md`, `team.md` (generated), `research/`, `journal/`, `design/ASSETS.md` (visual assets still to draw) |
 | `infra/` | `INVENTORY.md`, `TODO-OWNER.md`, Worker configs other than the Pages one, D1 migrations, dashboards and monitors as code |
 | `.github/` | Workflows, issue forms, PR template, CODEOWNERS, FUNDING.yml, labeler and Dependabot config |
 
