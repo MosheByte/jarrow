@@ -73,7 +73,7 @@ Status columns:
 | Sigstore, SLSA provenance | Release signing | Keyless through GitHub OIDC | Self-configurable | Wired in `release.yml` (M5). |
 | Homebrew tap, Scoop bucket | CLI distribution | Tap and bucket repos can be created under MosheByte | Self-configurable | Pushing from CI needs a token (`HOMEBREW_TAP_TOKEN`), which is an owner item. |
 | winget, AUR | CLI distribution | winget needs PRs to microsoft/winget-pkgs with a token; AUR needs an account and SSH key | Needs the owner | M5. |
-| Minecraft server EULA | Harness servers | The EULA must be accepted by the person who runs the server | Needs the owner | The harness refuses to start servers unless the repo variable `MINECRAFT_EULA` is `true` (D-013). |
+| Minecraft server EULA | Harness servers | The owner created the secret `MINECRAFT_EULA_ACCEPTED` on 2026-11-03 | Connected (owner accepted) | The harness gate reads that secret (D-013). |
 
 ## Secrets and variables (names only)
 
@@ -87,6 +87,7 @@ Status columns:
 | `GITLAB_MIRROR_TOKEN` | Actions secret | MosheByte/jarrow | owner | mirror.yml |
 | `GITLAB_MIRROR_PATH` | Actions variable | MosheByte/jarrow | agent (M5) | mirror.yml |
 | `DISCORD_WEBHOOK_URL` | Actions secret | MosheByte/jarrow | owner | board.yml, release.yml |
-| `MINECRAFT_EULA` | Actions variable | MosheByte/jarrow | owner | harness.yml, board.yml |
+| `MINECRAFT_EULA_ACCEPTED` | Actions secret | MosheByte/jarrow | owner (set 2026-11-03) | harness.yml, board.yml |
+| `BOT_DEPLOY_KEY` | Actions secret (SSH deploy key, write) | MosheByte/jarrow | agent (generated 2026-11-03; rotate by replacing the deploy key) | board.yml pushes `board-data` and bot commits of LEDGER.md |
 | `HOMEBREW_TAP_TOKEN` | Actions secret | MosheByte/jarrow | owner | release.yml |
 | `PROJECT_TOKEN` | Actions secret | MosheByte/jarrow | owner (optional) | roadmap project sync |

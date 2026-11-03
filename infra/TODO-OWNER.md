@@ -6,12 +6,12 @@ Run the commands from any shell where `gh` is logged in as MosheByte. `gh secret
 
 ## M0 — Ground
 
-### Accept the Minecraft EULA for the harness
+### Accept the Minecraft EULA for the harness — done by the owner
 
-The harness starts headless Minecraft dedicated servers on GitHub-hosted runners. Running a server requires accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA). That is a terms acceptance, which only you can give (section 2, stop condition 3). Until the variable is set, the harness refuses to start servers and no mod can be green (D-013).
+The owner created the repository secret `MINECRAFT_EULA_ACCEPTED` on 2026-11-03 at 14:09 UTC. The harness opens its gate when that secret, or the variable `MINECRAFT_EULA`, is `true` (case-insensitive; `yes`, `1` and `accepted` also count). The agent cannot read secret values. If the first harness run reports "EULA not accepted", set the secret to `true`:
 
 ```bash
-gh variable set MINECRAFT_EULA --repo MosheByte/jarrow --body true
+gh secret set MINECRAFT_EULA_ACCEPTED --repo MosheByte/jarrow --body true
 ```
 
 ### Cloudflare API token for CI (tried; every route refused)

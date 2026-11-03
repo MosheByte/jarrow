@@ -47,9 +47,9 @@ An optional client smoke test is planned for M4: a headless NeoForge client with
 
 Running a Minecraft dedicated server requires accepting the Minecraft EULA. That is a terms acceptance only the project owner can give (amendment A-6 in [book-amendments.md](book-amendments.md)).
 
-- The harness refuses to start any server unless `MINECRAFT_EULA` is exactly `"true"`.
-- In CI, `MINECRAFT_EULA` is a repository variable that only the owner sets. The agent never sets it.
-- Locally, a person who has read and accepted the [Minecraft EULA](https://www.minecraft.net/en-us/eula) sets the environment variable `MINECRAFT_EULA=true` for their own runs.
+- The harness refuses to start any server unless `MINECRAFT_EULA_ACCEPTED` or `MINECRAFT_EULA` is `true`, `yes`, `1` or `accepted` (case-insensitive).
+- In CI the value comes from the repository secret `MINECRAFT_EULA_ACCEPTED`, which the owner created on 2026-11-03. The agent never sets it.
+- Locally, a person who has read and accepted the [Minecraft EULA](https://www.minecraft.net/en-us/eula) sets the environment variable `MINECRAFT_EULA_ACCEPTED=true` for their own runs.
 - The harness writes `eula=true` into a server directory only when the gate is open. It never writes it otherwise.
 - With the gate closed, the harness exits with a clear message and the result is "not run: EULA not accepted", which is never green (decision D-013). No mod can be green until the owner opens the gate.
 

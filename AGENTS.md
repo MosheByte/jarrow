@@ -84,7 +84,7 @@ The format is in `docs/rules.md`. It is a draft until the `rules` crate implemen
 
 Not built yet (milestone M1). The design is in `docs/harness.md`. It will need JDK 21 and network access to download the Minecraft server, Fabric Loader, Fabric API and NeoForge at the versions pinned in `research-lock.json`.
 
-The harness refuses to start a Minecraft server unless `MINECRAFT_EULA` is `"true"` (amendment A-6). In CI that is a repository variable only the owner may set, because accepting the Minecraft EULA is a terms acceptance. Never set it yourself. Until the owner sets it, no mod can be green.
+The harness refuses to start a Minecraft server unless `MINECRAFT_EULA_ACCEPTED` (or `MINECRAFT_EULA`) is `true` (amendment A-6). In CI it comes from the owner's repository secret `MINECRAFT_EULA_ACCEPTED`, because accepting the Minecraft EULA is a terms acceptance only the owner may give. Never set it yourself.
 
 ## When you may stop
 

@@ -41,7 +41,7 @@ When [BUILD-BOOK.md](../BUILD-BOOK.md) and reality disagree, reality wins (book 
 
 - **Book:** section 6.1: the harness starts headless Fabric and NeoForge dedicated servers.
 - **Reality:** running a Minecraft dedicated server requires accepting the Minecraft EULA. That is a terms acceptance, which only the owner can give (book section 2, stop condition 3).
-- **What we do:** the harness refuses to start a server unless the repository variable `MINECRAFT_EULA` is `"true"`, which only the owner sets. Locally, a person who has accepted the EULA themselves sets the environment variable `MINECRAFT_EULA=true`. The harness writes `eula=true` into a server directory only when the gate is open. Until then, every harness run ends as "not run: EULA not accepted", so no mod can be green.
+- **What we do:** the harness refuses to start a server unless the owner's repository secret `MINECRAFT_EULA_ACCEPTED`, or the variable `MINECRAFT_EULA`, is `true`. The owner created that secret on 2026-11-03. Locally, a person who has accepted the EULA themselves sets the environment variable `MINECRAFT_EULA=true`. The harness writes `eula=true` into a server directory only when the gate is open. Until then, every harness run ends as "not run: EULA not accepted", so no mod can be green.
 - **Reverts when:** the owner sets the variable (listed in `infra/TODO-OWNER.md`). The gate stays in the code either way.
 
 ## A-7 — The Pages project was created as a classic Pages project

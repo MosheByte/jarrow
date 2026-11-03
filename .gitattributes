@@ -1,0 +1,13 @@
+# Normalise line endings so byte-level tests and generated files agree on every OS.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+# Binary formats (JARs and class files are never committed; see tools/pr_ready.py).
+*.png binary
+*.ico binary
+*.wasm binary
+*.gz binary
+*.zst binary
+*.woff binary
+*.woff2 binary

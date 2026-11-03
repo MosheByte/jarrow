@@ -101,7 +101,7 @@ Every default the build agent takes is logged here (BUILD-BOOK.md section 13). T
 ## D-013 — The harness requires the owner's Minecraft EULA acceptance
 
 **Date:** 2026-11-03
-**Decision:** The harness writes `eula=true` and starts servers only when the repository variable or environment variable `MINECRAFT_EULA` equals `true`. Without it, every harness run ends as "not run: EULA not accepted", which is never green.
+**Decision:** The harness writes `eula=true` and starts servers only when the environment variable `MINECRAFT_EULA_ACCEPTED` (fed from the owner's repository secret of the same name) or `MINECRAFT_EULA` is `true`, `yes`, `1` or `accepted`. Without it, every harness run ends as "not run: EULA not accepted", which is never green.
 **Why:** A dedicated server requires accepting Mojang's EULA. That is a terms acceptance, one of the three stop conditions, so only the owner can give it.
 **Reversal cost:** None.
 **Links:** infra/TODO-OWNER.md item 1, docs/book-amendments.md A-6
