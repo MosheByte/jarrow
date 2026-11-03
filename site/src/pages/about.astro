@@ -1,138 +1,13 @@
 ---
 // /about: what Jarrow is, who builds it, and who works on it.
 //
-// "Who works on Jarrow" renders src/data/team.json, which tools/contributors.py generates from
-// the repository (the README section and docs/team.md come from the same data). The page is
-// prerendered, so the file is read at build time. If it is missing or does not match the schema,
-// the build fails with a message saying so: this page never invents a member.
-import ExternalLink from '@lucide/astro/icons/external-link';
-import Key from '@lucide/astro/icons/key';
-
+// "Who works on Jarrow" is the TeamGrid component, which renders src/data/team.json (generated
+// by tools/contributors.py) and fails the build when the file is missing or malformed. The same
+// list has a page of its own at /contributors.
 import PageIntro from '../components/PageIntro.astro';
+import TeamGrid from '../components/TeamGrid.astro';
 import Base from '../layouts/Base.astro';
-import { formatUtc } from '../lib/format.ts';
 import { CURRENT_MILESTONE, REPO_URL, repoFile } from '../lib/site.ts';
-
-type GroupId = 'people' | 'agents' | 'bots';
-
-interface Member {
-  login: string;
-  name: string;
-  // null only for a member drawn with a Lucide icon instead of an avatar (the deploy key).
-  avatar_url: string | null;
-  icon: 'key' | null;
-  profile_url: string;
-  role: string;
-  contributions: string[];
-  commits: number | null;
-}
-
-interface Group {
-  id: GroupId;
-  title: string;
-  members: Member[];
-}
-
-const TEAM_FILE = 'site/src/data/team.json';
-const GROUP_IDS: readonly GroupId[] = ['people', 'agents', 'bots'];
-// Avatars are the only external images on the site, and they come only from GitHub
-// (docs/telemetry.md says so). A URL on any other host fails the build.
-const AVATAR_HOSTS = new Set(['avatars.githubusercontent.com', 'github.com']);
-
-function fail(problem: string): never {
-  throw new Error(
-    `${TEAM_FILE}: ${problem}. The /about page renders this file at build time and never invents members; regenerate it with tools/contributors.py.`,
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function text(value: unknown, where: string): string {
-  if (typeof value !== 'string' || value.trim() === '') fail(`${where} must be a non-empty string`);
-  return value;
-}
-
-function httpsUrl(value: unknown, where: string, hosts?: Set<string>): string {
-  const raw = text(value, where);
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    fail(`${where} is not a URL`);
-  }
-  if (url.protocol !== 'https:') fail(`${where} must use https`);
-  if (hosts && !hosts.has(url.hostname)) fail(`${where} must be on ${[...hosts].join(' or ')}`);
-  return raw;
-}
-
-function member(value: unknown, where: string): Member {
-  if (!isRecord(value)) fail(`${where} must be an object`);
-  const { contributions, commits, icon } = value;
-  if (!Array.isArray(contributions)) fail(`${where}.contributions must be an array`);
-  if (commits !== null && !(typeof commits === 'number' && Number.isInteger(commits) && commits >= 0)) {
-    fail(`${where}.commits must be a whole number or null`);
-  }
-  if (icon !== undefined && icon !== null && icon !== 'key') fail(`${where}.icon must be "key" or null`);
-  // A member with the key icon has no avatar; every other member needs a GitHub avatar.
-  const keyIcon = icon === 'key' && value.avatar_url === null;
-  return {
-    login: text(value.login, `${where}.login`),
-    name: text(value.name, `${where}.name`),
-    avatar_url: keyIcon ? null : httpsUrl(value.avatar_url, `${where}.avatar_url`, AVATAR_HOSTS),
-    icon: keyIcon ? 'key' : null,
-    profile_url: httpsUrl(value.profile_url, `${where}.profile_url`),
-    role: text(value.role, `${where}.role`),
-    contributions: contributions.map((c, i) => text(c, `${where}.contributions[${i}]`)),
-    commits,
-  };
-}
-
-// import.meta.glob gives an empty object when the file does not exist, instead of an
-// unresolved import, so the missing case can fail with a clear message.
-const found = import.meta.glob<{ default: unknown }>('../data/team.json', { eager: true });
-const loaded = found['../data/team.json'];
-if (!loaded) fail('file not found (it is generated, never written by hand)');
-
-const team = loaded.default;
-if (!isRecord(team)) fail('the top level must be an object');
-const generatedAt = text(team.generated_at, 'generated_at');
-if (Number.isNaN(new Date(generatedAt).getTime())) fail('generated_at must be an ISO 8601 time');
-if (!Array.isArray(team.groups)) fail('groups must be an array');
-
-const groups: Group[] = team.groups.map((value: unknown, g: number) => {
-  const where = `groups[${g}]`;
-  if (!isRecord(value)) fail(`${where} must be an object`);
-  const id = value.id;
-  if (typeof id !== 'string' || !(GROUP_IDS as readonly string[]).includes(id)) {
-    fail(`${where}.id must be one of ${GROUP_IDS.join(', ')}`);
-  }
-  if (!Array.isArray(value.members)) fail(`${where}.members must be an array`);
-  return {
-    id: id as GroupId,
-    title: text(value.title, `${where}.title`),
-    members: value.members.map((m: unknown, i: number) => member(m, `${where}.members[${i}]`)),
-  };
-});
-
-for (const id of GROUP_IDS) {
-  const count = groups.filter((group) => group.id === id).length;
-  if (count !== 1) fail(`expected exactly one group with id "${id}", found ${count}`);
-}
-
-// Contribution types: the all-contributors ids, with the descriptions team.json carries.
-const typeNames = new Map<string, string>();
-if (isRecord(team.types)) {
-  for (const [id, value] of Object.entries(team.types)) {
-    if (isRecord(value) && typeof value.description === 'string') typeNames.set(id, value.description);
-  }
-}
-const typeName = (id: string) => typeNames.get(id) ?? id;
-
-const commitCount = (n: number) => `${n.toLocaleString('en-US')} ${n === 1 ? 'commit' : 'commits'}`;
-// The README and docs/team.md show a bot's count only when it has commits; this page does too.
-const showCommits = (group: Group, m: Member) => m.commits !== null && (group.id !== 'bots' || m.commits > 0);
 ---
 
 <Base
@@ -157,9 +32,10 @@ const showCommits = (group: Group, m: Member) => m.commits !== null && (group.id
       <p>
         Nothing converts yet: the project is in milestone {CURRENT_MILESTONE}. The 12 directions are built in a fixed
         order, starting with Fabric → NeoForge, and a direction is offered only once it has its own column on the
-        nightly board. None has one yet. See <a href="/docs/directions/">Directions</a> for the order and the status
-        of each, <a href="/docs/status/">Status</a> for what exists today and the <a href="/roadmap/">roadmap</a>
-        for the milestones.
+        nightly board and a converter. Only Fabric → NeoForge has a column so far, and every mod in it is red because
+        no converter exists yet. See <a href="/docs/directions/">Directions</a> for the order and the status of
+        each, <a href="/docs/status/">Status</a> for what exists today and the <a href="/roadmap/">roadmap</a> for
+        the milestones.
       </p>
 
       <h2>Who builds it</h2>
@@ -177,68 +53,8 @@ const showCommits = (group: Group, m: Member) => m.commits !== null && (group.id
 
     <section class="team" aria-labelledby="team-title">
       <h2 id="team-title">Who works on Jarrow</h2>
-      <p class="team-lead">
-        This list is generated from the repository by <code>tools/contributors.py</code> and refreshed by the
-        nightly run; nobody edits it by hand. Last generated
-        <time datetime={generatedAt}>{formatUtc(generatedAt)}</time>. The same list is in
-        <a href={repoFile('docs/team.md')}>docs/team.md</a> and in the
-        <a href={repoFile('README.md')}>README</a>.
-      </p>
-
-      {
-        groups.map((group) => (
-          <section class="group" aria-labelledby={`team-${group.id}`}>
-            <h3 id={`team-${group.id}`}>{group.title}</h3>
-            {group.members.length === 0 ? (
-              <p class="empty">No one is listed in this group yet.</p>
-            ) : (
-              <ul class="members">
-                {group.members.map((m) => (
-                  <li class="card member">
-                    {m.avatar_url === null ? (
-                      <span class="avatar avatar-icon">
-                        <Key size={28} aria-hidden="true" />
-                      </span>
-                    ) : (
-                      <img
-                        class="avatar"
-                        src={m.avatar_url}
-                        alt={`Avatar of ${m.name}`}
-                        width="64"
-                        height="64"
-                        loading="lazy"
-                        decoding="async"
-                        referrerpolicy="no-referrer"
-                      />
-                    )}
-                    <div class="member-body">
-                      <p class="member-name">
-                        <a href={m.profile_url}>
-                          {m.name}
-                          <ExternalLink size={14} aria-hidden="true" />
-                        </a>
-                      </p>
-                      {m.login !== m.name && <p class="member-login">{m.login}</p>}
-                      <p class="member-role">{m.role}</p>
-                      {(showCommits(group, m) || m.contributions.length > 0) && (
-                        <p class="member-meta">
-                          {showCommits(group, m) && <span>{commitCount(m.commits ?? 0)}</span>}
-                          {m.contributions.length > 0 && (
-                            <span>
-                              <span class="sr-only">Contribution types: </span>
-                              {m.contributions.map(typeName).join(', ')}
-                            </span>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ))
-      }
+      <TeamGrid />
+      <p class="team-page">The same list is on its own page: <a href="/contributors/">Contributors</a>.</p>
     </section>
   </div>
 </Base>
@@ -256,89 +72,8 @@ const showCommits = (group: Group, m: Member) => m.commits !== null && (group.id
     font-size: 1.75rem;
   }
 
-  .team-lead {
-    max-width: 48rem;
-    margin-top: 1rem;
-    color: var(--jw-muted);
-  }
-
-  .group {
+  .team-page {
     margin-top: 2rem;
-  }
-
-  .group h3 {
-    font-size: 1.3rem;
-    margin-bottom: 0.9rem;
-  }
-
-  .empty {
-    color: var(--jw-muted);
-  }
-
-  .members {
-    display: grid;
-    gap: 0.9rem;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
-  }
-
-  .member {
-    display: grid;
-    grid-template-columns: 4rem 1fr;
-    gap: 0.9rem;
-    align-items: start;
-    padding: 1rem 1.1rem;
-  }
-
-  .avatar {
-    display: block;
-    width: 4rem;
-    height: 4rem;
-    border-radius: 999px;
-    border: 1px solid var(--jw-border);
-    background: var(--jw-surface-2);
-    object-fit: cover;
-    /* If an avatar fails to load, its alt text stays inside the circle. */
-    overflow: hidden;
-    font-size: 0.6rem;
-    color: var(--jw-muted);
-  }
-
-  .avatar-icon {
-    display: grid;
-    place-items: center;
-    color: var(--jw-text);
-  }
-
-  .member-body {
-    display: grid;
-    gap: 0.2rem;
-    min-width: 0;
-  }
-
-  .member-name {
-    font-weight: 700;
-    overflow-wrap: anywhere;
-  }
-
-  .member-name a {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-  }
-
-  .member-login {
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
-    color: var(--jw-muted);
-    overflow-wrap: anywhere;
-  }
-
-  .member-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.9rem;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
     color: var(--jw-muted);
   }
 </style>

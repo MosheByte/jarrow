@@ -1,0 +1,38 @@
+---
+// /contributors: everyone who works on Jarrow, in three groups (people, agents, and bots and
+// automation). TeamGrid renders src/data/team.json, which tools/contributors.py generates from
+// the repository; the build fails when the file is missing or malformed. Prerendered, so the
+// sitemap integration lists it on its own. The header nav does not link here; /about does.
+import PageIntro from '../components/PageIntro.astro';
+import TeamGrid from '../components/TeamGrid.astro';
+import Base from '../layouts/Base.astro';
+import { repoFile } from '../lib/site.ts';
+---
+
+<Base
+  title="Contributors"
+  description="Who works on Jarrow: the people, agents, and bots and automation, generated from the repository by tools/contributors.py."
+>
+  <div class="wrap">
+    <PageIntro
+      eyebrow="Contributors"
+      title="Who works on Jarrow"
+      lead="People, agents, and bots and automation, taken from the repository's commits and pull requests."
+    />
+
+    <TeamGrid level={2} idPrefix="contributors" />
+
+    <p class="numbers">
+      The contributor counts for the last 30 days are in the Contributors section of
+      <a href={repoFile('LEDGER.md')}>LEDGER.md</a>.
+    </p>
+  </div>
+</Base>
+
+<style>
+  .numbers {
+    max-width: 48rem;
+    margin-top: 2.5rem;
+    color: var(--jw-muted);
+  }
+</style>

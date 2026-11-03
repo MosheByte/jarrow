@@ -2,7 +2,7 @@
 
 **Status: one column.** The nightly board (`.github/workflows/board.yml`) measures one direction, `fabric-neoforge`, with conversion stubbed: no converter exists yet (milestone M2), so every mod in that column is red with the reason `no_converter`. The other 11 directions have no column, no rows and zero counts. Before the first nightly has run, `board.json` does not exist and the site shows the empty board.
 
-The nightly board produces three kinds of artefact: the source lists, `board.json` (with `board-summary.json`) and the reports. `crates/board` (`jarrow-board`, the writer), the site (`site/src/lib/board.ts`), `tools/board_summary.py` and `tools/ledger.py` read them, and the D1 schema (`infra/d1/migrations/0002_directions.sql`) stores them, so this file is the single definition. Change it only together with every reader. How the pipeline produces them is in [board-pipeline.md](board-pipeline.md).
+The nightly board produces three kinds of artefact: the source lists, `board.json` (with `board-summary.json`) and the reports. `crates/board` (`jarrow-board`, the writer), the site (`site/src/lib/board.ts`), `tools/board_summary.py`, `tools/ledger.py` and the red mod intake (`.github/workflows/red-mod-intake.yml`) read them, and the D1 schema (`infra/d1/migrations/0002_directions.sql`) stores them, so this file is the single definition. Change it only together with every reader. How the pipeline produces them is in [board-pipeline.md](board-pipeline.md).
 
 This is schema 2: the board is per direction (D-029, D-042). Schema 1, from before the scope change, had no direction model and is no longer read or written.
 
