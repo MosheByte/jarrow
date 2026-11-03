@@ -1,12 +1,17 @@
 # CI for every pull request, the merge queue and main.
 # "ci-ok" is the one required status check: it fails when any job below failed or was
 # cancelled, and passes when they succeeded or were skipped.
+#
+# Bot pull requests (tools/bot_pr.sh) are pushed and opened with the workflow token, which
+# starts no pull_request or push run. The script starts this workflow on the bot/ branch with
+# workflow_dispatch instead, and that run's ci-ok on the head commit is the one the ruleset
+# reads.
 name: ci
 
 on:
   pull_request:
   push:
-    branches: [main, "bot/**"]
+    branches: [main]
   merge_group:
   workflow_dispatch:
 

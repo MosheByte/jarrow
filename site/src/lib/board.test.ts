@@ -10,6 +10,7 @@ import {
   hasRun,
   isDirection,
   loadBoard,
+  parityBadge,
   parseBoard,
   TIER_LABEL,
 } from './board.ts';
@@ -236,5 +237,37 @@ describe('greenPercent', () => {
     assert.equal(greenPercent({ mods: 0, green: 0, yellow: 0, red: 0 }), null);
     assert.equal(greenPercent({ mods: 1000, green: 599, yellow: 0, red: 0 }), 59);
     assert.equal(greenPercent({ mods: 1000, green: 600, yellow: 0, red: 0 }), 60);
+  });
+});
+
+describe('parityBadge', () => {
+  const board = (green: number, mods: number) => {
+    const b = emptyBoard();
+    b.totals = { mods, green, yellow: 0, red: mods - green };
+    return b;
+  };
+
+  it('reads 0% before the first nightly', () => {
+    assert.deepEqual(parityBadge({ status: 'missing', board: emptyBoard() }), {
+      schemaVersion: 1,
+      label: 'parity',
+      message: '0%',
+      color: 'lightgrey',
+    });
+  });
+
+  it('floors the green share and colours it against the 50% and 60% bars', () => {
+    const at = (green: number, mods: number) => parityBadge({ status: 'ok', board: board(green, mods), raw: '' });
+    assert.equal(at(2, 3).message, '66%');
+    assert.equal(at(2, 3).color, 'brightgreen');
+    assert.equal(at(1, 2).color, 'yellow');
+    assert.equal(at(1, 4).color, 'orange');
+    assert.equal(at(0, 4).message, '0%');
+  });
+
+  it('never shows a number for a board it could not read', () => {
+    const badge = parityBadge({ status: 'invalid', board: emptyBoard(), problem: 'x' });
+    assert.equal(badge.message, 'unavailable');
+    assert.equal(badge.isError, true);
   });
 });

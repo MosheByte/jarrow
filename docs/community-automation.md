@@ -4,8 +4,9 @@ The bots and workflows that turn issues, discussions and pull requests from cont
 
 | What | Trigger | What it does | Token permissions |
 | --- | --- | --- | --- |
-| `tools/bot_pr.sh` | Called by a workflow | Commits generated files on a `bot/<prefix>-<date>` branch, pushes it with the deploy key, opens a pull request with auto-merge | The caller's: `contents: write`, `pull-requests: write` |
-| `contributors.yml` | Nightly, 02:30 UTC; manual | Regenerates "Who works on Jarrow" and the contributor numbers in `LEDGER.md`, through `bot_pr.sh` | `contents: write` (auto-merge only), `pull-requests: write`, `checks: read` |
+| `tools/bot_pr.sh` | Called by a workflow | Commits generated files as `github-actions[bot]` on a `bot/<prefix>-<date>` branch, pushes it and opens a pull request with the workflow token, turns on auto-merge, starts `ci.yml` and `harness.yml` on the branch | The caller's: `contents: write`, `pull-requests: write`, `actions: write` |
+| `contributors.yml` | Nightly, 02:30 UTC; manual | Regenerates "Who works on Jarrow" (with every member's commit count) and the contributor numbers in `LEDGER.md`, through `bot_pr.sh` | `contents: write`, `pull-requests: write`, `actions: write`, `checks: read` |
+| `deps-automerge.yml` | `pull_request_target` (opened, reopened, synchronize) from `dependabot[bot]` or `renovate[bot]` | Turns on auto-merge, so the pull request merges through the merge queue once `ci-ok` is green | `contents: write`, `pull-requests: write` |
 | `welcome.yml` | A `ci` or `harness` run on a pull request finishes | One comment on a first-time contributor's pull request: the check results and the next rule to take | `pull-requests: write`, `issues: read`, `actions: read` |
 | `proposal-to-issue.yml` | The label `accepted` is added to a discussion in "Rule proposals" | Opens an issue labelled `rule` from the discussion and links it back | `issues: write`, `discussions: write` |
 | `red-mod-intake.yml` | An issue labelled `red-mod` is opened, edited or labelled | One comment with what Modrinth and the board say about the mod | `issues: write`, `contents: read` |
@@ -21,51 +22,49 @@ bash tools/bot_pr.sh <branch-prefix> <title> <body-file> -- <path>...
 ```
 
 1. If none of the paths changed, it prints "nothing changed" and exits 0. No branch, no pull request.
-2. It commits the paths on a new branch `bot/<prefix>-<UTC date>` (with the time appended when that branch already exists), as `jarrow-bot <jarrow-bot@noreply.invalid>`. The commit message is the title, the body file, and the trailers `Jarrow-Generated: <prefix>` and `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-3. It pushes the branch over SSH with the `BOT_DEPLOY_KEY` secret. The key is written to a `0600` file under `RUNNER_TEMP`, reaches git only through `GIT_SSH_COMMAND`, is never printed, and is deleted by an exit trap. GitHub's SSH host keys come from `gh api meta`.
-4. A push made with a deploy key starts workflows (a push made with the workflow token does not), so `ci.yml` runs on the push to `bot/**` and the head commit gets the required `ci-ok` check.
-5. It opens the pull request with `GH_TOKEN` (the job's `GITHUB_TOKEN`), then runs `gh pr merge --auto --squash --match-head-commit <sha>` with the same subject and body, so the squash commit on `main` keeps both trailers.
+2. It commits the paths on a new branch `bot/<prefix>-<UTC date>` (with the time appended when that branch already exists). Author and committer are `github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`, GitHub Actions' own bot account, so the commit counts for GitHub Actions in GitHub's contributor list and in "Who works on Jarrow". The squash commit on `main` counts the same way, because a squash merge is authored by the pull request's author. The commit message is the title, the body file, and the trailers `Jarrow-Generated: <prefix>` and `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+3. It pushes the branch over HTTPS with `GH_TOKEN`, the job's `GITHUB_TOKEN`. The token reaches git only through a credential helper that the script sets in the environment for its own run, scoped to the GitHub server. It is never written to a file, a remote URL or a command line, and never printed. The checkout keeps `persist-credentials: false`.
+4. It opens the pull request with the same token, then runs `gh pr merge --auto --squash --match-head-commit <sha>` with the same subject and body, so the squash commit on `main` keeps both trailers.
+5. Events the workflow token causes start no workflow, so neither the push nor the new pull request starts CI. The script starts `ci.yml` and `harness.yml` on the branch with `gh workflow run <file> --ref <branch>`; `workflow_dispatch` is the documented exception that does start a run. That `ci` run reports `ci-ok` on the head commit, which the `main` ruleset requires, and auto-merge puts the pull request in the merge queue. The queue then runs its `merge_group` checks as for any pull request. Both workflows have a `workflow_dispatch` trigger for this, and `ci.yml` no longer runs on pushes to `bot/**`.
 6. Older open pull requests from `bot/<prefix>-*` branches are closed with "Superseded by #N" and their branches deleted: they regenerated the same files from an older `main`.
 7. It prints the pull request URL on its last line.
 
-`tools/tests/test_bot_pr.py` runs the script against a local bare repository with a fake `gh`.
+`tools/tests/test_bot_pr.py` runs the script against a local bare repository with a fake `gh`, and checks the credential helper with `git credential fill`.
 
 What the job needs:
 
-- `BOT_DEPLOY_KEY`: the private half of the `jarrow-bot` deploy key, with write access.
-- `GH_TOKEN: ${{ github.token }}`, with `pull-requests: write` to open the pull request and `contents: write` to turn on auto-merge (GitHub's documented requirement for `gh pr merge --auto` with the workflow token). The token itself pushes nothing.
-- The repository setting **Settings > Actions > General > Workflow permissions > "Allow GitHub Actions to create and approve pull requests"**. It was off when this was written (2026-11-03, `can_approve_pull_request_reviews: false`). While it is off, `gh pr create` is refused; the script then fails with a message that names the setting, and the pushed branch stays so a person can open the pull request by hand. Turning it on is the owner's call.
+- `GH_TOKEN: ${{ github.token }}` with `contents: write` (push the `bot/` branch, turn on auto-merge), `pull-requests: write` (open and close pull requests) and `actions: write` (`gh workflow run`). The `main` ruleset accepts changes to `main` only through a pull request, so the token cannot push to `main` itself.
+- The job behind `if: github.ref == 'refs/heads/main'`, so only `main`'s copy of the workflow opens bot pull requests.
+- The repository setting **Settings > Actions > General > Workflow permissions > "Allow GitHub Actions to create and approve pull requests"**. It is on (checked 2026-11-03, `can_approve_pull_request_reviews: true`). While it is off, `gh pr create` is refused; the script then fails with a message that names the setting, and the pushed branch stays so a person can open the pull request by hand.
 - "Allow auto-merge" in the repository settings (on).
 
-The merge itself is done by the workflow token, and GitHub starts no workflow for events the workflow token causes. A bot pull request merging into `main` is therefore expected not to start the push workflows on `main` (CI on `main`, the site deploy, Scorecard); its head commit was checked by the `ci` run on the `bot/**` push. The site picks up a new `site/src/data/team.json` with the next deploy.
+The site picks up a new `site/src/data/team.json` with its next deploy.
 
-### Switching another workflow to it
+Two workflows call it: `contributors.yml` (prefix `contributors`) and the `publish-ledger` job of `board.yml` (prefix `board`, for `ledger/inputs/board-summary.json` and `LEDGER.md`).
 
-`board.yml` still describes a direct push in [board.md](board.md) (step 4 of Publication). To switch it, replace the commit-and-push step with:
+### The deploy key
 
-```yaml
-    permissions:
-      contents: write # auto-merge only; the branch goes up with the deploy key
-      pull-requests: write
-    steps:
-      # ... checkout with persist-credentials: false and fetch-depth: 0, then the step that
-      # writes ledger/inputs/board-summary.json and runs python tools/ledger.py ...
-      - name: Open the board data pull request
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BOT_DEPLOY_KEY: ${{ secrets.BOT_DEPLOY_KEY }}
-        run: |
-          set -euo pipefail
-          printf '%s\n' "Nightly board summary for the ledger." > "$RUNNER_TEMP/board-pr.md"
-          bash tools/bot_pr.sh board "chore(board): nightly ledger inputs" "$RUNNER_TEMP/board-pr.md" -- \
-            ledger/inputs/board-summary.json LEDGER.md
-```
+`BOT_DEPLOY_KEY`, the `jarrow-bot` deploy key with write access, stays configured, but only for a push to a protected branch, which the workflow token cannot make. No workflow uses it today: `contributors.yml` and `board.yml` commit as `github-actions[bot]` through `bot_pr.sh`, and their `bot/` branches are not protected. A future branch that is not protected either, such as a `pr-assets` branch for pull request screenshots, uses the workflow token as well.
 
-Keep the job behind `if: github.ref == 'refs/heads/main'` so only `main`'s copy of the workflow can use the deploy key. When no workflow pushes to `main` directly any more, the `DeployKey` bypass in the `main` ruleset is no longer used.
+A workflow that does need the key reads it in one step of `main`'s copy only, writes it to a `0600` file under `RUNNER_TEMP` that an exit trap removes, and hands it to git only through `GIT_SSH_COMMAND`, with GitHub's SSH host keys from `gh api meta`. For a push to `main` itself the key would also need a bypass entry in the `main` ruleset. On 2026-11-03 the ruleset had no bypass actors.
+
+## Dependency updates: Dependabot, Renovate and `deps-automerge.yml`
+
+Dependency pull requests merge on their own when CI is green, through the merge queue like every other pull request.
+
+- **Dependabot** (`.github/dependabot.yml`) keeps Cargo, npm (`site/`), GitHub Actions and pip (`tools/`), weekly on Monday. TypeScript 7 and later are ignored until `@astrojs/check` accepts them (D-025).
+- **Renovate** (`renovate.json`) covers what Dependabot does not, so no update arrives twice: the devcontainer base image (tag and digest together), `rust-toolchain.toml` with the MSRV in `Cargo.toml` (one pull request), Gradle (`GRADLE_VERSION` in `harness.yml`) with the probe build's plugins and test libraries (`harness/probe`), and npm tools pinned inside workflow steps (`npx --yes wrangler@x.y.z`). Its cargo, npm, GitHub Actions and pip managers are off, and the ClusterFuzzLite builder image is left out. Fabric Loom stays below 1.18 (compiled for Java 25; the project pins JDK 21) and Gradle below 10, because `harness-ok`, which builds the probes, is not a required check. TypeScript stays below 7, as for Dependabot. Renovate runs on Monday mornings (UTC), with `automerge` and `platformAutomerge` on.
+- **`deps-automerge.yml`** runs on `pull_request_target` (opened, reopened, synchronize) for pull requests that `dependabot[bot]` or `renovate[bot]` opened from a branch of this repository. It runs `gh pr merge <n> --auto` with the workflow token and nothing else: no checkout, no build, no code from the pull request. The pull request joins the merge queue once `ci-ok` passes; a red `ci-ok` leaves it open for a person.
+
+Only `ci-ok` gates the merge. An update that only `harness.yml`, `devcontainer.yml` or the ClusterFuzzLite workflows would catch still merges when `ci-ok` is green, which is why the Renovate rules above hold back the versions known to break the probe build.
 
 ## Nightly contributors: `contributors.yml`
 
-Runs `tools/contributors.py` (the README section between the `ALL-CONTRIBUTORS-LIST` markers, `.all-contributorsrc`, `docs/team.md`, `site/src/data/team.json`), then `tools/contributors.py --ledger` and `tools/ledger.py`, and hands the changed files to `bot_pr.sh contributors`. Its commits carry `Jarrow-Generated: contributors`, which `tools/contributors.py` leaves out of every count, so a refresh never causes another one.
+Runs `tools/contributors.py` (the README section between the `ALL-CONTRIBUTORS-LIST` markers, `.all-contributorsrc`, `docs/team.md`, `site/src/data/team.json`), then `tools/contributors.py --ledger` and `tools/ledger.py`, and hands the changed files to `bot_pr.sh contributors`.
+
+Every person, agent and bot in the list shows its commit count on `main` next to its name, 0 included. An agent's count is the commits whose `Co-Authored-By` trailers name it. A bot's count is the commits it authored, by author name (`github-actions[bot]`, `dependabot[bot]`, `renovate[bot]`, ...); a squash merge is authored by the pull request's author, so each merged bot pull request counts once for its bot. The board's ledger commits (`Jarrow-Generated: board`) count for GitHub Actions.
+
+The refresh commits carry `Jarrow-Generated: contributors`. `tools/contributors.py` leaves a refresh commit out while it is the newest commit on `main`, so the list it wrote stays up to date and a refresh never causes another one. Once another commit lands on top of it, it counts like any other commit, for GitHub Actions and for the agent its trailers name, so the numbers follow GitHub's own count with at most the latest refresh missing.
 
 ### Contributor numbers in `LEDGER.md`
 

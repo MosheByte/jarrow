@@ -1,99 +1,66 @@
-# Jarrow
+![Jarrow](docs/media/banner.webp)
 
-[![CI](https://github.com/MosheByte/jarrow/actions/workflows/ci.yml/badge.svg)](https://github.com/MosheByte/jarrow/actions/workflows/ci.yml)
+<p align="center"><a href="https://jarrow.pages.dev">Website</a> · <a href="https://jarrow.pages.dev/convert/">Convert</a> · <a href="https://jarrow.pages.dev/board/">Board</a> · <a href="https://jarrow.pages.dev/docs/">Docs</a> · <a href="https://github.com/jarrow-dev/jarrow/releases">Releases</a> · <a href="ROADMAP.md">Roadmap</a> · <a href="CONTRIBUTING.md">Contributing</a></p>
 
-Drop a Minecraft Fabric mod JAR on a web page and get the same mod back for NeoForge, with a proof that it behaves the same.
+<p align="center"><a href="https://github.com/jarrow-dev/jarrow/actions/workflows/ci.yml"><img src="https://github.com/jarrow-dev/jarrow/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a> <a href="https://github.com/jarrow-dev/jarrow/actions/workflows/nightly.yml"><img src="https://github.com/jarrow-dev/jarrow/actions/workflows/nightly.yml/badge.svg?branch=main" alt="nightly"></a> <a href="https://jarrow.pages.dev/board/"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fjarrow.pages.dev%2Fapi%2Fbadge%2Fparity.json" alt="parity"></a> <a href="https://scorecard.dev/viewer/?uri=github.com/jarrow-dev/jarrow"><img src="https://api.securityscorecards.dev/projects/github.com/jarrow-dev/jarrow/badge" alt="OpenSSF Scorecard"></a> <a href="https://www.bestpractices.dev/projects/16297"><img src="https://www.bestpractices.dev/projects/16297/badge" alt="OpenSSF Best Practices"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT licence"></a></p>
 
-**Status: pre-alpha — milestone M0; nothing converts yet.** The repository, CI, site skeleton and docs are being set up. There is no converter, no harness and no board yet. See [ROADMAP.md](ROADMAP.md) for what comes when.
+Jarrow converts a Minecraft mod JAR between Fabric, NeoForge, Forge and Quilt: 12 directions on 3 Minecraft versions, each result checked by a behaviour harness.
 
-## Links
+Status: pre-alpha, milestone M1 of M0–M6; nothing converts yet. Progress is in [LEDGER.md](LEDGER.md).
 
-| What | Where |
-| --- | --- |
-| Site | https://jarrow.pages.dev |
-| Docs | [docs/](docs/) in this repository; Rust API docs at https://moshebyte.github.io/jarrow/ |
-| Board | Not built yet (milestone M1). The site shows its counter, which is zero until the first nightly run. |
-| Roadmap | [ROADMAP.md](ROADMAP.md) and the project board at https://github.com/users/MosheByte/projects/1 |
-| Discussions | https://github.com/MosheByte/jarrow/discussions |
+## Try it
 
-## How it will work
+```bash
+cargo install --locked --git https://github.com/jarrow-dev/jarrow jarrow
+jarrow convert my-mod.jar   # prints "Not built yet" until milestone M2
+```
 
-Every JAR is sorted into one tier before anything else happens:
+## How it's proven
 
-- **Tier A** converts in your browser (Rust compiled to WebAssembly). The JAR never leaves your machine.
-- **Tier B** runs a short-lived GitHub Actions job (decompile, rules, agent fix, recompile, harness) for signed-in users, and the workspace is wiped afterwards.
-- **Unsupported** means the page tells you plainly why (native libraries, bytecode transformers, obfuscated JARs, or a license that forbids modification) and converts nothing.
+- **Tier A:** converted in your browser by Rust compiled to WebAssembly; 0 bytes of the JAR leave your machine.
+- **Tier B:** 1 short-lived GitHub Actions job decompiles, applies the rules, recompiles, runs the harness and wipes its workspace.
+- **Unsupported:** the page names which of 4 blockers applies (native code, bytecode transformers, obfuscation, a licence that forbids changes) and converts nothing.
 
-A result is "green" only when the parity harness says so. The harness starts a Fabric server with the original mod and a NeoForge server with the converted one, dumps registries, recipes, tags, loot tables and a worldgen sample, and compares them. Until the harness exists, nothing is green.
-
-Jarrow never hosts, caches or links to converted JARs. Conversion is for your own game unless you are the mod's author. Authors can opt their mod out completely. Details are in [docs/legal.md](docs/legal.md).
-
-## Built by an agent
-
-Jarrow is built by Claude, an AI agent made by Anthropic, for the project owner ([@MosheByte](https://github.com/MosheByte)). Every commit is co-authored by Claude and says so in its trailer. The point of the project is to show agent-built software that proves its own results, so the authorship is part of the story, not a footnote.
+The harness starts 2 servers, the source loader with the original JAR and the target loader with the converted one, each on seed 20261103 with a 3 GB heap and a 6-minute limit. It dumps 9 categories (mods, registries, tags, recipes, loot tables, advancements, worldgen, log and probe errors) and lets worldgen counts drift by 16 blocks or 2% between runs of the same server. Each comparison lands in 1 of 5 bands: 1.0 and 0.75 are green, 0.5 is yellow, 0.25 and 0 are red.
 
 ## Who works on Jarrow
 
-This section is generated by `tools/contributors.py` and refreshed by the nightly run, so it is never edited by hand.
+Generated nightly from the commit log.
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
 ### People
 
-Every person who authored or committed a commit on main, shown by GitHub login, plus the project owner.
-
 <table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MosheByte"><img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=80" width="80px;" alt="MosheByte"/><br /><sub><b>MosheByte</b></sub></a><br /><sub>Owner: sets direction, holds the accounts. Commits through this account are written by the agent and disclosed in their trailers.</sub><br /><sub>3 commits</sub><br /><a href="#ideas-MosheByte" title="Ideas, Planning, &amp; Feedback">🤔</a> <a href="#projectManagement-MosheByte" title="Project Management">📆</a></td>
-    </tr>
-  </tbody>
+<tr><td align="center" valign="top" width="33%"><a href="https://github.com/MosheByte"><img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=96" width="48" height="48" alt=""><br><b>MosheByte</b></a><br><sub>Maintainer; holds the accounts</sub><br><sub>25 commits</sub></td></tr>
 </table>
 
-### Agents
-
-Agents have no GitHub account of their own here. They act through the owner's account, and every commit they write names them in a Co-Authored-By trailer; the counts come from those trailers.
+### <img src="site/public/icons/pixel/agent.svg" width="24" height="24" alt=""> Agents
 
 <table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://www.anthropic.com/claude"><img src="https://avatars.githubusercontent.com/u/76263028?v=4&amp;s=80" width="80px;" alt="Claude Opus 5.5"/><br /><sub><b>Claude Opus 5.5</b></sub></a><br /><sub>Engineering: writes the code, docs and infrastructure; co-author of every commit it touches</sub><br /><sub>3 commits</sub><br /><a href="#agent-claude-opus-5-5" title="AI agent">🤖</a> <a href="#code-claude-opus-5-5" title="Code">💻</a> <a href="#doc-claude-opus-5-5" title="Documentation">📖</a> <a href="#test-claude-opus-5-5" title="Tests">⚠️</a> <a href="#infra-claude-opus-5-5" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
-    </tr>
-  </tbody>
+<tr><td align="center" valign="top" width="33%"><a href="https://www.anthropic.com/claude"><b>Claude Opus 5.5</b></a><br><sub>Writes the code and docs</sub><br><sub>25 commits</sub></td></tr>
 </table>
 
-### Bots and automation
-
-Every GitHub App, bot and workflow that acts on the repository, and what it does.
+### <img src="site/public/icons/pixel/bot.svg" width="24" height="24" alt=""> Bots and automation
 
 <table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://codeql.github.com"><img src="https://avatars.githubusercontent.com/in/57789?v=4&amp;s=80" width="80px;" alt="CodeQL"/><br /><sub><b>CodeQL</b></sub></a><br /><sub>Code scanning with CodeQL (codeql.yml) for Actions workflows, JavaScript/TypeScript, Python and Rust.</sub><br /><a href="#ci-github-advanced-security" title="CI and scheduled workflows">🔁</a> <a href="#security-github-advanced-security" title="Security">🛡️</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/apps/dependabot"><img src="https://avatars.githubusercontent.com/in/29110?v=4&amp;s=80" width="80px;" alt="Dependabot"/><br /><sub><b>Dependabot</b></sub></a><br /><sub>Opens dependency update pull requests for Cargo, npm, GitHub Actions and pip (.github/dependabot.yml).</sub><br /><a href="#bot-dependabot" title="Bot or GitHub App">⚙️</a> <a href="#maintenance-dependabot" title="Maintenance">🚧</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/apps/github-actions"><img src="https://avatars.githubusercontent.com/in/15368?v=4&amp;s=80" width="80px;" alt="GitHub Actions"/><br /><sub><b>GitHub Actions</b></sub></a><br /><sub>Runs the workflows in .github/workflows: CI, CodeQL, this list, site deploy, infra apply, PR labels, GitLab mirror, API docs, Scorecard and stale sweep.</sub><br /><a href="#ci-github-actions" title="CI and scheduled workflows">🔁</a> <a href="#infra-github-actions" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MosheByte/jarrow/blob/main/.github/workflows/contributors.yml"><img src="docs/assets/key.svg" width="80px;" alt="jarrow-bot (deploy key)"/><br /><sub><b>jarrow-bot (deploy key)</b></sub></a><br /><sub>SSH deploy key with write access. Actions pushes jarrow-bot commits with it: the nightly refresh of this list (contributors.yml).</sub><br /><a href="#bot-jarrow-bot" title="Bot or GitHub App">⚙️</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/apps/socket-security"><img src="https://avatars.githubusercontent.com/in/156372?v=4&amp;s=80" width="80px;" alt="Socket Security"/><br /><sub><b>Socket Security</b></sub></a><br /><sub>Dependency review: reports supply-chain risk in the project&#x27;s dependencies and in those a pull request adds or changes.</sub><br /><a href="#bot-socket-security" title="Bot or GitHub App">⚙️</a> <a href="#security-socket-security" title="Security">🛡️</a></td>
-    </tr>
-  </tbody>
+<tr><td align="center" valign="top" width="33%"><a href="https://codeql.github.com"><b>CodeQL</b></a><br><sub>Static analysis on every PR</sub><br><sub>0 commits</sub></td><td align="center" valign="top" width="33%"><a href="https://github.com/apps/dependabot"><b>Dependabot</b></a><br><sub>Security and dependency updates</sub><br><sub>0 commits</sub></td><td align="center" valign="top" width="33%"><a href="https://github.com/apps/github-actions"><b>GitHub Actions</b></a><br><sub>Runs CI and nightly jobs</sub><br><sub>0 commits</sub></td></tr>
+<tr><td align="center" valign="top" width="33%"><a href="https://github.com/jarrow-dev/jarrow/blob/main/.github/workflows/board.yml"><b>jarrow-bot (deploy key)</b></a><br><sub>Pushes to protected branches</sub><br><sub>0 commits</sub></td><td align="center" valign="top" width="33%"><a href="https://github.com/apps/renovate"><b>Renovate</b></a><br><sub>Grouped dependency update PRs</sub><br><sub>0 commits</sub></td></tr>
 </table>
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
-
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
-The same list, with each member's role, is in [docs/team.md](docs/team.md) and on the site's [About page](https://jarrow.pages.dev/about/).
+## Built by an agent
 
-## Contributing
+<!-- AGENT-STATS:START - generated by tools/contributors.py -->
+25 of 25 commits, 16 pull requests and 715 tests written by Claude Opus 5.5, disclosed in every commit trailer.
+<!-- AGENT-STATS:END -->
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md). Security issues go through [SECURITY.md](SECURITY.md). Everyone follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+MIT ([LICENSE](LICENSE)); the rule tables under `rules/` are CC0-1.0, free to reuse for any loader.
 
-## License
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/rust-logo-white.svg"><img src="docs/media/rust-logo.svg" width="16" height="16" alt="Rust logo"></picture> Made in the open, in Rust. <sub>Logo © Rust Foundation, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, filled white in dark mode.</sub>
 
-The code is MIT ([LICENSE](LICENSE)). The rule tables under `rules/` are CC0-1.0, so anyone can reuse what they describe about the Fabric and NeoForge APIs.
-
----
-
-Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Not affiliated with the Fabric or NeoForge projects.
+Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Not affiliated with the Fabric, NeoForge, Forge or Quilt projects.

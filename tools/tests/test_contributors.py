@@ -226,6 +226,127 @@ def test_bots_from_files_and_history_only(team_repo: GitRepo) -> None:
         assert absent not in bots
 
 
+ACTIONS_BOT = "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+RENOVATE = "renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>"
+
+
+@pytest.fixture
+def bot_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> GitRepo:
+    """Squash merges as GitHub makes them: the pull request's author, committed by web-flow."""
+    repo = GitRepo(tmp_path / "bots")
+    commit(
+        repo, monkeypatch, message("Initial", OPUS), author=OWNER, date="2026-01-01T10:00:00+00:00",
+        files={"README.md": README, **WORKFLOWS},
+    )
+    commit(
+        repo, monkeypatch, "chore(ledger): nightly board (#5)\n\nJarrow-Generated: board\nCo-Authored-By: " + OPUS + "\n",
+        author=ACTIONS_BOT, committer=WEB_FLOW, date="2026-01-02T10:00:00+00:00", files={"LEDGER.md": "# L\n"},
+    )
+    commit(
+        repo, monkeypatch, "chore(ledger): nightly board (#7)\n\nJarrow-Generated: board\nCo-Authored-By: " + OPUS + "\n",
+        author=ACTIONS_BOT, committer=WEB_FLOW, date="2026-01-03T10:00:00+00:00", files={"LEDGER.md": "# L2\n"},
+    )
+    commit(
+        repo, monkeypatch, message("deps: Update gradle to v9.8.2 (#8)"), author=RENOVATE, committer=WEB_FLOW,
+        date="2026-01-04T10:00:00+00:00", files={".github/workflows/harness.yml": "name: harness\n"},
+    )
+    commit(
+        repo, monkeypatch, message("deps: Bump sha1 (#9)"), author=DEPENDABOT, committer=WEB_FLOW,
+        date="2026-01-05T10:00:00+00:00", files={"Cargo.lock": "x\n"},
+    )
+    # The list's own refresh, also by github-actions[bot]: never counted.
+    commit(
+        repo, monkeypatch, message("chore(team): refresh (#10)", OPUS, refresh=True), author=ACTIONS_BOT,
+        committer=WEB_FLOW, date="2026-01-06T10:00:00+00:00", files={"docs/team.md": "x\n"},
+    )
+    return repo
+
+
+def test_bot_counts_are_the_commits_each_bot_authored(bot_repo: GitRepo) -> None:
+    data = team_json(offline(bot_repo.root))
+    bots = {b["login"]: b for b in members(data, "bots")}
+    assert bots["github-actions"]["commits"] == 2
+    assert bots["renovate"]["commits"] == 1
+    assert bots["dependabot"]["commits"] == 1
+    # Bots without a commit are still listed, with 0.
+    assert bots["github-advanced-security"]["commits"] == 0
+    # The web-flow committer of a squash merge is nobody; bots are not people.
+    assert [p["login"] for p in members(data, "people")] == ["MosheByte"]
+    # The bot commits keep the Co-Authored-By trailer, so they count for the agent too.
+    assert members(data, "agents")[0]["commits"] == 3
+    assert data["generated_at"] == "2026-01-05T10:00:00Z"
+
+
+def test_a_refresh_commit_counts_once_another_commit_lands_on_it(
+    bot_repo: GitRepo, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = bot_repo.root
+    assert contributors.main(["--offline", "--root", str(root)]) == 0
+    # The refresh at the tip changes nothing: the list it wrote is still up to date.
+    assert contributors.main(["--offline", "--check", "--root", str(root)]) == 0
+    commit(
+        bot_repo, monkeypatch, message("Docs (#11)", OPUS), author=OWNER, committer=WEB_FLOW,
+        date="2026-01-07T10:00:00+00:00", files={"docs/b.md": "# B\n"},
+    )
+    data = team_json(offline(root))
+    bots = {b["login"]: b for b in members(data, "bots")}
+    # Now the refresh commit (#10) counts for github-actions[bot], like GitHub counts it.
+    assert bots["github-actions"]["commits"] == 3
+    assert members(data, "agents")[0]["commits"] == 5
+    assert members(data, "people")[0]["commits"] == 2
+    capsys.readouterr()
+
+
+def test_every_member_shows_its_commit_count_next_to_its_name(bot_repo: GitRepo) -> None:
+    outputs = offline(bot_repo.root)
+    data = team_json(outputs)
+    block = outputs[contributors.README_PATH].split(contributors.START_MARKER)[1]
+    team_md = outputs[contributors.TEAM_MD_PATH]
+    assert "| | Who | Commits | Role | Contributions |" in team_md
+    for group in data["groups"]:
+        for m in group["members"]:
+            n = m["commits"]
+            text = f"{n} commit" if n == 1 else f"{n} commits"
+            # README: name, the short role, then the count.
+            start = block.index(f"<b>{contributors.esc(m['name'])}</b>")
+            cell = block[start : block.index("</td>", start)]
+            assert cell.endswith(f"<br><sub>{contributors.esc(m['short_role'])}</sub><br><sub>{text}</sub>"), m["login"]
+            # docs/team.md: the column next to the name.
+            row = next(line for line in team_md.splitlines() if f"[{m['name']}](" in line)
+            assert row.split(" | ")[2] == str(n), row
+    assert "<sub>0 commits</sub>" in block
+
+
+def test_bot_roles_say_how_bot_commits_and_dependency_updates_land(bot_repo: GitRepo) -> None:
+    root = bot_repo.root
+    bot_repo.write(
+        ".github/workflows/contributors.yml",
+        "name: contributors\njobs:\n  refresh:\n    steps:\n      - run: bash tools/bot_pr.sh contributors t b -- x\n",
+    )
+    bot_repo.write(
+        ".github/workflows/deps-automerge.yml",
+        "name: deps-automerge\njobs:\n  automerge:\n    if: github.event.pull_request.user.login == 'dependabot[bot]' ||"
+        " github.event.pull_request.user.login == 'renovate[bot]'\n    steps:\n      - run: gh pr merge \"$PR\" --auto\n",
+    )
+    bot_repo.write("renovate.json", json.dumps({"enabledManagers": ["gradle", "rust-toolchain"]}))
+    bots = {b["login"]: b for b in members(team_json(offline(root)), "bots")}
+    actions = bots["github-actions"]["role"]
+    assert "Commits as github-actions[bot] through bot pull requests (tools/bot_pr.sh)" in actions
+    assert "the nightly refresh of this list (contributors.yml)" in actions
+    assert "dependency auto-merge" in actions
+    assert bots["dependabot"]["role"].endswith("They merge through the merge queue once ci-ok passes (deps-automerge.yml).")
+    assert bots["renovate"]["role"] == (
+        "Opens dependency update pull requests for Gradle plugins and libraries and the Rust toolchain "
+        "(renovate.json). They merge through the merge queue once ci-ok passes (deps-automerge.yml)."
+    )
+    # No workflow uses the deploy key any more: it is kept, and its role says what for.
+    online = contributors.generate(root, gh=full_gh(("github-actions", 15368)), log=lambda _: None)
+    key = {b["login"]: b for b in members(team_json(online), "bots")}["jarrow-bot"]
+    assert key["commits"] == 0
+    assert "protected branch" in key["role"] and "No workflow uses it" in key["role"]
+    assert key["profile_url"].endswith("/docs/community-automation.md#the-deploy-key")
+
+
 def test_no_commit_names_or_emails_reach_the_outputs(team_repo: GitRepo) -> None:
     outputs = offline(team_repo.root)
     for rel, text in outputs.items():
@@ -316,11 +437,16 @@ def test_readme_changes_only_between_the_markers(team_repo: GitRepo) -> None:
     _, old_tail = old_rest.split(contributors.END_MARKER)
     assert (head, tail) == (old_head, old_tail)
     assert "stale text" not in block
-    assert block.index("### People") < block.index("### Agents") < block.index("### Bots and automation")
-    assert '<img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=80" width="80px;" alt="MosheByte"/>' in block
-    assert f"<sub>{contributors.OWNER_ROLE}</sub>" in block.replace("&#x27;", "'")
-    assert '<img src="docs/assets/key.svg"' in block
-    assert 'width="14.28%"' in block
+    assert block.index("### People") < block.index("> Agents") < block.index("> Bots and automation")
+    assert '<img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=96" width="48" height="48" alt="">' in block
+    assert f"<sub>{contributors.OWNER_SHORT}</sub>" in block
+    # No key.svg and no account avatars for agents or bots: one shared icon per group heading.
+    assert "key.svg" not in block
+    assert block.count(contributors.GROUP_ICONS["agents"]) == 1
+    assert block.count(contributors.GROUP_ICONS["bots"]) == 1
+    assert block[block.index("> Agents") :].count("<img") == 1
+    assert 'width="33%"' in block
+    assert all(row.count("<td") <= contributors.README_PER_LINE for row in block.split("<tr>"))
     # Running again on the generated README gives the same README.
     (team_repo.root / "README.md").write_text(readme, encoding="utf-8", newline="\n")
     assert offline(team_repo.root)[contributors.README_PATH] == readme
@@ -646,3 +772,65 @@ def test_as_of_needs_ledger_and_a_date(team_repo: GitRepo, capsys: pytest.Captur
             contributors.main(argv)
         assert exit_info.value.code == 2
     capsys.readouterr()
+
+
+def test_every_readme_role_is_five_words_at_most_and_has_no_emoji(team_repo: GitRepo) -> None:
+    team = json.loads(offline(team_repo.root)[contributors.TEAM_JSON_PATH])
+    for group in team["groups"]:
+        for member in group["members"]:
+            assert member["short_role"], member["login"]
+            assert len(member["short_role"].split()) <= 5, member["short_role"]
+    for bot in contributors.KNOWN_BOTS:
+        assert bot.short and len(bot.short.split()) <= 5, bot.login
+    readme = offline(team_repo.root)[contributors.README_PATH]
+    block = readme.split(contributors.START_MARKER)[1].split(contributors.END_MARKER)[0]
+    assert all(ord(ch) < 0x2000 for ch in block)
+
+
+def test_agent_stats_count_commits_pull_requests_and_tests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = GitRepo(tmp_path / "stats")
+    readme = README.replace(
+        "## After",
+        f"## Built by an agent\n\n{contributors.STATS_START_MARKER}\nold\n{contributors.STATS_END_MARKER}\n\n## After",
+    )
+    commit(
+        repo,
+        monkeypatch,
+        message("First (#1)", OPUS),
+        author=OWNER,
+        date="2026-01-01T10:00:00+02:00",
+        files={
+            "README.md": readme,
+            "crates/a/src/lib.rs": "#[test]\nfn a() {}\n\n    #[test]\nfn b() {}\n// #[test] in a comment\n",
+        },
+    )
+    commit(
+        repo,
+        monkeypatch,
+        message("Human tests (#2)"),
+        author=JANE,
+        date="2026-01-02T10:00:00+02:00",
+        files={"tools/tests/test_h.py": "def test_h():\n    pass\n"},
+    )
+    commit(
+        repo,
+        monkeypatch,
+        message("Direct", OPUS),
+        author=OWNER,
+        date="2026-01-03T10:00:00+02:00",
+        files={
+            "site/src/x.test.ts": "test('x', () => {});\nit(\"y\", () => {});\n",
+            "tools/tests/test_h.py": "def test_h():\n    pass\n\n\nasync def test_i():\n    pass\n",
+        },
+    )
+    stats = contributors.agent_stats(repo.root, "HEAD", contributors.read_history(repo.root, "HEAD"))
+    # Rust a and b, TypeScript x and y, Python test_i; test_h is Jane's.
+    assert (stats.commits, stats.total_commits, stats.pull_requests, stats.tests) == (2, 3, 1, 5)
+    out = offline(repo.root)[contributors.README_PATH]
+    line = out.split(contributors.STATS_START_MARKER)[1].split(contributors.STATS_END_MARKER)[0]
+    assert line == (
+        "\n2 of 3 commits, 1 pull requests and 5 tests written by Claude Opus 5.5, "
+        "disclosed in every commit trailer.\n"
+    )

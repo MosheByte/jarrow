@@ -139,8 +139,6 @@ if (isRecord(team.types)) {
 const typeName = (id: string) => typeNames.get(id) ?? id;
 
 const commitCount = (n: number) => `${n.toLocaleString('en-US')} ${n === 1 ? 'commit' : 'commits'}`;
-// The README and docs/team.md show a bot's count only when it has commits; this list does too.
-const showCommits = (group: Group, m: Member) => m.commits !== null && (group.id !== 'bots' || m.commits > 0);
 ---
 
 <p class="team-lead">
@@ -178,23 +176,22 @@ const showCommits = (group: Group, m: Member) => m.commits !== null && (group.id
                 />
               )}
               <div class="member-body">
+                {/* The commit count sits next to the name for every member, 0 included, as in the README and docs/team.md. */}
                 <p class="member-name">
                   <a href={m.profile_url}>
                     {m.name}
                     <ExternalLink size={14} aria-hidden="true" />
                   </a>
+                  {m.commits !== null && <span class="member-commits">{commitCount(m.commits)}</span>}
                 </p>
                 {m.login !== m.name && <p class="member-login">{m.login}</p>}
                 <p class="member-role">{m.role}</p>
-                {(showCommits(group, m) || m.contributions.length > 0) && (
+                {m.contributions.length > 0 && (
                   <p class="member-meta">
-                    {showCommits(group, m) && <span>{commitCount(m.commits ?? 0)}</span>}
-                    {m.contributions.length > 0 && (
-                      <span>
-                        <span class="sr-only">Contribution types: </span>
-                        {m.contributions.map(typeName).join(', ')}
-                      </span>
-                    )}
+                    <span>
+                      <span class="sr-only">Contribution types: </span>
+                      {m.contributions.map(typeName).join(', ')}
+                    </span>
                   </p>
                 )}
               </div>
@@ -275,6 +272,15 @@ const showCommits = (group: Group, m: Member) => m.commits !== null && (group.id
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
+  }
+
+  .member-commits {
+    margin-left: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--jw-muted);
+    white-space: nowrap;
   }
 
   .member-login {

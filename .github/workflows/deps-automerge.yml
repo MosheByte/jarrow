@@ -1,0 +1,55 @@
+# Auto-merge for the dependency bots (D-046). When Dependabot or Renovate opens, reopens or
+# updates a pull request, this turns on auto-merge, so the pull request joins the merge queue
+# once the required ci-ok check is green and merges after the queue's merge_group run passes.
+# A red ci-ok keeps it open for a person to read.
+#
+# Dependabot keeps Cargo, npm, GitHub Actions and pip (.github/dependabot.yml); Renovate covers
+# what Dependabot does not (renovate.json). Renovate also turns auto-merge on by itself
+# (platformAutomerge); this workflow is the same switch for both bots.
+#
+# pull_request_target runs this file as it is on main, with a token that can write, so the job
+# never checks out, builds or reads the pull request's code. It calls the GitHub API and
+# nothing else, and only for pull requests that one of the two bots opened from a branch of
+# this repository.
+name: deps-automerge
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deps-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    name: automerge
+    if: >-
+      (github.event.pull_request.user.login == 'dependabot[bot]' ||
+       github.event.pull_request.user.login == 'renovate[bot]') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # gh pr merge --auto needs it with the workflow token
+      pull-requests: write
+    steps:
+      - name: Turn on auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -euo pipefail
+          enabled=$(gh pr view "$PR" --repo "$REPO" --json autoMergeRequest --jq '.autoMergeRequest != null')
+          if [ "$enabled" = "true" ]; then
+            echo "Auto-merge is already on for #$PR ($AUTHOR)."
+            exit 0
+          fi
+          # The merge queue sets the merge method (squash) and runs the merge_group checks.
+          gh pr merge "$PR" --repo "$REPO" --auto
+          echo "Auto-merge is on for #$PR ($AUTHOR); it merges through the queue when ci-ok passes."
