@@ -1,93 +1,118 @@
 /*
- * Maps Starlight's colour and font variables to the --jw-* tokens. Unlayered on purpose:
- * unlayered rules win over Starlight's layered defaults, in both themes, because the
- * tokens themselves switch under [data-theme='light'].
+ * Starlight's own selectors, set to the tokens. Starlight's variables (--sl-*) are mapped in
+ * global.css. Unlayered on purpose: these win over Starlight's layered defaults.
+ *
+ * Docs type follows docs/design-research/horizon.md, section 2.1: the article h1 in
+ * Bricolage Grotesque 600 (48 px at 1440, 32 px at 390), h2 26 px, h3 in Geist 600 19 px,
+ * body 16 px at line height 1.7 in white at 72 %. Headings are white and never carry the
+ * accent gradient.
  */
 
-:root {
-  --sl-font: var(--font-sans);
-  --sl-font-mono: var(--font-mono);
-
-  /* Starlight's grey ramp runs from "white" (strongest text) to "black" (page background). */
-  --sl-color-white: var(--jw-text);
-  --sl-color-gray-1: var(--jw-text);
-  --sl-color-gray-2: var(--jw-text);
-  --sl-color-gray-3: var(--jw-muted);
-  --sl-color-gray-4: var(--jw-muted);
-  --sl-color-gray-5: var(--jw-border);
-  --sl-color-gray-6: var(--jw-surface);
-  --sl-color-gray-7: var(--jw-surface-2);
-  --sl-color-black: var(--jw-bg);
-
-  /* The accent is for actions: links, the current page in the sidebar, focus. */
-  --sl-color-accent-low: var(--jw-surface);
-  --sl-color-accent: var(--jw-accent-strong);
-  --sl-color-accent-high: var(--jw-accent);
-  --sl-color-text: var(--jw-text);
-  --sl-color-text-accent: var(--jw-accent);
-  --sl-color-text-invert: var(--jw-on-accent);
-  --sl-color-bg: var(--jw-bg);
-  --sl-color-bg-nav: var(--jw-surface);
-  --sl-color-bg-sidebar: var(--jw-bg);
-  --sl-color-bg-inline-code: var(--jw-surface-2);
-  --sl-color-bg-accent: var(--jw-accent);
-  --sl-color-hairline-light: var(--jw-border);
-  --sl-color-hairline: var(--jw-border);
-  --sl-color-hairline-shade: var(--jw-border);
-
-  /*
-   * Starlight colours asides and badges with orange, green, blue, purple and red. Green,
-   * amber and red are reserved for harness results, so every aside and badge is neutral.
-   */
-  --sl-color-orange-low: var(--jw-surface);
-  --sl-color-orange: var(--jw-border);
-  --sl-color-orange-high: var(--jw-text);
-  --sl-color-green-low: var(--jw-surface);
-  --sl-color-green: var(--jw-border);
-  --sl-color-green-high: var(--jw-text);
-  --sl-color-blue-low: var(--jw-surface);
-  --sl-color-blue: var(--jw-border);
-  --sl-color-blue-high: var(--jw-text);
-  --sl-color-purple-low: var(--jw-surface);
-  --sl-color-purple: var(--jw-border);
-  --sl-color-purple-high: var(--jw-text);
-  --sl-color-red-low: var(--jw-surface);
-  --sl-color-red: var(--jw-border);
-  --sl-color-red-high: var(--jw-text);
-
-  --sl-text-h1: 2.5rem;
-  --sl-line-height-headings: 1.12;
-}
-
-@media (min-width: 50em) {
-  :root {
-    --sl-text-h1: 3.25rem;
-  }
-}
-
-/* Display face for headings and the site title. */
-.site-title,
-.sl-markdown-content :is(h1, h2, h3, h4),
-h1#_top {
-  font-family: var(--font-display);
-  letter-spacing: -0.015em;
-}
-
 .site-title {
-  font-weight: 800;
-  font-size: 1.5rem;
-  color: var(--jw-text);
+  font-family: var(--jw-font-display);
+  font-weight: var(--jw-weight-display);
+  font-size: 1rem;
+  color: var(--jw-white);
 }
 
 h1#_top {
-  font-weight: 800;
+  font-family: var(--jw-font-display);
+  font-weight: var(--jw-weight-display);
+  font-size: var(--jw-docs-h1-size);
+  line-height: var(--jw-docs-h1-leading);
+  letter-spacing: var(--jw-docs-h1-tracking);
+  color: var(--jw-white);
+  text-wrap: balance;
 }
 
-.sl-markdown-content :is(h2, h3) {
-  font-weight: 750;
+.sl-markdown-content :is(h2, h3, h4, h5, h6):not(:where(.not-content *)) {
+  color: var(--jw-white);
+  text-wrap: balance;
 }
 
+.sl-markdown-content h2:not(:where(.not-content *)) {
+  font-family: var(--jw-font-display);
+  font-weight: var(--jw-weight-display);
+  font-size: var(--jw-docs-h2-size);
+  line-height: var(--jw-docs-h2-leading);
+  letter-spacing: var(--jw-docs-h2-tracking);
+}
+
+.sl-markdown-content h3:not(:where(.not-content *)) {
+  font-family: var(--jw-font-body);
+  font-weight: var(--jw-weight-strong);
+  font-size: var(--jw-docs-h3-size);
+  line-height: var(--jw-docs-h3-leading);
+  letter-spacing: var(--jw-docs-h3-tracking);
+}
+
+.sl-markdown-content p:not(:where(.not-content *)) {
+  text-wrap: pretty;
+}
+
+/* Links in the accent; hover lifts to the primary hover colour, over 150 ms. */
+.sl-markdown-content a:not(:where(.not-content *)) {
+  color: var(--jw-accent);
+  text-underline-offset: 0.18em;
+  transition: color var(--jw-hover-duration) var(--jw-hover-ease);
+}
+
+.sl-markdown-content a:hover:not(:where(.not-content *)) {
+  color: var(--jw-primary-hover);
+}
+
+/* Inline code: Geist Mono at 0.84 em on white at 7 %, radius 5 px. */
+.sl-markdown-content :not(pre) > code:not(:where(.not-content *)) {
+  font-size: var(--jw-code-size);
+  padding: var(--jw-code-padding);
+  border-radius: var(--jw-radius-5);
+  background-color: var(--jw-white-7);
+  color: var(--jw-fg);
+  border: 0;
+}
+
+/* Sidebar group labels: 13 px, weight 500, white at 50 % (the floor for information). */
+.sidebar-content .group-label .large {
+  font-size: var(--jw-rail-label-size);
+  font-weight: var(--jw-weight-medium);
+  color: var(--jw-white-50);
+}
+
+/* The menu button (36 px, --sl-menu-button-size): radius 8 px, white at 6 %, icon at 80 %. */
+.sl-menu-button {
+  border-radius: var(--jw-radius-8);
+  background-color: var(--jw-white-6);
+  color: var(--jw-white-80);
+  transition: background-color var(--jw-hover-duration) var(--jw-hover-ease);
+}
+
+.sl-menu-button:hover,
+.sl-menu-button:has(~ :popover-open) {
+  background-color: var(--jw-white-10);
+}
+
+/* The site is dark only, so Starlight's theme switch has nothing to switch. */
+starlight-theme-select {
+  display: none;
+}
+
+/* The current page in the sidebar: white on white at 8 %, not an accent fill. */
+.sidebar-content [aria-current='page'],
+.sidebar-content [aria-current='page']:hover,
+.sidebar-content [aria-current='page']:focus {
+  color: var(--jw-white);
+  background-color: var(--jw-white-8);
+  font-weight: var(--jw-weight-medium);
+}
+
+/* The search dialog needs an opaque surface; the page colour under the 75 % backdrop. */
+site-search dialog {
+  background-color: var(--jw-page);
+  border: 0;
+}
+
+/* Focus: a 2 px accent ring, offset 2 px (the report's slider thumb and segmented controls). */
 :focus-visible {
-  outline: 3px solid var(--jw-accent);
+  outline: 2px solid var(--jw-accent);
   outline-offset: 2px;
 }

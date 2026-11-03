@@ -1,47 +1,254 @@
 /*
  * Shared by every page: the docs (Starlight customCss) and the site pages (via site.css).
  *
- * Colours come only from the --jw-* design tokens in tokens.css, which crates/report
- * generates. Tailwind's default palette is removed so no other colour can sneak in.
- * --jw-accent is for actions (buttons, links, focus). --jw-result-* is for harness
- * results only and is never decorative. --jw-tier-* marks tiers.
+ * Every colour, size and length comes from the --jw-* tokens in site/tokens.css, which
+ * crates/report generates (docs/design-research/horizon.md, section 2, with Jarrow's four
+ * substitutions). Nothing here declares a colour of its own: scripts/check-colors.mjs fails
+ * the build on any colour in dist/ that is not a token.
+ *
+ * The site is dark only: color-scheme dark, no light token set, no prefers-color-scheme query.
+ * Starlight's theme switch and the site's toggle still write data-theme="light", and nothing
+ * here responds to it.
+ *
+ * The tier colours (--jw-tier-green, -amber, -red) mark result tiers and warnings only. The
+ * accent marks actions, focus, links and the promise in a page h1.
  */
 
 @layer base, starlight, theme, components, utilities;
 
-@import './tokens.css';
-@import '@astrojs/starlight-tailwind';
+@import '../../tokens.css';
+@import './fonts.css';
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
+/* Tailwind: only the tokens. The default palette, fonts, radii and shadows are removed. */
 @theme {
   --color-*: initial;
   --font-*: initial;
-  --font-sans: 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Bricolage Grotesque Variable', 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  --spacing: 0.25rem;
+  --container-6xl: 72rem;
 }
 
 @theme inline {
-  --color-bg: var(--jw-bg);
-  --color-surface: var(--jw-surface);
-  --color-surface-2: var(--jw-surface-2);
-  --color-line: var(--jw-border);
-  --color-text: var(--jw-text);
-  --color-muted: var(--jw-muted);
+  --font-display: var(--jw-font-display);
+  --font-sans: var(--jw-font-body);
+  --font-mono: var(--jw-font-mono);
+
+  --text-lede: var(--jw-lede-size);
+  --text-body: var(--jw-body-size);
+  --text-label: var(--jw-label-size);
+  --text-small: var(--jw-small-size);
+
+  --color-page: var(--jw-page);
+  --color-fg: var(--jw-fg);
+  --color-white: var(--jw-white);
+  --color-primary: var(--jw-primary);
+  --color-primary-hover: var(--jw-primary-hover);
+  --color-on-primary: var(--jw-on-primary);
   --color-accent: var(--jw-accent);
-  --color-accent-strong: var(--jw-accent-strong);
-  --color-on-accent: var(--jw-on-accent);
-  --color-tier-a: var(--jw-tier-a);
-  --color-tier-b: var(--jw-tier-b);
-  --color-tier-unsupported: var(--jw-tier-unsupported);
-  --color-result-green: var(--jw-result-green);
-  --color-result-yellow: var(--jw-result-yellow);
-  --color-result-red: var(--jw-result-red);
-  --color-result-none: var(--jw-result-none);
+  --color-tier-green: var(--jw-tier-green);
+  --color-tier-amber: var(--jw-tier-amber);
+  --color-tier-red: var(--jw-tier-red);
+
+  --radius-2: var(--jw-radius-2);
+  --radius-3: var(--jw-radius-3);
+  --radius-5: var(--jw-radius-5);
+  --radius-6: var(--jw-radius-6);
+  --radius-8: var(--jw-radius-8);
+  --radius-10: var(--jw-radius-10);
+  --radius-12: var(--jw-radius-12);
+  --radius-16: var(--jw-radius-16);
+  --radius-24: var(--jw-radius-24);
+  --radius-28: var(--jw-radius-28);
+  --radius-full: var(--jw-radius-full);
+
+  /* Names the current pages still use, until the pages are rewritten. */
+  --color-bg: var(--jw-page);
+  --color-surface: var(--jw-white-4);
+  --color-surface-2: var(--jw-white-8);
+  --color-line: var(--jw-white-8);
+  --color-text: var(--jw-fg);
+  --color-muted: var(--jw-white-60);
+  --color-accent-strong: var(--jw-primary-hover);
+  --color-on-accent: var(--jw-on-primary);
 }
 
-/* Nothing moves on its own; hover and focus feedback is instant for people who ask for less motion. */
+/*
+ * Unlayered on purpose: these win over Starlight's, Pagefind's and Tailwind's layered
+ * defaults whatever their selector, and over Starlight's light-theme values, so the docs stay
+ * on the tokens whichever theme Starlight's switch writes.
+ */
+:root,
+:root[data-theme] {
+  color-scheme: dark;
+}
+
+:root,
+::backdrop {
+  /* Legacy names the current pages and components use; they map onto the tokens until the
+     pages are rewritten. Tiers are a classification, not a result: neutral text. */
+  --jw-bg: var(--jw-page);
+  --jw-surface: var(--jw-white-4);
+  --jw-surface-2: var(--jw-white-8);
+  --jw-border: var(--jw-white-8);
+  --jw-text: var(--jw-fg);
+  --jw-muted: var(--jw-white-60);
+  --jw-accent-strong: var(--jw-primary-hover);
+  --jw-on-accent: var(--jw-on-primary);
+  --jw-tier-a: var(--jw-white-80);
+  --jw-tier-b: var(--jw-white-80);
+  --jw-tier-unsupported: var(--jw-white-80);
+  --jw-result-green: var(--jw-tier-green);
+  --jw-result-yellow: var(--jw-tier-amber);
+  --jw-result-red: var(--jw-tier-red);
+  --jw-result-none: var(--jw-white-50);
+  --font-display: var(--jw-font-display);
+  --font-sans: var(--jw-font-body);
+  --font-mono: var(--jw-font-mono);
+
+  /* Starlight: type. */
+  --sl-font: var(--jw-font-body);
+  --sl-font-mono: var(--jw-font-mono);
+  --sl-text-h1: var(--jw-docs-h1-size);
+  --sl-text-h2: var(--jw-docs-h2-size);
+  --sl-text-h3: var(--jw-docs-h3-size);
+  --sl-text-h4: var(--jw-h3-size);
+  --sl-text-h5: var(--jw-docs-body-size);
+  --sl-text-body: var(--jw-docs-body-size);
+  --sl-text-code: var(--jw-pre-size);
+  --sl-line-height: var(--jw-docs-body-leading);
+  --sl-line-height-headings: var(--jw-docs-h2-leading);
+  --sl-nav-height: var(--jw-header-height);
+  --sl-menu-button-size: var(--jw-button-header-height);
+  --sl-content-width: var(--jw-docs-article);
+
+  /* Starlight: its grey ramp runs from "white" (strongest text) to "black" (the page). */
+  --sl-color-white: var(--jw-white);
+  --sl-color-gray-1: var(--jw-fg);
+  --sl-color-gray-2: var(--jw-white-72);
+  --sl-color-gray-3: var(--jw-white-60);
+  --sl-color-gray-4: var(--jw-white-50);
+  --sl-color-gray-5: var(--jw-white-8);
+  --sl-color-gray-6: var(--jw-white-4);
+  --sl-color-gray-7: var(--jw-white-4);
+  --sl-color-black: var(--jw-page);
+
+  /* Starlight: the accent marks links, focus and actions. */
+  --sl-color-accent-low: var(--jw-white-8);
+  --sl-color-accent: var(--jw-accent);
+  --sl-color-accent-high: var(--jw-accent);
+  --sl-color-text: var(--jw-white-72);
+  --sl-color-text-accent: var(--jw-accent);
+  --sl-color-text-invert: var(--jw-on-primary);
+  --sl-color-bg: var(--jw-page);
+  --sl-color-bg-nav: var(--jw-page);
+  --sl-color-bg-sidebar: var(--jw-page);
+  --sl-color-bg-inline-code: var(--jw-white-7);
+  --sl-color-bg-accent: var(--jw-primary);
+  --sl-color-hairline-light: var(--jw-white-8);
+  --sl-color-hairline: var(--jw-white-8);
+  --sl-color-hairline-shade: var(--jw-white-8);
+  --sl-color-backdrop-overlay: var(--jw-page-75);
+
+  /* No shadows. */
+  --sl-shadow-sm: none;
+  --sl-shadow-md: none;
+  --sl-shadow-lg: none;
+
+  /*
+   * Asides and badges. Caution, danger and success are warnings and results, so they take
+   * the tier colours; note and tip are neutral. Every aside sits on the card surface.
+   */
+  --sl-color-orange-low: var(--jw-white-4);
+  --sl-color-orange: var(--jw-tier-amber);
+  --sl-color-orange-high: var(--jw-tier-amber);
+  --sl-color-red-low: var(--jw-white-4);
+  --sl-color-red: var(--jw-tier-red);
+  --sl-color-red-high: var(--jw-tier-red);
+  --sl-color-green-low: var(--jw-white-4);
+  --sl-color-green: var(--jw-tier-green);
+  --sl-color-green-high: var(--jw-tier-green);
+  --sl-color-blue-low: var(--jw-white-4);
+  --sl-color-blue: var(--jw-white-15);
+  --sl-color-blue-high: var(--jw-white);
+  --sl-color-purple-low: var(--jw-white-4);
+  --sl-color-purple: var(--jw-white-15);
+  --sl-color-purple-high: var(--jw-white);
+
+  /* Pagefind's own defaults (Starlight sets the search's values from the --sl-* above). */
+  --pagefind-ui-primary: var(--jw-white);
+  --pagefind-ui-text: var(--jw-white-72);
+  --pagefind-ui-background: var(--jw-page);
+  --pagefind-ui-border: var(--jw-white-8);
+  --pagefind-ui-tag: var(--jw-white-8);
+}
+
+/* The site header's theme toggle has nothing to switch; its markup goes with the header rewrite. */
+[data-theme-toggle] {
+  display: none !important;
+}
+
+/* Restores the two base rules Tailwind's preflight gives (the docs do not load preflight). */
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border: 0 solid;
+  }
+
+  html,
+  :host {
+    font-family: var(--jw-font-body);
+    background-color: var(--jw-page);
+    color: var(--jw-fg);
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--jw-font-mono);
+  }
+
+  ::selection {
+    background-color: var(--jw-primary);
+    color: var(--jw-on-primary);
+  }
+}
+
+/*
+ * The one entrance keyframe (report section 8): translateY(14px) to 0 and opacity, 0.9 s,
+ * staggered by --delay. .jw-rise runs on load; .jw-reveal runs as the element scrolls into
+ * view, in CSS only, so it works without JavaScript.
+ */
+@keyframes jw-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--jw-rise-distance));
+  }
+}
+
+@layer components {
+  .jw-rise {
+    animation: jw-rise var(--jw-rise-duration) var(--jw-rise-ease) backwards;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  @supports (animation-timeline: view()) {
+    .jw-reveal {
+      animation: jw-rise linear backwards;
+      animation-timeline: view();
+      animation-range: entry 10% cover 30%;
+    }
+  }
+}
+
+/* Nothing moves for people who ask for less motion; hover and focus feedback is instant. */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
@@ -50,5 +257,10 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .jw-rise,
+  .jw-reveal {
+    animation: none !important;
   }
 }

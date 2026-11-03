@@ -1,4 +1,4 @@
-//! Keeps `site/src/styles/tokens.css` identical to `jarrow_report::tokens::css()`.
+//! Keeps `site/tokens.css` identical to `jarrow_report::tokens::css()`.
 //!
 //! Run with `JARROW_BLESS=1` to (re)write the file instead of checking it:
 //!
@@ -11,15 +11,13 @@ use std::fs;
 use std::path::PathBuf;
 
 /// The file as named in messages, relative to the repository root.
-const DISPLAY: &str = "site/src/styles/tokens.css";
+const DISPLAY: &str = "site/tokens.css";
 
 fn tokens_css_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("..")
         .join("site")
-        .join("src")
-        .join("styles")
         .join("tokens.css")
 }
 

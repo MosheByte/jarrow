@@ -1,7 +1,9 @@
 ---
-import '@fontsource-variable/atkinson-hyperlegible-next';
-import '@fontsource-variable/bricolage-grotesque';
-import '@fontsource-variable/jetbrains-mono';
+// The fonts come in through site.css (global.css imports styles/fonts.css). The Latin files of
+// the display and body faces are preloaded, so the first paint has them; Vite gives these
+// imports the same hashed URLs the @font-face rules use.
+import bricolageLatin from '@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2?url';
+import geistLatin from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
 import '../styles/site.css';
 
 import Footer from '../components/Footer.astro';
@@ -35,25 +37,13 @@ const canonical = absolute(canonicalPath);
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta name="theme-color" content="#0b0d12" />
+    <meta name="color-scheme" content="dark" />
+    <!-- --jw-page in site/tokens.css; scripts/check-colors.mjs fails the build on any other value. -->
+    <meta name="theme-color" content="#0b0f1f" />
+    <link rel="preload" href={bricolageLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={geistLatin} as="font" type="font/woff2" crossorigin />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="sitemap" href="/sitemap-index.xml" />
-    <script is:inline>
-      // Before paint: the stored choice (shared with the docs), else the system preference.
-      (() => {
-        let stored = null;
-        try {
-          stored = localStorage.getItem('starlight-theme');
-        } catch {}
-        const theme =
-          stored === 'light' || stored === 'dark'
-            ? stored
-            : matchMedia('(prefers-color-scheme: light)').matches
-              ? 'light'
-              : 'dark';
-        document.documentElement.dataset.theme = theme;
-      })();
-    </script>
   </head>
   <body>
     <a class="jw-skip" href="#main">Skip to content</a>

@@ -27,5 +27,10 @@ START-HERE.md
 
 # Archives the design research was unpacked from (local only)
 docs/design-research/_to_delete_parts/
-# Claude Code worktrees created by parallel agents (local only)
+# Claude Code: the worktrees parallel agents create stay local; the project's skills
+# (.claude/skills/, the jarrow-design system) are tracked, even when a global excludes file
+# ignores .claude/.
+!.claude/
+!.claude/skills/
+!.claude/skills/**
 .claude/worktrees/

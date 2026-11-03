@@ -1,4 +1,10 @@
-/* Styles for the pages outside the docs (src/layouts/Base.astro). */
+/*
+ * Styles for the pages outside the docs (src/layouts/Base.astro): element defaults and the
+ * shared classes, on the --jw-* tokens (site/tokens.css). The pages themselves move to the
+ * design system in a later change; until then these classes carry its basics: a 16 px root
+ * (the rem-based type tokens assume it), sentence-case eyebrows, and buttons and cards with no
+ * border, no shadow and a colour-only hover.
+ */
 
 @layer base, starlight, theme, components, utilities;
 
@@ -7,11 +13,10 @@
 
 @layer base {
   html {
-    background: var(--jw-bg);
-    color: var(--jw-text);
-    font-family: var(--font-sans);
-    font-size: 106.25%; /* 17px body: large, legible type */
-    line-height: 1.6;
+    background: var(--jw-page);
+    color: var(--jw-fg);
+    font-family: var(--jw-font-body);
+    line-height: 1.5;
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
   }
@@ -23,11 +28,20 @@
   }
 
   h1,
-  h2,
+  h2 {
+    font-family: var(--jw-font-display);
+    font-weight: var(--jw-weight-display);
+    line-height: var(--jw-h2-leading);
+    letter-spacing: var(--jw-h2-tracking);
+    color: var(--jw-white);
+    text-wrap: balance;
+  }
+
   h3 {
-    font-family: var(--font-display);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    font-family: var(--jw-font-body);
+    font-weight: var(--jw-weight-medium);
+    line-height: var(--jw-h3-leading);
+    color: var(--jw-white);
     text-wrap: balance;
   }
 
@@ -40,96 +54,93 @@
     text-decoration-line: underline;
     text-decoration-thickness: 0.08em;
     text-underline-offset: 0.18em;
+    transition: color var(--jw-hover-duration) var(--jw-hover-ease);
   }
 
   a:hover {
-    color: var(--jw-accent-strong);
+    color: var(--jw-primary-hover);
   }
 
   :focus-visible {
-    outline: 3px solid var(--jw-accent);
-    outline-offset: 3px;
-    border-radius: 0.25rem;
+    outline: 2px solid var(--jw-accent);
+    outline-offset: 2px;
   }
 
   code {
-    font-family: var(--font-mono);
-    font-size: 0.9em;
-    background: var(--jw-surface-2);
-    border-radius: 0.3rem;
-    padding: 0.1em 0.35em;
+    font-family: var(--jw-font-mono);
+    font-size: var(--jw-code-size);
+    background: var(--jw-white-7);
+    border-radius: var(--jw-radius-5);
+    padding: var(--jw-code-padding);
   }
 }
 
 @layer components {
+  /* The 1152 px container (gutters inside it: 24 px, 40 px from 1024 px), centred. */
   .wrap {
     width: 100%;
-    max-width: 72rem;
+    max-width: var(--jw-container);
     margin-inline: auto;
-    padding-inline: 1.25rem;
+    padding-inline: var(--jw-gutter);
   }
 
-  @media (min-width: 48rem) {
+  @media (min-width: 64rem) {
     .wrap {
-      padding-inline: 2rem;
+      padding-inline: var(--jw-gutter-wide);
     }
   }
 
-  /* Buttons are actions, so they are the one place the accent fills a surface. */
+  /* 48 px hero buttons: radius 10 px, 15 px type at weight 500, colour-only hover. */
   .btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    min-height: 3rem;
-    padding: 0.7rem 1.25rem;
-    border-radius: 999px;
-    font-weight: 700;
+    gap: var(--jw-button-gap);
+    min-height: var(--jw-button-hero-height);
+    padding: 0 var(--jw-button-hero-padding);
+    border-radius: var(--jw-button-hero-radius);
+    font-size: var(--jw-button-hero-size);
+    font-weight: var(--jw-weight-medium);
     text-decoration: none;
-    border: 2px solid transparent;
+    border: 0;
     transition:
-      background-color 120ms ease,
-      color 120ms ease,
-      border-color 120ms ease,
-      transform 120ms ease;
-  }
-
-  .btn:hover {
-    transform: translateY(-1px);
+      background-color var(--jw-hover-duration) var(--jw-hover-ease),
+      color var(--jw-hover-duration) var(--jw-hover-ease);
   }
 
   .btn-primary {
-    background: var(--jw-accent);
-    color: var(--jw-on-accent);
+    background: var(--jw-primary);
+    color: var(--jw-on-primary);
   }
 
   .btn-primary:hover {
-    background: var(--jw-accent-strong);
-    color: var(--jw-on-accent);
+    background: var(--jw-primary-hover);
+    color: var(--jw-on-primary);
   }
 
   .btn-ghost {
-    border-color: var(--jw-border);
-    color: var(--jw-text);
+    background: var(--jw-white-8);
+    color: var(--jw-white);
   }
 
   .btn-ghost:hover {
-    border-color: var(--jw-accent);
-    color: var(--jw-text);
+    background: var(--jw-white-12);
+    color: var(--jw-white);
   }
 
   .card {
-    background: var(--jw-surface);
-    border: 1px solid var(--jw-border);
-    border-radius: 1.25rem;
+    background: var(--jw-card-surface);
+    border: var(--jw-card-border);
+    border-radius: var(--jw-card-radius);
+    box-shadow: var(--jw-card-shadow);
   }
 
+  /* Eyebrows and labels: 14 px, weight 500, sentence case, white at 60 %. */
   .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--jw-muted);
+    font-family: var(--jw-font-body);
+    font-size: var(--jw-label-size);
+    line-height: var(--jw-label-leading);
+    font-weight: var(--jw-weight-medium);
+    color: var(--jw-white-60);
   }
 
   .prose > * + * {
