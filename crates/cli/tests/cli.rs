@@ -30,6 +30,25 @@ fn tokens_prints_the_generated_css() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+fn tokens_json_prints_the_generated_json() -> Result<(), Box<dyn Error>> {
+    let out = jarrow(&["tokens", "--json"])?;
+    assert!(out.status.success());
+    let stdout = String::from_utf8(out.stdout)?;
+    assert_eq!(stdout, jarrow_report::tokens::json());
+    assert!(stdout.starts_with('{'), "{stdout}");
+    assert!(stdout.contains(r#""name": "jw-accent""#), "{stdout}");
+    Ok(())
+}
+
+#[test]
+fn tokens_rejects_unknown_flags() -> Result<(), Box<dyn Error>> {
+    let out = jarrow(&["tokens", "--yaml"])?;
+    assert!(!out.status.success());
+    assert!(out.stdout.is_empty());
+    Ok(())
+}
+
+#[test]
 fn help_says_what_is_not_built() -> Result<(), Box<dyn Error>> {
     let out = jarrow(&["--help"])?;
     assert!(out.status.success());

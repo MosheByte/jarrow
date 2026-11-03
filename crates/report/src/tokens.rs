@@ -10,6 +10,9 @@
 //! The site is dark first: dark values sit on `:root`, light values on
 //! `[data-theme='light']`. Green, amber and red (`--jw-result-*`) are reserved for harness
 //! results and are never used decoratively; the accent is for actions only.
+//!
+//! [`json`] renders the same tokens as JSON. `jarrow tokens` prints the CSS and
+//! `jarrow tokens --json` the JSON; the npm package `jarrow` ships both files.
 
 use std::fmt;
 use std::fmt::Write as _;
@@ -80,6 +83,19 @@ pub enum Role {
     Result,
 }
 
+impl Role {
+    /// Lower-case name, as written to the JSON: `surface`, `text`, `action`, `tier`, `result`.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Role::Surface => "surface",
+            Role::Text => "text",
+            Role::Action => "action",
+            Role::Tier => "tier",
+            Role::Result => "result",
+        }
+    }
+}
+
 /// One design token: a CSS custom property with a dark and a light value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Token {
@@ -122,6 +138,14 @@ pub enum Theme {
 impl Theme {
     /// Both themes, default first.
     pub const ALL: [Theme; 2] = [Theme::Dark, Theme::Light];
+
+    /// Lower-case name, as written to the JSON: `dark` or `light`.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Theme::Dark => "dark",
+            Theme::Light => "light",
+        }
+    }
 
     /// The CSS selector the theme's values are declared on.
     pub const fn selector(self) -> &'static str {
@@ -345,6 +369,69 @@ pub fn css() -> String {
     out
 }
 
+/// Renders the tokens as JSON: the `tokens.json` of the npm package `jarrow`.
+///
+/// Top-level keys: `generated_by`, `default_theme` (`dark`), `selectors` (each theme's CSS
+/// selector) and `tokens`, in [`TOKENS`] order. Each token has `name`, `property`, `role`
+/// ([`Role::as_str`]), `dark`, `light` (lower-case `#rrggbb`) and `usage`.
+pub fn json() -> String {
+    let mut out = String::from("{\n  \"generated_by\": ");
+    push_json_str(&mut out, "crates/report (jarrow_report::tokens::json)");
+    out.push_str(",\n  \"default_theme\": ");
+    push_json_str(&mut out, Theme::Dark.as_str());
+    out.push_str(",\n  \"selectors\": {");
+    for (i, theme) in Theme::ALL.iter().enumerate() {
+        out.push_str(if i == 0 { " " } else { ", " });
+        push_json_str(&mut out, theme.as_str());
+        out.push_str(": ");
+        push_json_str(&mut out, theme.selector());
+    }
+    out.push_str(" },\n  \"tokens\": [\n");
+    for (i, token) in TOKENS.iter().enumerate() {
+        out.push_str("    { \"name\": ");
+        push_json_str(&mut out, token.name);
+        out.push_str(", \"property\": ");
+        push_json_str(&mut out, &token.property());
+        out.push_str(", \"role\": ");
+        push_json_str(&mut out, token.role.as_str());
+        for theme in Theme::ALL {
+            out.push_str(", ");
+            push_json_str(&mut out, theme.as_str());
+            out.push_str(": ");
+            push_json_str(&mut out, &token.value(theme).to_string());
+        }
+        out.push_str(", \"usage\": ");
+        push_json_str(&mut out, token.usage);
+        out.push_str(if i + 1 < TOKENS.len() {
+            " },\n"
+        } else {
+            " }\n"
+        });
+    }
+    out.push_str("  ]\n}\n");
+    out
+}
+
+/// Appends `s` as a JSON string literal (RFC 8259), quotes included.
+fn push_json_str(out: &mut String, s: &str) {
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            // Writing to a String cannot fail.
+            c if u32::from(c) < 0x20 => {
+                let _ = write!(out, "\\u{:04x}", u32::from(c));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -483,5 +570,45 @@ mod tests {
     #[test]
     fn css_is_deterministic() {
         assert_eq!(css(), css());
+    }
+
+    #[test]
+    fn json_lists_every_token_with_both_values() {
+        let doc: serde_json::Value = serde_json::from_str(&json()).unwrap();
+        assert_eq!(doc.as_object().unwrap().len(), 4);
+        assert_eq!(doc["default_theme"], "dark");
+        assert_eq!(doc["selectors"]["dark"], ":root");
+        assert_eq!(doc["selectors"]["light"], "[data-theme='light']");
+        let tokens = doc["tokens"].as_array().unwrap();
+        assert_eq!(tokens.len(), TOKENS.len());
+        for (entry, token) in tokens.iter().zip(&TOKENS) {
+            assert_eq!(entry.as_object().unwrap().len(), 6, "{entry}");
+            assert_eq!(entry["name"], token.name);
+            assert_eq!(entry["property"], token.property());
+            assert_eq!(entry["role"], token.role.as_str());
+            assert_eq!(entry["dark"], token.dark.to_string());
+            assert_eq!(entry["light"], token.light.to_string());
+            assert_eq!(entry["usage"], token.usage);
+        }
+        assert_eq!(tokens[6]["name"], "jw-accent");
+        assert_eq!(tokens[6]["dark"], "#ff5ca8");
+        assert_eq!(tokens[12]["role"], "result");
+    }
+
+    #[test]
+    fn json_is_deterministic() {
+        let json = json();
+        assert_eq!(json, super::json());
+        assert!(json.ends_with("}\n"));
+        assert!(!json.contains('\r'));
+    }
+
+    #[test]
+    fn json_strings_are_escaped() {
+        let mut out = String::new();
+        push_json_str(&mut out, "a\"b\\c\nd\u{1}é");
+        assert_eq!(out, r#""a\"b\\c\nd\u0001é""#);
+        let back: String = serde_json::from_str(&out).unwrap();
+        assert_eq!(back, "a\"b\\c\nd\u{1}é");
     }
 }
