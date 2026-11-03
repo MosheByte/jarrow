@@ -79,6 +79,7 @@ dependencies = [
 name = "jarrow-harness"
 version = "0.1.0"
 dependencies = [
+ "jarrow-report",
  "regex",
  "serde",
  "serde_json",
