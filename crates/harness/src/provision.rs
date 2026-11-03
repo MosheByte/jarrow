@@ -22,6 +22,7 @@
 //! work/<loader>-<game>/                      the default per-run directory
 //! ```
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -89,6 +90,11 @@ pub struct InstalledServer {
     pub files: Vec<VerifiedFile>,
     /// Anything worth knowing (a fallback that was taken).
     pub notes: Vec<String>,
+    /// Every file of the installed server, relative to its directory, with its size. An
+    /// install is reused only while all of them are still there with the same sizes, so a
+    /// cache that was partly cleaned (or restored) is installed again rather than half used.
+    #[serde(default)]
+    pub tree: BTreeMap<String, u64>,
     /// The server directory (not serialised; it is where the record was read from).
     #[serde(skip)]
     pub dir: PathBuf,
@@ -220,6 +226,7 @@ pub fn provision(
     fs::create_dir_all(&dir).map_err(|e| HarnessError::io_at("create", &dir, e))?;
     let mut installed = profile.install(ctx, &dir)?;
     installed.dir = dir.clone();
+    installed.tree = file_tree(&dir)?;
     let text = serde_json::to_string_pretty(&installed)
         .map_err(|e| HarnessError::Install(format!("could not write the install record: {e}")))?;
     let record = dir.join(INSTALL_RECORD_FILE);
@@ -241,12 +248,51 @@ fn reusable(
         && installed.loader_version == loader_version
         && installed.game_version == game_version;
     let launchable = installed.launch_target().is_some_and(|t| t.is_file());
+    let tree_intact = !installed.tree.is_empty()
+        && installed.tree.iter().all(|(file, size)| {
+            fs::metadata(dir.join(file)).is_ok_and(|m| m.is_file() && m.len() == *size)
+        });
     // Loader mods live in the download cache; re-hash them so a damaged cache is noticed.
     let mods_intact = installed
         .loader_mods
         .iter()
         .all(|m| digest_file(&m.path).is_ok_and(|d| d.sha256 == m.sha256));
-    (same && launchable && mods_intact).then_some(installed)
+    (same && launchable && tree_intact && mods_intact).then_some(installed)
+}
+
+/// Every regular file under `dir` (relative, `/`-separated) with its size, except the
+/// install record and log.
+fn file_tree(dir: &Path) -> Result<BTreeMap<String, u64>, HarnessError> {
+    fn walk(root: &Path, dir: &Path, out: &mut BTreeMap<String, u64>) -> Result<(), HarnessError> {
+        let entries = fs::read_dir(dir).map_err(|e| HarnessError::io_at("read", dir, e))?;
+        for entry in entries {
+            let entry = entry.map_err(|e| HarnessError::io_at("read", dir, e))?;
+            let path = entry.path();
+            let kind = entry
+                .file_type()
+                .map_err(|e| HarnessError::io_at("read", &path, e))?;
+            if kind.is_dir() {
+                walk(root, &path, out)?;
+            } else if kind.is_file() {
+                let relative = path
+                    .strip_prefix(root)
+                    .map(|p| p.to_string_lossy().replace('\\', "/"))
+                    .unwrap_or_default();
+                if relative == INSTALL_RECORD_FILE || relative == "jarrow-install.log" {
+                    continue;
+                }
+                let size = entry
+                    .metadata()
+                    .map_err(|e| HarnessError::io_at("read", &path, e))?
+                    .len();
+                out.insert(relative, size);
+            }
+        }
+        Ok(())
+    }
+    let mut out = BTreeMap::new();
+    walk(dir, dir, &mut out)?;
+    Ok(out)
 }
 
 /// Hard-links `src` to `dst`, or copies it when the file system cannot link.
@@ -357,6 +403,7 @@ impl LoaderProfile for FabricProfile {
             loader_mods: vec![api],
             files,
             notes,
+            tree: BTreeMap::new(),
             dir: dir.to_path_buf(),
         })
     }
@@ -465,6 +512,7 @@ impl LoaderProfile for NeoForgeProfile {
             loader_mods: Vec::new(),
             files: vec![installer],
             notes: Vec::new(),
+            tree: BTreeMap::new(),
             dir: dir.to_path_buf(),
         })
     }
@@ -702,6 +750,32 @@ pub(crate) mod tests {
             !installed.dir.join("fabric-server-launcher.jar").exists(),
             "the unverified launcher is not used"
         );
+    }
+
+    #[test]
+    fn a_partly_deleted_install_is_installed_again() {
+        let tmp = TempDir::new("prov-partial");
+        let (lock, fetcher) = fake_lock_and_fetcher(b"launcher");
+        let host = InstallerHost::default();
+        let java = PathBuf::from("/jdk/bin/java");
+        let ctx = || ctx(&lock, tmp.path(), &fetcher, &host, Some(&java));
+        let installed = provision(Loader::NeoForge, &ctx()).unwrap();
+        assert!(
+            installed.tree.contains_key("run.sh"),
+            "{:?}",
+            installed.tree
+        );
+        assert!(!installed.tree.contains_key(INSTALL_RECORD_FILE));
+        provision(Loader::NeoForge, &ctx()).unwrap();
+        assert_eq!(host.runs.borrow().len(), 1, "an intact install is reused");
+        // A cache restore that lost a file, or changed one, means installing again.
+        fs::remove_file(installed.dir.join("run.bat")).unwrap();
+        provision(Loader::NeoForge, &ctx()).unwrap();
+        assert_eq!(host.runs.borrow().len(), 2);
+        fs::write(installed.dir.join("run.sh"), "truncated").unwrap();
+        provision(Loader::NeoForge, &ctx()).unwrap();
+        assert_eq!(host.runs.borrow().len(), 3);
+        assert!(installed.dir.join("run.bat").is_file());
     }
 
     #[test]

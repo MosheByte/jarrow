@@ -652,7 +652,13 @@ fn prepare_work_dir(
 ) -> Result<(), HarnessError> {
     let work = &req.work;
     if work.exists() {
-        let ours = work.join(WORK_MARKER).is_file();
+        // A directory inside the harness's own cache is the harness's, marker or not: CI caches
+        // (rust-cache saves `target/`) can restore one without its marker.
+        let in_cache = match (std::path::absolute(work), std::path::absolute(&req.cache)) {
+            (Ok(w), Ok(c)) => w.starts_with(c.join("work")),
+            _ => false,
+        };
+        let ours = in_cache || work.join(WORK_MARKER).is_file();
         let empty = fs::read_dir(work)
             .map_err(|e| HarnessError::io_at("read", work, e))?
             .next()
@@ -1462,6 +1468,12 @@ mod tests {
         s.run(&req, &host, &open_gate()).unwrap();
         fs::write(req.work.join("leftover.txt"), b"x").unwrap();
         s.run(&req, &host, &open_gate()).unwrap();
+        assert!(!req.work.join("leftover.txt").exists());
+        // CI caches can restore a run directory inside the cache without its marker.
+        fs::remove_file(req.work.join(WORK_MARKER)).unwrap();
+        fs::write(req.work.join("leftover.txt"), b"x").unwrap();
+        let record = s.run(&req, &host, &open_gate()).unwrap();
+        assert_eq!(record.status, SideStatus::Completed, "{}", record.reason);
         assert!(!req.work.join("leftover.txt").exists());
     }
 
