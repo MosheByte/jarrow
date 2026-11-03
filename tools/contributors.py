@@ -18,9 +18,32 @@ Usage:
                                               from what would be written
     python tools/contributors.py --offline    git and repository files only, never gh;
                                               logins and avatars come from .all-contributorsrc
+    python tools/contributors.py --ledger     write only ledger/inputs/contributors.json, the
+                                              contributor numbers tools/ledger.py renders
     options: --no-readme (leave README.md alone), --root DIR (repository, default: the git
              top level of the current directory), --repo OWNER/NAME (default: the github.com
-             "origin" remote, else MosheByte/jarrow), --rev REV (default HEAD)
+             "origin" remote, else MosheByte/jarrow), --rev REV (default HEAD),
+             --as-of YYYY-MM-DD (last day of the --ledger window, default today in UTC)
+
+--ledger: the last 30 days (the as-of day and the 29 before it, UTC), from merged pull request
+authors (gh pr list --state merged) and from the authors and co-authors of commits on --rev
+whose committer date falls in the window (git). People and agents are counted separately and
+bots are not counted. "first_time_contributors_30d" lists the people whose first merged pull
+request in the repository falls in the window; it is null when the pull request lookup failed
+or --offline was given. The file keeps its old "as_of" when nothing else would change, so the
+nightly opens a pull request only when a number or a login changes:
+
+    {
+      "schema": 1,
+      "as_of": "2026-11-03",
+      "window_days": 30,
+      "sources": ["git", "github-pulls"],      "git" alone when the PR lookup was unavailable
+      "contributors_30d": {
+        "people": {"count": 1, "logins": ["MosheByte"]},
+        "agents": {"count": 1, "names": ["Claude Opus 5.5"]}
+      },
+      "first_time_contributors_30d": {"count": 0, "logins": []}
+    }
 
 Where the data comes from:
     People   every author, committer and human co-author of a commit on --rev (git log, with
@@ -45,7 +68,8 @@ Where the data comes from:
              .github/: workflows (github-actions), dependabot.yml (dependabot), CodeQL, and
              Renovate, release-please or Socket only when their config file or app exists.
 
-Determinism: no clock and no randomness, sorted output, LF line endings. "generated_at" is
+Determinism: no clock (except the default --as-of day of --ledger) and no randomness, sorted
+output, LF line endings. "generated_at" is
 the committer date (UTC) of the newest counted commit, so reruns on the same history and the
 same GitHub state give identical bytes. Commits whose message carries the trailer
 "Jarrow-Generated: contributors" (the refresh commits .github/workflows/contributors.yml
@@ -71,9 +95,9 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable, Protocol
+from typing import Callable, Iterable, Protocol
 
 REPO_SLUG = "MosheByte/jarrow"
 OWNER_LOGIN = "MosheByte"
@@ -86,6 +110,10 @@ TEAM_MD_PATH = "docs/team.md"
 TEAM_JSON_PATH = "site/src/data/team.json"
 KEY_ICON_PATH = "docs/assets/key.svg"
 OUTPUT_PATHS = (RC_PATH, README_PATH, TEAM_MD_PATH, TEAM_JSON_PATH)
+LEDGER_INPUT_PATH = "ledger/inputs/contributors.json"
+LEDGER_SCHEMA = 1
+LEDGER_WINDOW_DAYS = 30
+MERGED_PR_LIMIT = 10000
 
 START_MARKER = "<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->"
 END_MARKER = "<!-- ALL-CONTRIBUTORS-LIST:END -->"
@@ -324,6 +352,8 @@ class GhClient(Protocol):
 
     def pr_authors(self, repo: str) -> list[dict]: ...
 
+    def merged_pulls(self, repo: str) -> list[dict]: ...
+
 
 class GhCli:
     """The gh CLI. Errors become GhError with gh's own message (never a token)."""
@@ -360,6 +390,16 @@ class GhCli:
             ["pr", "list", "--repo", repo, "--state", "all", "--limit", "1000", "--json", "author"]
         )
         return [item.get("author") or {} for item in (json.loads(out) if out.strip() else [])]
+
+    def merged_pulls(self, repo: str) -> list[dict]:
+        """Every merged pull request as {"number", "author": {"login", "is_bot"}, "mergedAt"}."""
+        out = self._run(
+            [
+                "pr", "list", "--repo", repo, "--state", "merged", "--limit", str(MERGED_PR_LIMIT),
+                "--json", "number,author,mergedAt",
+            ]
+        )
+        return list(json.loads(out)) if out.strip() else []
 
 
 # ---------------------------------------------------------------- repository files
@@ -429,10 +469,13 @@ WORKFLOW_PURPOSES = {
     "labeler.yml": "PR labels",
     "mirror.yml": "GitLab mirror",
     "pages.yml": "API docs",
+    "proposal-to-issue.yml": "rule proposal issues",
+    "red-mod-intake.yml": "red mod intake",
     "release.yml": "releases",
     "scorecard.yml": "Scorecard",
     "stale.yml": "stale sweep",
     "tierb.yml": "Tier B jobs",
+    "welcome.yml": "first pull request comments",
 }
 DEPLOY_KEY_PURPOSES = {
     "board.yml": "LEDGER and board-data commits",
@@ -514,8 +557,17 @@ def role_deploy_key(files: RepoFiles) -> str:
     users = deploy_key_workflows(files)
     if not users:
         return "SSH deploy key with write access for jarrow-bot commits from Actions; no workflow uses it yet."
-    uses = "; ".join(f"{DEPLOY_KEY_PURPOSES.get(n, n)} ({n})" for n in users)
-    return f"SSH deploy key with write access. Actions pushes jarrow-bot commits with it: {uses}."
+    def uses(names: list[str]) -> str:
+        return "; ".join(f"{DEPLOY_KEY_PURPOSES.get(n, n)} ({n})" for n in names)
+
+    via_pr = [n for n in users if "tools/bot_pr.sh" in files.workflows[n]]
+    direct = [n for n in users if n not in via_pr]
+    parts = []
+    if via_pr:
+        parts.append(f"as the branch of a bot pull request (tools/bot_pr.sh) for {uses(via_pr)}")
+    if direct:
+        parts.append(f"directly for {uses(direct)}")
+    return f"SSH deploy key with write access. Actions pushes jarrow-bot commits with it, {', and '.join(parts)}."
 
 
 # ---------------------------------------------------------------- bots registry
@@ -1340,6 +1392,137 @@ def render_outputs(team: Team, root: Path, *, readme: bool, repo_slug: str) -> d
     return dict(sorted(outputs.items()))
 
 
+# ---------------------------------------------------------------- --ledger: contributor numbers
+
+
+def commit_day(commit: Commit) -> date:
+    return datetime.fromisoformat(commit.date).astimezone(timezone.utc).date()
+
+
+def ledger_window(as_of: date) -> tuple[date, date]:
+    """The as-of day and the LEDGER_WINDOW_DAYS - 1 days before it, both ends included."""
+    return as_of - timedelta(days=LEDGER_WINDOW_DAYS - 1), as_of
+
+
+def sorted_names(names: Iterable[str]) -> list[str]:
+    return sorted(set(names), key=lambda n: (n.lower(), n))
+
+
+def pr_author_is_bot(author: dict) -> bool:
+    login = str(author.get("login") or "")
+    return (
+        bool(author.get("is_bot"))
+        or login.startswith("app/")
+        or identity_kind(login, "") == "bot"
+    )
+
+
+def ledger_numbers(
+    root: Path,
+    *,
+    repo_slug: str = REPO_SLUG,
+    rev: str = "HEAD",
+    gh: GhClient | None = None,
+    as_of: date,
+    log: Log = stderr_log,
+) -> dict:
+    """The contributor numbers of the 30 days that end on as_of (see the module docstring)."""
+    collector = Collector(root, repo_slug=repo_slug, rev=rev, gh=gh, log=log)
+    start, end = ledger_window(as_of)
+    commits = [
+        c
+        for c in read_history(root, rev)
+        if start <= commit_day(c) <= end and identity_kind(*c.author) not in ("bot", "web-flow")
+    ]
+
+    identities: dict[tuple[str, str], Identity] = {}
+    agents: set[str] = set()
+    for c in commits:
+        for role, person in [("author", c.author), *(("coauthor", p) for p in c.coauthors)]:
+            name, email = person
+            if identity_kind(name, email) == "human":
+                identities.setdefault((name, email.lower()), Identity(name, email)).seen.append((c.sha, role))
+        for person in (c.author, c.committer, *c.coauthors):
+            if identity_kind(*person) == "agent":
+                agents.add(" ".join(person[0].split()))
+
+    cached_people = {lg.lower(): lg for lg, entry in collector.cache.items() if group_of(entry) == "people"}
+    people: dict[str, str] = {}  # lower-case login -> login
+    unresolved = 0
+    for key in sorted(identities):
+        login, _ = collector.resolve_login(identities[key], cached_people)
+        if login is None:
+            unresolved += 1
+        else:
+            people.setdefault(login.lower(), login)
+    if unresolved:
+        log(f"{unresolved} commit identity(ies) in the window have no GitHub login and are not counted")
+
+    sources = ["git"]
+    first_time: list[str] | None = None
+    pulls: list[dict] | None = None
+    if gh is None:
+        log("no gh: merged pull requests are not read and first-time contributors are not counted")
+    else:
+        try:
+            pulls = gh.merged_pulls(repo_slug)
+        except GhError as err:
+            log(f"gh pr list --state merged failed: {err}; first-time contributors are not counted")
+    if pulls is not None:
+        sources.append("github-pulls")
+        first: dict[str, tuple[date, str]] = {}
+        for pr in pulls:
+            author = pr.get("author") or {}
+            login = str(author.get("login") or "")
+            merged = pr.get("mergedAt")
+            if not login or pr_author_is_bot(author) or not isinstance(merged, str):
+                continue
+            try:
+                day = datetime.fromisoformat(merged.replace("Z", "+00:00")).astimezone(timezone.utc).date()
+            except ValueError:
+                continue
+            key = login.lower()
+            if start <= day <= end:
+                people.setdefault(key, login)
+            if key not in first or day < first[key][0]:
+                first[key] = (day, login)
+        first_time = sorted_names(login for day, login in first.values() if start <= day <= end)
+
+    people_list = sorted_names(people.values())
+    agent_list = sorted_names(agents)
+    return {
+        "schema": LEDGER_SCHEMA,
+        "as_of": as_of.isoformat(),
+        "window_days": LEDGER_WINDOW_DAYS,
+        "sources": sources,
+        "contributors_30d": {
+            "people": {"count": len(people_list), "logins": people_list},
+            "agents": {"count": len(agent_list), "names": agent_list},
+        },
+        "first_time_contributors_30d": (
+            None if first_time is None else {"count": len(first_time), "logins": first_time}
+        ),
+    }
+
+
+def settle_as_of(root: Path, data: dict) -> dict:
+    """Keeps the committed "as_of" when nothing but "as_of" would change."""
+    current = read_text(root / LEDGER_INPUT_PATH)
+    if current is None:
+        return data
+    try:
+        old = json.loads(current)
+    except json.JSONDecodeError:
+        return data
+    if isinstance(old, dict) and isinstance(old.get("as_of"), str) and {**old, "as_of": data["as_of"]} == data:
+        return {**data, "as_of": old["as_of"]}
+    return data
+
+
+def render_ledger_input(data: dict) -> str:
+    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+
+
 # ---------------------------------------------------------------- main
 
 
@@ -1400,12 +1583,28 @@ def main(argv: list[str] | None = None) -> int:
         "--repo", help=f"GitHub repository (default: the github.com origin remote, else {REPO_SLUG})"
     )
     parser.add_argument("--rev", default="HEAD", help="revision whose history is counted (default HEAD)")
+    parser.add_argument(
+        "--ledger", action="store_true", help=f"write only {LEDGER_INPUT_PATH} (contributor numbers)"
+    )
+    parser.add_argument(
+        "--as-of", help="last day of the --ledger window, YYYY-MM-DD (default: today in UTC)"
+    )
     args = parser.parse_args(argv)
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     if args.repo is not None and not REPO_PATTERN.fullmatch(args.repo):
         parser.error("--repo must look like OWNER/NAME")
+    as_of = datetime.now(timezone.utc).date()
+    if args.as_of is not None:
+        if not args.ledger:
+            parser.error("--as-of applies only to --ledger")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.as_of):
+            parser.error("--as-of must look like YYYY-MM-DD")
+        try:
+            as_of = date.fromisoformat(args.as_of)
+        except ValueError:
+            parser.error("--as-of is not a calendar date")
 
     try:
         root = args.root or Path(git(Path.cwd(), "rev-parse", "--show-toplevel").strip())
@@ -1418,7 +1617,11 @@ def main(argv: list[str] | None = None) -> int:
                 stderr_log("gh not found; continuing with git and repository files only")
             else:
                 gh = GhCli(exe)
-        outputs = generate(root, repo_slug=repo_slug, rev=args.rev, gh=gh, readme=not args.no_readme)
+        if args.ledger:
+            numbers = ledger_numbers(root, repo_slug=repo_slug, rev=args.rev, gh=gh, as_of=as_of)
+            outputs = {LEDGER_INPUT_PATH: render_ledger_input(settle_as_of(root, numbers))}
+        else:
+            outputs = generate(root, repo_slug=repo_slug, rev=args.rev, gh=gh, readme=not args.no_readme)
     except InputError as err:
         print(f"contributors: {err}", file=sys.stderr)
         return 2
@@ -1428,7 +1631,7 @@ def main(argv: list[str] | None = None) -> int:
         if stale:
             for rel in stale:
                 print(f"stale: {rel}")
-            print("Regenerate with: python tools/contributors.py")
+            print(f"Regenerate with: python tools/contributors.py{' --ledger' if args.ledger else ''}")
             return 1
         print("contributors: every output is up to date")
         return 0

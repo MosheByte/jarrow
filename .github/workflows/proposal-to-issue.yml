@@ -1,0 +1,188 @@
+# A rule proposal in the Discussions category "Rule proposals" becomes an issue when a
+# maintainer adds the label "accepted" to it. The issue links the discussion, carries its title
+# and body and the label "rule"; the discussion gets one comment with the issue link.
+# Idempotent: the issue body carries a hidden marker with the discussion number and the
+# discussion comment carries its own marker, so relabelling or a rerun never makes a second
+# issue or a second comment. Nothing is checked out.
+# The "accepted" label is created once by hand (a label has to exist before anyone can add it):
+#   gh label create accepted --repo MosheByte/jarrow --color 0e8a16 \
+#     --description "Rule proposal accepted: becomes an issue"
+# See docs/community-automation.md.
+name: proposal-to-issue
+
+on:
+  discussion:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: proposal-to-issue-${{ github.event.discussion.number }}
+  cancel-in-progress: false
+
+jobs:
+  issue:
+    name: issue
+    if: >-
+      github.event.label.name == 'accepted' &&
+      (github.event.discussion.category.slug == 'rule-proposals' || github.event.discussion.category.name == 'Rule proposals')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      discussions: write # the comment with the issue link
+      issues: write # the issue
+    steps:
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Create the issue and link it from the discussion
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DISCUSSION_NUMBER: ${{ github.event.discussion.number }}
+        run: |
+          # jarrow:proposal-to-issue (docs/community-automation.md)
+          import json
+          import os
+          import subprocess
+          import sys
+
+          ISSUE_LABEL = "rule"
+          COMMENT_MARKER = "<!-- jarrow:proposal-issue -->"
+          BOT_LOGINS = frozenset({"github-actions", "github-actions[bot]"})
+          CATEGORIES = frozenset({"rule-proposals"})
+
+          QUERY = """
+          query($owner: String!, $name: String!, $number: Int!) {
+            repository(owner: $owner, name: $name) {
+              discussion(number: $number) {
+                id
+                number
+                title
+                body
+                url
+                author { login }
+                category { name slug }
+                early: comments(first: 100) { nodes { body author { login } } }
+                recent: comments(last: 100) { nodes { body author { login } } }
+              }
+            }
+          }
+          """
+
+          MUTATION = """
+          mutation($discussion: ID!, $body: String!) {
+            addDiscussionComment(input: {discussionId: $discussion, body: $body}) { comment { url } }
+          }
+          """
+
+
+          class GhError(RuntimeError):
+              pass
+
+
+          def gh(*args, stdin=None):
+              proc = subprocess.run(["gh", *args], input=stdin, capture_output=True, check=False)
+              if proc.returncode != 0:
+                  lines = [ln for ln in proc.stderr.decode("utf-8", "replace").splitlines() if ln.strip()]
+                  raise GhError(lines[-1] if lines else f"gh exited with {proc.returncode}")
+              return proc.stdout
+
+
+          def api(path, method="GET", body=None):
+              args = ["api", "-H", "Accept: application/vnd.github+json", "-X", method, path]
+              stdin = None
+              if body is not None:
+                  args += ["--input", "-"]
+                  stdin = json.dumps(body).encode("utf-8")
+              out = gh(*args, stdin=stdin)
+              return json.loads(out) if out.strip() else None
+
+
+          def api_all(path):
+              out = gh("api", "-H", "Accept: application/vnd.github+json", "--paginate", "--slurp", path)
+              pages = json.loads(out) if out.strip() else []
+              return [item for page in pages for item in (page or [])]
+
+
+          def graphql(query, **variables):
+              body = {"query": query, "variables": variables}
+              data = api("graphql", "POST", body) or {}
+              if data.get("errors"):
+                  raise GhError("; ".join(str(e.get("message")) for e in data["errors"]))
+              return data.get("data") or {}
+
+
+          def issue_marker(number):
+              return f"<!-- jarrow:proposal-discussion={number} -->"
+
+
+          def issue_body(discussion):
+              author = (discussion.get("author") or {}).get("login")
+              by = f" by @{author}" if author else ""
+              lines = [
+                  issue_marker(discussion["number"]),
+                  f"Accepted rule proposal from discussion #{discussion['number']}{by}: {discussion['url']}",
+                  "",
+                  "---",
+                  "",
+                  (discussion.get("body") or "").strip() or "(The discussion has no body.)",
+              ]
+              return "\n".join(lines) + "\n"
+
+
+          def comment_body(issue):
+              return f"{COMMENT_MARKER}\nAccepted. This proposal is now issue #{issue['number']}: {issue['html_url']}\n"
+
+
+          def existing_issue(repo, number):
+              marker = issue_marker(number)
+              for issue in api_all(f"repos/{repo}/issues?state=all&per_page=100&labels={ISSUE_LABEL}"):
+                  if "pull_request" not in issue and marker in (issue.get("body") or ""):
+                      return issue
+              return None
+
+
+          def has_link_comment(discussion):
+              nodes = [n for key in ("early", "recent") for n in (discussion.get(key) or {}).get("nodes") or []]
+              for c in nodes:
+                  login = (c.get("author") or {}).get("login") or ""
+                  if login in BOT_LOGINS and COMMENT_MARKER in (c.get("body") or ""):
+                      return True
+              return False
+
+
+          def main(env):
+              repo = env["REPO"]
+              owner, name = repo.split("/", 1)
+              number = int(env["DISCUSSION_NUMBER"])
+              data = graphql(QUERY, owner=owner, name=name, number=number)
+              discussion = ((data.get("repository") or {}).get("discussion")) or None
+              if discussion is None:
+                  print(f"proposal-to-issue: discussion #{number} not found")
+                  return 1
+              if (discussion.get("category") or {}).get("slug") not in CATEGORIES:
+                  print(f"proposal-to-issue: discussion #{number} is not in Rule proposals; nothing to do")
+                  return 0
+              issue = existing_issue(repo, number)
+              if issue is None:
+                  issue = api(
+                      f"repos/{repo}/issues",
+                      "POST",
+                      {"title": discussion["title"], "body": issue_body(discussion), "labels": [ISSUE_LABEL]},
+                  )
+                  print(f"proposal-to-issue: opened issue #{issue['number']} for discussion #{number}")
+              else:
+                  print(f"proposal-to-issue: issue #{issue['number']} already exists for discussion #{number}")
+              if has_link_comment(discussion):
+                  print(f"proposal-to-issue: discussion #{number} already links an issue")
+              else:
+                  graphql(MUTATION, discussion=discussion["id"], body=comment_body(issue))
+                  print(f"proposal-to-issue: commented on discussion #{number}")
+              return 0
+
+
+          if __name__ == "__main__":
+              sys.exit(main(os.environ))
