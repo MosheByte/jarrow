@@ -1,0 +1,56 @@
+---
+import NotBuilt from '../components/NotBuilt.astro';
+import PageIntro from '../components/PageIntro.astro';
+import Base from '../layouts/Base.astro';
+import { NEW_ISSUE_URL } from '../lib/site.ts';
+---
+
+<Base
+  title="Authors"
+  description="Author mode will let a Fabric mod author port their own mod to NeoForge as a pull request. It is not built yet (milestone M4)."
+>
+  <div class="wrap">
+    <PageIntro
+      eyebrow="Author mode"
+      title="For mod authors"
+      lead="Publishing a port is your call. Author mode will make it easy for you, and only for you."
+    />
+
+    <NotBuilt milestone="M4" what="Author mode">
+      <p>There is no sign-in yet, and no pull requests are opened by this project.</p>
+    </NotBuilt>
+
+    <div class="prose body">
+      <h2>What it will do</h2>
+      <ol>
+        <li>You sign in with GitHub. The site lists your repositories that contain a <code>fabric.mod.json</code>.</li>
+        <li>"Port this" runs a Tier B conversion on the latest release JAR of the repository you pick.</li>
+        <li>
+          It opens a pull request on a new branch of your repository with the converted build setup (a Gradle
+          subproject or a <code>neoforge/</code> source set when decompilation succeeded cleanly), the parity
+          report, and a badge snippet for your README.
+        </li>
+      </ol>
+
+      <h2>Opting out</h2>
+      <p>
+        An author who verifies ownership can mark a mod "do not port". The converter will then refuse it, the board
+        will hide it, and the refusal will say why. This holds even for permissive licenses.
+      </p>
+      <p>
+        The verified opt-out flow arrives with author mode. Until then you can file a request with the
+        <code>author-opt-out</code> issue form on <a href={NEW_ISSUE_URL}>GitHub</a>. Nothing converts today,
+        so there is nothing to refuse yet; requests on record must be honoured by the board and the converter
+        from their first run.
+      </p>
+      <p>Read the full <a href="/docs/legal/">legal and license policy</a>.</p>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .body {
+    max-width: 48rem;
+    margin-top: 2rem;
+  }
+</style>

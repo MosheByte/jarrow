@@ -1,0 +1,55 @@
+---
+// Renders the repository's ROADMAP.md at build time. If the file is missing, the import
+// fails and so does the build (astro.config.mjs also checks first, with a clearer message):
+// this page never invents a roadmap.
+import { compiledContent } from '../../../ROADMAP.md';
+
+import ExternalLink from '@lucide/astro/icons/external-link';
+
+import PageIntro from '../components/PageIntro.astro';
+import Base from '../layouts/Base.astro';
+import { repoFile, ROADMAP_PROJECT_URL } from '../lib/site.ts';
+import { rewriteRepoLinks } from '../lib/repo-links.ts';
+
+const rendered = await compiledContent();
+if (typeof rendered !== 'string' || rendered.trim() === '') {
+  throw new Error('ROADMAP.md rendered to nothing; refusing to publish an empty roadmap.');
+}
+
+const html = rewriteRepoLinks(rendered)
+  // The page has its own h1; drop the document's.
+  .replace(/^\s*<h1\b[^>]*>[\s\S]*?<\/h1>/, '')
+  // Wide tables scroll inside their own region on small screens.
+  .replaceAll('<table>', '<div class="table-scroll" role="region" tabindex="0" aria-label="Scrollable table"><table>')
+  .replaceAll('</table>', '</table></div>');
+---
+
+<Base title="Roadmap" description="Jarrow's milestones M0 to M6 and their exit criteria, rendered from ROADMAP.md.">
+  <div class="wrap">
+    <PageIntro eyebrow="Rendered from ROADMAP.md" title="Roadmap" />
+    <p class="links">
+      <a class="btn btn-primary" href={ROADMAP_PROJECT_URL}>
+        Roadmap project on GitHub <ExternalLink size={18} aria-hidden="true" />
+      </a>
+      <a class="btn btn-ghost" href={repoFile('ROADMAP.md')}>ROADMAP.md source</a>
+    </p>
+    <article class="prose roadmap" set:html={html} />
+  </div>
+</Base>
+
+<style>
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .roadmap {
+    max-width: 64rem;
+  }
+
+  .roadmap :global(.table-scroll) {
+    margin-block: 1.25rem;
+  }
+</style>

@@ -1,0 +1,53 @@
+---
+// The honest status line for anything that does not exist yet.
+import Construction from '@lucide/astro/icons/construction';
+
+interface Props {
+  /** Milestone that delivers the feature, for example "M3". */
+  milestone: string;
+  /** Short name of the missing feature, for example "The converter". */
+  what?: string;
+}
+const { milestone, what } = Astro.props;
+---
+
+<div class="jw-notbuilt" role="note">
+  <Construction size={24} aria-hidden="true" class="jw-notbuilt-icon" />
+  <div>
+    <p class="jw-notbuilt-title">
+      {what ? `${what} is not built yet` : 'Not built yet'} (milestone {milestone}).
+    </p>
+    <div class="jw-notbuilt-body"><slot /></div>
+  </div>
+</div>
+
+<style>
+  .jw-notbuilt {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+    padding: 1.1rem 1.25rem;
+    border: 1px dashed var(--jw-border);
+    border-radius: 1rem;
+    background: var(--jw-surface);
+  }
+
+  .jw-notbuilt :global(.jw-notbuilt-icon) {
+    flex: none;
+    margin-top: 0.15rem;
+    color: var(--jw-muted);
+  }
+
+  .jw-notbuilt-title {
+    font-weight: 700;
+    color: var(--jw-text);
+  }
+
+  .jw-notbuilt-body {
+    color: var(--jw-muted);
+  }
+
+  .jw-notbuilt-body :global(p + p) {
+    margin-top: 0.5rem;
+  }
+</style>

@@ -1,0 +1,100 @@
+# Deploys site/ to Cloudflare Pages (project "jarrow"): main goes to production
+# (https://jarrow.pages.dev), pull requests from this repository get a preview branch.
+# Pull requests from forks never deploy and never see the token.
+# The token comes only from the CLOUDFLARE_API_TOKEN secret, which GitHub masks in logs. It is
+# never echoed, and only Cloudflare's API receives it (D-021). A missing token fails the job,
+# because a site that cannot deploy is a P0.
+name: deploy-site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "crates/report/**"
+      - ".github/workflows/deploy-site.yml"
+  pull_request:
+    paths:
+      - "site/**"
+      - ".github/workflows/deploy-site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-site-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: deploy-site
+    # Fork PRs and Dependabot PRs get no secrets, so they never deploy.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Build the site
+        working-directory: site
+        run: |
+          npm ci
+          npm run build
+      - name: Verify the Cloudflare token (wrangler whoami)
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1
+          fi
+          # whoami prints the account e-mail; keep its output out of the public log.
+          out="$RUNNER_TEMP/whoami.txt"
+          if npx --no-install wrangler whoami > "$out" 2>&1 && grep -q "$CLOUDFLARE_ACCOUNT_ID" "$out"; then
+            echo "Cloudflare token verified: wrangler whoami lists account $CLOUDFLARE_ACCOUNT_ID"
+          else
+            echo "::error::wrangler whoami failed or does not list account $CLOUDFLARE_ACCOUNT_ID"
+            grep -iE '^(✘|X )|error' "$out" | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+/<email>/g' | head -5
+            exit 1
+          fi
+          rm -f "$out"
+      - name: Pick the Pages branch
+        id: branch
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then branch="$HEAD_REF"; else branch="$REF_NAME"; fi
+          # Only characters that are safe in a Pages branch alias and on a command line.
+          branch=$(printf '%s' "$branch" | tr -c 'A-Za-z0-9._/-' '-' | cut -c1-80)
+          echo "name=$branch" >> "$GITHUB_OUTPUT"
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: site
+          command: pages deploy dist --project-name jarrow --branch ${{ steps.branch.outputs.name }}
+      - name: Summary
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+          URL: ${{ steps.deploy.outputs.deployment-url }}
+          ALIAS: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+        run: |
+          {
+            echo "### Cloudflare Pages"
+            echo ""
+            echo "- Branch: \`$BRANCH\`"
+            echo "- Deployment: $URL"
+            if [ -n "$ALIAS" ]; then echo "- Alias: $ALIAS"; fi
+          } >> "$GITHUB_STEP_SUMMARY"

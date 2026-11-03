@@ -1,0 +1,265 @@
+/* Styles for the pages outside the docs (src/layouts/Base.astro). */
+
+@layer base, starlight, theme, components, utilities;
+
+@import 'tailwindcss/preflight.css' layer(base);
+@import './global.css';
+
+@layer base {
+  html {
+    background: var(--jw-bg);
+    color: var(--jw-text);
+    font-family: var(--font-sans);
+    font-size: 106.25%; /* 17px body: large, legible type */
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: var(--jw-accent);
+    text-decoration-line: underline;
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.18em;
+  }
+
+  a:hover {
+    color: var(--jw-accent-strong);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--jw-accent);
+    outline-offset: 3px;
+    border-radius: 0.25rem;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--jw-surface-2);
+    border-radius: 0.3rem;
+    padding: 0.1em 0.35em;
+  }
+}
+
+@layer components {
+  .wrap {
+    width: 100%;
+    max-width: 72rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 48rem) {
+    .wrap {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* Buttons are actions, so they are the one place the accent fills a surface. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0.7rem 1.25rem;
+    border-radius: 999px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 2px solid transparent;
+    transition:
+      background-color 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease,
+      transform 120ms ease;
+  }
+
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-primary {
+    background: var(--jw-accent);
+    color: var(--jw-on-accent);
+  }
+
+  .btn-primary:hover {
+    background: var(--jw-accent-strong);
+    color: var(--jw-on-accent);
+  }
+
+  .btn-ghost {
+    border-color: var(--jw-border);
+    color: var(--jw-text);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--jw-accent);
+    color: var(--jw-text);
+  }
+
+  .card {
+    background: var(--jw-surface);
+    border: 1px solid var(--jw-border);
+    border-radius: 1.25rem;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--jw-muted);
+  }
+
+  .prose > * + * {
+    margin-top: 1rem;
+  }
+
+  .prose h2 {
+    margin-top: 2.5rem;
+    font-size: 1.75rem;
+  }
+
+  .prose h3 {
+    margin-top: 2rem;
+    font-size: 1.3rem;
+  }
+
+  .prose ul,
+  .prose ol {
+    padding-left: 1.4rem;
+  }
+
+  .prose ul {
+    list-style: disc;
+  }
+
+  .prose ol {
+    list-style: decimal;
+  }
+
+  .prose li + li {
+    margin-top: 0.35rem;
+  }
+
+  .prose table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+
+  .prose th,
+  .prose td {
+    border-bottom: 1px solid var(--jw-border);
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .prose th {
+    color: var(--jw-muted);
+    font-weight: 700;
+  }
+
+  /* Wide tables scroll inside their own region instead of the page. */
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--jw-border);
+    border-radius: 1rem;
+    background: var(--jw-surface);
+  }
+
+  .table-scroll table {
+    min-width: 40rem;
+  }
+
+  .tier {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    border: 1.5px solid currentColor;
+    font-weight: 700;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .tier-a {
+    color: var(--jw-tier-a);
+  }
+
+  .tier-b {
+    color: var(--jw-tier-b);
+  }
+
+  .tier-unsupported {
+    color: var(--jw-tier-unsupported);
+  }
+
+  /* Result colours: only ever next to a harness result. The dot carries the colour, the text the meaning. */
+  .result-dot {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    flex: none;
+  }
+
+  .result-green {
+    background: var(--jw-result-green);
+  }
+
+  .result-yellow {
+    background: var(--jw-result-yellow);
+  }
+
+  .result-red {
+    background: var(--jw-result-red);
+  }
+
+  .result-not-run {
+    background: var(--jw-result-none);
+  }
+
+  /* A badge-shaped label for something that has no measurement yet. Plain text, not a shield. */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 1.75rem;
+    padding: 0.15rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--jw-border);
+    background: var(--jw-surface);
+    color: var(--jw-muted);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+
+  .pill strong {
+    color: var(--jw-text);
+    font-weight: 600;
+  }
+}

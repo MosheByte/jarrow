@@ -1,0 +1,56 @@
+name: Bug report
+description: Something in Jarrow itself is broken (the CLI, the site, the docs, a workflow). For a converted mod that behaves wrong, use "Red mod report".
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Jarrow is pre-alpha, so many parts do not exist yet. If something is marked "not built yet", that is expected, not a bug.
+
+        **Do not attach mod JARs and do not paste decompiled code.** Security problems go to https://github.com/MosheByte/jarrow/security/advisories/new, not here.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where is the problem?
+      options:
+        - CLI (jarrow)
+        - Website
+        - Docs
+        - GitHub workflow or repository setup
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run ...
+        2. Open ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Jarrow version or commit
+      description: Output of `jarrow --version`, or the commit or page URL you were on.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, browser and version, if relevant.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: Relevant lines only. Remove tokens, paths with your name, and anything private. Never paste decompiled code.
+      render: text

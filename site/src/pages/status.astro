@@ -1,0 +1,22 @@
+---
+import NotBuilt from '../components/NotBuilt.astro';
+import PageIntro from '../components/PageIntro.astro';
+import Base from '../layouts/Base.astro';
+import { CI_WORKFLOW_URL } from '../lib/site.ts';
+---
+
+<Base title="Status" description="Service status for Jarrow. Monitoring and a public status page arrive in milestone M5.">
+  <div class="wrap">
+    <PageIntro title="Status" />
+    <NotBuilt milestone="M5" what="Monitoring">
+      <p>
+        No uptime is measured yet, so this page shows no uptime numbers. Monitors for the site, the board API
+        and the nightly, and a public status page, arrive in milestone M5. This page will link to them.
+      </p>
+      <p>
+        The one live signal today is continuous integration on the main branch:
+        <a href={CI_WORKFLOW_URL}>CI runs on GitHub Actions</a>.
+      </p>
+    </NotBuilt>
+  </div>
+</Base>

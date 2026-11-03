@@ -1,0 +1,202 @@
+---
+// Server-rendered from board.json in KV, so it works without JavaScript (docs/architecture.md).
+export const prerender = false;
+
+import BoardCounter from '../components/BoardCounter.astro';
+import NotBuilt from '../components/NotBuilt.astro';
+import Base from '../layouts/Base.astro';
+import { RESULT_LABEL, TIER_LABEL, hasRun } from '../lib/board.ts';
+import { formatCount, formatUtc } from '../lib/format.ts';
+import { readBoard } from '../lib/runtime.ts';
+
+const load = await readBoard();
+const { board } = load;
+const rows = board.rows;
+const ran = hasRun(load);
+const unreadable = load.status === 'invalid' || load.status === 'error';
+
+// A board we could not read must not be cached as if it were the real one.
+Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, max-age=300');
+---
+
+<Base
+  title="Board"
+  description="The nightly board: the most-downloaded Fabric mods, each converted and checked by the parity harness. Empty until the first nightly runs."
+>
+  <div class="wrap">
+    <header class="intro">
+      <p class="eyebrow">Minecraft {board.game_versions.join(' and ')}</p>
+      <h1>Nightly board</h1>
+      <p class="lead">
+        Every night, the board will take the 1,000 most-downloaded Fabric mods on Modrinth for the pinned game
+        versions, convert each one and run the parity harness on it. Each row will say green, yellow or red,
+        with the reason. Rows link to the mod's own page, never to a converted JAR.
+      </p>
+    </header>
+
+    <div class="top">
+      <BoardCounter load={load} />
+      <dl class="meta card">
+        <div>
+          <dt>Game versions</dt>
+          <dd>{board.game_versions.join(', ')}</dd>
+        </div>
+        <div>
+          <dt>Last nightly</dt>
+          <dd>
+            {board.generated_at ? <time datetime={board.generated_at}>{formatUtc(board.generated_at)}</time> : 'not run yet'}
+          </dd>
+        </div>
+        <div>
+          <dt>Raw data</dt>
+          <dd><a href="/api/board.json">/api/board.json</a></dd>
+        </div>
+      </dl>
+    </div>
+
+    {
+      rows.length > 0 ? (
+        <div class="table-scroll prose" role="region" aria-labelledby="board-table-caption" tabindex="0">
+          <table>
+            <caption id="board-table-caption" class="sr-only">
+              Board results{board.generated_at ? `, nightly of ${formatUtc(board.generated_at)}` : ''}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Mod</th>
+                <th scope="col">Downloads</th>
+                <th scope="col">Tier</th>
+                <th scope="col">Result</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Last run</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr>
+                  <th scope="row">
+                    <a href={row.page_url} rel="noopener">
+                      {row.name}
+                    </a>
+                  </th>
+                  <td class="num">{formatCount(row.downloads)}</td>
+                  <td>
+                    <span class={`tier tier-${row.tier}`}>{TIER_LABEL[row.tier]}</span>
+                  </td>
+                  <td>
+                    <span class="result">
+                      <span class={`result-dot result-${row.result}`} aria-hidden="true" />
+                      {row.report_url ? <a href={row.report_url}>{RESULT_LABEL[row.result]}</a> : RESULT_LABEL[row.result]}
+                    </span>
+                  </td>
+                  <td>{row.reason ?? '—'}</td>
+                  <td>{row.last_run ? <time datetime={row.last_run}>{formatUtc(row.last_run)}</time> : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <section class="empty card" aria-labelledby="empty-title">
+          <h2 id="empty-title">{unreadable ? 'Board unavailable' : 'No rows yet'}</h2>
+          {unreadable ? (
+            <p>The stored board could not be read right now, so no rows are shown. Try again later.</p>
+          ) : ran ? (
+            <p>The last nightly produced no rows.</p>
+          ) : (
+            <p>
+              The first nightly has not run yet, so this table is empty rather than filled with samples. When it
+              runs, each row will show the mod, its downloads, its tier, the harness result, the reason and the
+              time of the last run.
+            </p>
+          )}
+          <NotBuilt milestone="M1" what="The board pipeline">
+            <p>
+              Milestone M1 builds the harness and runs the board against the 1,000-mod list. Until the converter
+              exists (M2), every mod will be red with the reason "no converter yet".
+            </p>
+          </NotBuilt>
+        </section>
+      )
+    }
+  </div>
+</Base>
+
+<style>
+  .intro {
+    max-width: 52rem;
+    margin-bottom: 2rem;
+  }
+
+  .intro h1 {
+    margin-top: 0.75rem;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 800;
+  }
+
+  .lead {
+    margin-top: 1rem;
+    font-size: 1.15rem;
+    color: var(--jw-muted);
+  }
+
+  .top {
+    display: grid;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (min-width: 52rem) {
+    .top {
+      grid-template-columns: 1.4fr 1fr;
+      align-items: stretch;
+    }
+  }
+
+  .meta {
+    display: grid;
+    gap: 0.9rem;
+    padding: 1.5rem 1.6rem;
+    align-content: start;
+  }
+
+  .meta dt {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--jw-muted);
+  }
+
+  .meta dd {
+    font-weight: 700;
+  }
+
+  .empty {
+    display: grid;
+    gap: 1rem;
+    padding: 1.5rem 1.6rem;
+  }
+
+  .empty h2 {
+    font-size: 1.6rem;
+  }
+
+  .empty > p {
+    max-width: 48rem;
+    color: var(--jw-muted);
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .result {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 700;
+  }
+</style>

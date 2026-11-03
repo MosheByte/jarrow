@@ -1,0 +1,33 @@
+# Cloudflare Pages project "jarrow" (https://jarrow.pages.dev). Classic Pages project: D-004.
+#
+# `npm run build` writes a Pages advanced-mode directory to ./dist: static files plus the
+# Astro server worker in dist/_worker.js/ and dist/_routes.json (scripts/pages-assemble.mjs).
+# Deploy: npx wrangler pages deploy ./dist --project-name jarrow   (deploy-site.yml in CI)
+# Local: npm run preview   (wrangler pages dev, with local KV/D1/R2 simulations)
+#
+# scripts/wrangler-config.mjs derives the adapter's Workers-shaped config from this file, so
+# bindings are declared here and only here. Secrets never go in this file.
+
+name = "jarrow"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+SITE_URL = "https://jarrow.pages.dev"
+
+# Cached board.json written by the nightly board (docs/board.md). Key: "board.json".
+[[kv_namespaces]]
+binding = "BOARD"
+id = "c04b064aa29d46468c8573ea7072cdf8"
+
+# Board rows, queue, users, errors and events fallback tables (migrations in infra/d1/).
+[[d1_databases]]
+binding = "DB"
+database_name = "jarrow"
+database_id = "94b0f4c1-a071-4541-b2ec-f77abef9d445"
+
+# Reports and rule-table snapshots. Never JARs.
+[[r2_buckets]]
+binding = "REPORTS"
+bucket_name = "jarrow-reports"

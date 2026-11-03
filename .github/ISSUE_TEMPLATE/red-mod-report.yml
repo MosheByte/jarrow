@@ -1,0 +1,61 @@
+name: Red mod report
+description: A converted mod looks wrong, or its board result seems wrong.
+title: "[red-mod] "
+labels: ["red-mod"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when a conversion looks wrong: the mod crashes, something is missing, or the board result does not match what you see.
+
+        Jarrow does not convert anything yet (pre-alpha, milestone M0). Reports and report hashes exist only once the converter and the harness ship. Reports filed before then cannot be checked.
+
+        **Never attach a JAR, original or converted, and never paste decompiled code.** Link to the mod's public Modrinth page instead. Jarrow does not redistribute mods, and issues are public.
+  - type: input
+    id: mod-url
+    attributes:
+      label: Modrinth mod URL
+      description: The mod's public page on Modrinth.
+      placeholder: https://modrinth.com/mod/<slug>
+    validations:
+      required: true
+  - type: input
+    id: report-hash
+    attributes:
+      label: Report hash
+      description: The hash shown at the top of the Jarrow report for this conversion. It identifies the exact input, rule tables and engine version.
+    validations:
+      required: true
+  - type: dropdown
+    id: game-version
+    attributes:
+      label: Game version
+      options:
+        - "1.21.1"
+        - "1.21.11"
+    validations:
+      required: true
+  - type: textarea
+    id: what-looks-wrong
+    attributes:
+      label: What looks wrong?
+      description: What you expected, what you saw, and how you saw it (in game, in the report, on the board).
+    validations:
+      required: true
+  - type: textarea
+    id: log-excerpt
+    attributes:
+      label: Log excerpt
+      description: |
+        The relevant lines of the game or server log, such as the first error and its stack trace. Remove anything private.
+        Do not paste decompiled code and do not attach JARs. A class name and a method name are enough.
+      render: text
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before you submit
+      options:
+        - label: I did not attach a JAR or link to a copy of one.
+          required: true
+        - label: I did not paste decompiled code.
+          required: true

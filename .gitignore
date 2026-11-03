@@ -1,0 +1,26 @@
+# Rust
+target/
+# Node / site
+node_modules/
+site/dist/
+.wrangler/
+# Secrets and local state
+.env
+.env.*
+.dev.vars
+*.local
+# Never commit mods, decompiled sources or prepared resources
+*.jar
+scratch/
+.local/
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+# Python caches
+__pycache__/
+.pytest_cache/
+# Private, machine-local files: never commit (D-026)
+BUILD-BOOK.md
+START-HERE.md

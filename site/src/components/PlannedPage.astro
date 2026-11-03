@@ -1,0 +1,57 @@
+---
+// A reserved route for a later tab (ROADMAP.md, "Later tabs"). It says "planned" and links to the
+// roadmap; nothing behind it is built or stubbed before v1 ships.
+import CalendarClock from '@lucide/astro/icons/calendar-clock';
+
+import PageIntro from './PageIntro.astro';
+import Base from '../layouts/Base.astro';
+import { ROADMAP_PROJECT_URL } from '../lib/site.ts';
+
+interface Props {
+  title: string;
+  /** One sentence: what the tab would do. */
+  summary: string;
+}
+const { title, summary } = Astro.props;
+---
+
+<Base title={title} description={`${title}: planned for after Jarrow v1. ${summary}`}>
+  <div class="wrap">
+    <PageIntro eyebrow="Later tab" title={title} lead={summary} />
+    <div class="card planned" role="note">
+      <CalendarClock size={24} aria-hidden="true" class="icon" />
+      <div>
+        <p class="title">Planned, not in v1.</p>
+        <p>
+          This route is reserved. Nothing behind it is built, and work on it waits until milestone M6 is closed.
+          Ideas go to an issue labelled <code>planned</code>, tracked on the
+          <a href={ROADMAP_PROJECT_URL}>roadmap project</a>. See also the <a href="/roadmap/">roadmap</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .planned {
+    max-width: 48rem;
+    display: flex;
+    gap: 0.9rem;
+    padding: 1.25rem 1.4rem;
+  }
+
+  .planned :global(.icon) {
+    flex: none;
+    margin-top: 0.15rem;
+    color: var(--jw-muted);
+  }
+
+  .title {
+    font-weight: 700;
+  }
+
+  .planned p:not(.title) {
+    color: var(--jw-muted);
+    margin-top: 0.25rem;
+  }
+</style>

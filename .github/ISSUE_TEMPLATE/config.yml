@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/MosheByte/jarrow/discussions/categories/q-a
+    about: Questions about Jarrow, how it works, or whether it fits your mod go to Discussions Q&A.
+  - name: Report a security vulnerability
+    url: https://github.com/MosheByte/jarrow/security/advisories/new
+    about: Report vulnerabilities privately here. Never in a public issue.

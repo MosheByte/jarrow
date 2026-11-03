@@ -1,0 +1,19 @@
+Jarrow rule tables: CC0 1.0 Universal
+
+SPDX-License-Identifier: CC0-1.0
+
+The files in this directory (rules/) and its subdirectories are the Jarrow
+rule tables: data that describes how Fabric API shapes correspond to NeoForge
+API shapes. To the extent possible under law, the Jarrow contributors have
+waived all copyright and related or neighboring rights to the rule tables,
+dedicating them to the public domain under the Creative Commons CC0 1.0
+Universal Public Domain Dedication.
+
+The full legal code is published by Creative Commons at:
+https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+This dedication covers the rule tables only. The rest of the Jarrow
+repository is licensed under the MIT License (see LICENSE at the repository
+root). Names of third-party APIs that appear in the tables (for example class
+and method names from Fabric API or NeoForge) belong to their projects and are
+used only to identify them; see rules/SOURCES.md.

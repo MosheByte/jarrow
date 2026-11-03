@@ -1,0 +1,33 @@
+---
+// Replaces Starlight's social icons: links back to the rest of the site, and the GitHub
+// repository labelled with the Simple Icons GitHub mark (see site/BRAND-SOURCES.md).
+import GitHubMark from '../GitHubMark.astro';
+import { REPO_URL } from '../../lib/site.ts';
+---
+
+<a href="/board/" class="jw-sl-link">Board</a>
+<a href="/roadmap/" class="jw-sl-link">Roadmap</a>
+<a href={REPO_URL} class="jw-sl-link jw-sl-github">
+  <GitHubMark size={20} />
+  <span class="sr-only">GitHub repository</span>
+</a>
+
+<style>
+  .jw-sl-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 0.25rem;
+    color: var(--sl-color-text);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .jw-sl-link:hover {
+    color: var(--sl-color-text-accent);
+  }
+
+  .jw-sl-github {
+    color: var(--sl-color-text-accent);
+  }
+</style>

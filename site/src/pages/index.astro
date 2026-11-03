@@ -1,0 +1,226 @@
+---
+// Server-rendered so the board counter always reflects board.json in KV.
+export const prerender = false;
+
+import ArrowRight from '@lucide/astro/icons/arrow-right';
+import BookOpen from '@lucide/astro/icons/book-open';
+import MapIcon from '@lucide/astro/icons/map';
+
+import BoardCounter from '../components/BoardCounter.astro';
+import GitHubMark from '../components/GitHubMark.astro';
+import NotBuilt from '../components/NotBuilt.astro';
+import Base from '../layouts/Base.astro';
+import { greenPercent, hasRun } from '../lib/board.ts';
+import { readBoard } from '../lib/runtime.ts';
+import { CI_BADGE_URL, CI_WORKFLOW_URL, MISSION, PRODUCT_NAME, REPO_URL, ROADMAP_PROJECT_URL } from '../lib/site.ts';
+
+const load = await readBoard();
+const parity = hasRun(load) ? greenPercent(load.board.totals) : null;
+
+const unreadable = load.status === 'invalid' || load.status === 'error';
+// A board we could not read must not be cached as if it were the real one.
+Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, max-age=300');
+---
+
+<Base title={PRODUCT_NAME}>
+  <div class="wrap">
+    <section class="hero" aria-labelledby="mission">
+      <p class="eyebrow">Fabric → NeoForge · Minecraft 1.21.1 and 1.21.11 · open source</p>
+      <h1 id="mission">{MISSION}</h1>
+      <p class="lead">
+        {PRODUCT_NAME} will convert the JAR itself, not shim it at runtime, and it will only call a conversion
+        good when a behaviour harness says so.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/docs/">
+          <BookOpen size={20} aria-hidden="true" />
+          Read the docs
+        </a>
+        <a class="btn btn-ghost" href={ROADMAP_PROJECT_URL}>
+          <MapIcon size={20} aria-hidden="true" />
+          Roadmap project
+        </a>
+        <a class="btn btn-ghost" href={REPO_URL}>
+          <GitHubMark size={20} />
+          GitHub
+        </a>
+      </div>
+    </section>
+
+    <NotBuilt milestone="M3" what="The converter">
+      <p>
+        Nothing converts yet. This page gets a drop zone when the converter works in the browser, and not
+        before: a drop zone that did nothing would be a lie. Follow the build on the
+        <a href="/roadmap/">roadmap</a>.
+      </p>
+    </NotBuilt>
+
+    <div class="grid">
+      <section class="how card" aria-labelledby="how-title">
+        <h2 id="how-title">How it will work</h2>
+        <ol>
+          <li>
+            <span class="step" aria-hidden="true">1</span>
+            <p>
+              Drop a Fabric mod JAR. The page reads its manifest and sorts it into a tier:
+              <span class="tier tier-a">Tier A</span>, <span class="tier tier-b">Tier B</span> or
+              <span class="tier tier-unsupported">Unsupported</span>.
+            </p>
+          </li>
+          <li>
+            <span class="step" aria-hidden="true">2</span>
+            <p>
+              Tier A converts in your browser, so the JAR never leaves your machine. Tier B runs as a short-lived
+              GitHub Actions job for signed-in users.
+            </p>
+          </li>
+          <li>
+            <span class="step" aria-hidden="true">3</span>
+            <p>
+              A parity harness starts the original on Fabric and the result on NeoForge and compares what each
+              server registers. That comparison, not a compiler, decides green, yellow or red.
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <BoardCounter load={load}>
+        <p><a href="/board/" class="board-link">Open the board <ArrowRight size={18} aria-hidden="true" /></a></p>
+      </BoardCounter>
+    </div>
+
+    <section class="badges" aria-labelledby="badges-title">
+      <h2 id="badges-title" class="eyebrow">Project signals</h2>
+      <ul>
+        <li class="pill">
+          {
+            parity === null ? (
+              <>
+                <span class="result-dot result-not-run" aria-hidden="true" />
+                parity: <strong>not measured yet</strong>
+              </>
+            ) : (
+              <>parity: <strong>{parity}% green</strong></>
+            )
+          }
+        </li>
+        <li class="pill">
+          <span class="result-dot result-not-run" aria-hidden="true" />
+          fabric-api coverage: <strong>not measured yet</strong>
+        </li>
+        <li>
+          <a href={CI_WORKFLOW_URL} class="ci-badge">
+            <img src={CI_BADGE_URL} alt="CI workflow status on main" height="20" loading="lazy" decoding="async" />
+          </a>
+        </li>
+      </ul>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .hero {
+    padding-block: 1.5rem 2.5rem;
+    max-width: 62rem;
+  }
+
+  .hero h1 {
+    margin-top: 1rem;
+    font-size: clamp(2.1rem, 1.1rem + 4.6vw, 4.6rem);
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+  }
+
+  .lead {
+    margin-top: 1.25rem;
+    max-width: 44rem;
+    font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+    color: var(--jw-muted);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .grid {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+  }
+
+  @media (min-width: 56rem) {
+    .grid {
+      grid-template-columns: 1.6fr 1fr;
+      align-items: start;
+    }
+  }
+
+  .how {
+    padding: 1.5rem 1.6rem;
+  }
+
+  .how h2 {
+    font-size: 1.6rem;
+    margin-bottom: 1rem;
+  }
+
+  .how ol {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .how li {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .step {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    background: var(--jw-surface-2);
+    border: 1px solid var(--jw-border);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.25rem;
+  }
+
+  .board-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 700;
+  }
+
+  .badges {
+    margin-top: 2rem;
+  }
+
+  .badges ul {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.6rem;
+  }
+
+  .ci-badge {
+    display: inline-flex;
+    min-height: 1.75rem;
+    align-items: center;
+  }
+
+  .ci-badge img {
+    display: block;
+    height: 20px;
+    width: auto;
+  }
+</style>

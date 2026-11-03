@@ -1,0 +1,43 @@
+{
+  "name": "jarrow-site",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Website for Jarrow: landing page, board, docs. Astro + Starlight on Cloudflare.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && node scripts/pages-assemble.mjs",
+    "preview": "wrangler pages dev ./dist --port 8788",
+    "check": "astro check",
+    "test": "node --test \"src/**/*.test.ts\" \"scripts/**/*.test.mjs\""
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "14.4.4",
+    "@astrojs/markdown-remark": "7.3.5",
+    "@astrojs/sitemap": "3.7.4",
+    "@astrojs/starlight": "0.42.8",
+    "@astrojs/starlight-tailwind": "5.0.0",
+    "@fontsource-variable/atkinson-hyperlegible-next": "5.3.0",
+    "@fontsource-variable/bricolage-grotesque": "5.3.0",
+    "@fontsource-variable/jetbrains-mono": "5.3.0",
+    "@lucide/astro": "1.67.0",
+    "@tailwindcss/vite": "4.3.4",
+    "astro": "7.4.5",
+    "simple-icons": "16.36.0",
+    "tailwindcss": "4.3.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "smol-toml": "1.9.1",
+    "typescript": "6.0.3",
+    "wrangler": "4.157.0"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "workerd": true
+  }
+}
