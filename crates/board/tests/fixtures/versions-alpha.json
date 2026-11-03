@@ -1,0 +1,111 @@
+[
+  {
+    "id": "AV000004",
+    "project_id": "AAAAAAA1",
+    "name": "Alpha Lib 3.0 alpha",
+    "version_number": "3.0.0-alpha.1",
+    "version_type": "alpha",
+    "date_published": "2026-10-01T00:00:00.000000Z",
+    "game_versions": ["1.21.11"],
+    "loaders": ["fabric"],
+    "status": "listed",
+    "files": [
+      {
+        "hashes": {
+          "sha1": "0000000000000000000000000000000000000004",
+          "sha512": "112a267bc4e7b17d7cd9f0218a769c86db43fb4ab769fd7c9259c812f6f40d1b85615e74f9043b740734f2772428514241292ae7f8b9a249f3a21273c73cbaee"
+        },
+        "url": "https://cdn.modrinth.com/data/AAAAAAA1/versions/AV000004/alpha-lib-3.0.0-alpha.1.jar",
+        "filename": "alpha-lib-3.0.0-alpha.1.jar",
+        "primary": true,
+        "size": 1004,
+        "file_type": null
+      }
+    ],
+    "dependencies": []
+  },
+  {
+    "id": "AV000005",
+    "project_id": "AAAAAAA1",
+    "name": "Alpha Lib 2.1 for NeoForge",
+    "version_number": "2.1.0+neoforge",
+    "version_type": "release",
+    "date_published": "2026-09-01T00:00:00Z",
+    "game_versions": ["1.21.11"],
+    "loaders": ["neoforge"],
+    "files": [
+      {
+        "hashes": {
+          "sha512": "3864ea143f6d26a225a52e8dca2a5ad83a2eb7d1f0ce7dccb50b673569196aa61527e6c4e6ed57cf78449ac106cc8dbc54bb1aaa8b836b7147c40abcf5c8b162"
+        },
+        "url": "https://cdn.modrinth.com/data/AAAAAAA1/versions/AV000005/alpha-lib-neoforge-2.1.0.jar",
+        "filename": "alpha-lib-neoforge-2.1.0.jar",
+        "primary": true,
+        "size": 1005
+      }
+    ]
+  },
+  {
+    "id": "AV000003",
+    "project_id": "AAAAAAA1",
+    "name": "Alpha Lib 2.1 beta",
+    "version_number": "2.1.0-beta.2",
+    "version_type": "beta",
+    "date_published": "2026-08-15T12:00:00.000000Z",
+    "game_versions": ["1.21.11"],
+    "loaders": ["fabric", "quilt"],
+    "files": [
+      {
+        "hashes": {
+          "sha512": "112A267BC4E7B17D7CD9F0218A769C86DB43FB4AB769FD7C9259C812F6F40D1B85615E74F9043B740734F2772428514241292AE7F8B9A249F3A21273C73CBAEE"
+        },
+        "url": "https://cdn.modrinth.com/data/AAAAAAA1/versions/AV000003/alpha-lib-2.1.0-beta.2.jar",
+        "filename": "alpha-lib-2.1.0-beta.2.jar",
+        "primary": true,
+        "size": 1003
+      }
+    ]
+  },
+  {
+    "id": "AV000002",
+    "project_id": "AAAAAAA1",
+    "name": "Alpha Lib 2.0.1",
+    "version_number": "2.0.1",
+    "version_type": "release",
+    "date_published": "2026-02-01T00:00:00.5Z",
+    "game_versions": ["1.21", "1.21.1"],
+    "loaders": ["fabric"],
+    "files": [
+      {
+        "hashes": {
+          "sha512": "3864ea143f6d26a225a52e8dca2a5ad83a2eb7d1f0ce7dccb50b673569196aa61527e6c4e6ed57cf78449ac106cc8dbc54bb1aaa8b836b7147c40abcf5c8b162"
+        },
+        "url": "https://cdn.modrinth.com/data/AAAAAAA1/versions/AV000002/alpha-lib-2.0.1.jar",
+        "filename": "alpha-lib-2.0.1.jar",
+        "primary": true,
+        "size": 1002
+      }
+    ]
+  },
+  {
+    "id": "AV000001",
+    "project_id": "AAAAAAA1",
+    "name": "Alpha Lib 2.0.0",
+    "version_number": "2.0.0",
+    "version_type": "release",
+    "date_published": "2026-02-01T00:00:00Z",
+    "game_versions": ["1.21.1"],
+    "loaders": ["fabric"],
+    "files": [
+      {
+        "hashes": {
+          "sha512": "f5dbff5cf72254a6e36737e25a325eabe17383bf962e74798f6304ae41de51b18e4267fef8a92abcad434f888b36918c9570c9586f83d38765170981abd136e6"
+        },
+        "url": "https://cdn.modrinth.com/data/AAAAAAA1/versions/AV000001/alpha-lib-2.0.0.jar",
+        "filename": "alpha-lib-2.0.0.jar",
+        "primary": true,
+        "size": 1001
+      }
+    ]
+  }
+]

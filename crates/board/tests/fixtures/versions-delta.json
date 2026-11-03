@@ -1,0 +1,22 @@
+[
+  {
+    "id": "DV000001",
+    "project_id": "DDDDDDD4",
+    "version_number": "4.2.0",
+    "version_type": "release",
+    "date_published": "2026-05-05T05:05:05.050505Z",
+    "game_versions": ["1.21.1", "1.21.2", "1.21.11"],
+    "loaders": ["fabric"],
+    "files": [
+      {
+        "hashes": {
+          "sha512": "485d4d17037cddf4ad54c9af1388df47600e61be6179736e65104182315603adaa88012551d04d0b8c915391e913b320f1b1ba907bea4a68bb7d4bbd35304c5d"
+        },
+        "url": "https://cdn.modrinth.com/data/DDDDDDD4/versions/DV000001/delta-4.2.0.jar",
+        "filename": "delta-4.2.0.jar",
+        "primary": true,
+        "size": 4001
+      }
+    ]
+  }
+]
