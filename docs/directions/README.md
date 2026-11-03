@@ -2,7 +2,7 @@
 
 Jarrow's goal for v1 is any loader to any loader: Fabric, NeoForge, Forge and Quilt, every pair in both directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11 (D-029). That is 12 directions. Each one has a page here, named `<from>-<to>.md` with the loader ids from [`loaders/`](../../loaders/).
 
-**No direction converts today, and no direction has a board column.**
+**No direction converts today. Only Fabric → NeoForge has a board column:** the nightly board measures it with conversion stubbed, so every mod in it is red until a converter exists. The other 11 directions have no column.
 
 ## What a direction page holds
 
@@ -33,7 +33,7 @@ A column's share of green counts only harness results ([harness.md](../harness.m
 
 | Direction | Order | Inverse | Status | Board column |
 | --- | --- | --- | --- | --- |
-| [Fabric → NeoForge](fabric-neoforge.md) | 1 | [NeoForge → Fabric](neoforge-fabric.md) | in progress: M1 (harness and board) next | none |
+| [Fabric → NeoForge](fabric-neoforge.md) | 1 | [NeoForge → Fabric](neoforge-fabric.md) | in progress: M1 (harness and board) next | [on the board](https://jarrow.pages.dev/board) |
 | [NeoForge → Fabric](neoforge-fabric.md) | 2 | [Fabric → NeoForge](fabric-neoforge.md) | not started | none |
 | [Fabric → Quilt](fabric-quilt.md) | 3 | [Quilt → Fabric](quilt-fabric.md) | not started | none |
 | [Quilt → Fabric](quilt-fabric.md) | 3 | [Fabric → Quilt](fabric-quilt.md) | not started | none |
@@ -50,7 +50,7 @@ Status words:
 
 - **not started**: the page exists; no research beyond what the page cites, no rule table, no column.
 - **in progress: _next step_**: work on the direction has begun; the next step is named.
-- Once a direction has a board column, the "Board column" cell shows its share of green from the latest nightly `board.json`, with a link to the board, and nothing else. It is never typed by hand.
+- Once a direction has a board column, the "Board column" cell links to the board, which shows the column's share of green from the latest nightly `board.json`. The share is never typed by hand.
 
 ## Research coverage today
 

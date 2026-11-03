@@ -22,7 +22,8 @@ const unreadable = load.status === 'invalid' || load.status === 'error';
 Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, max-age=300');
 
 // The fixed build order (ROADMAP.md, "Directions"; D-029). A direction is offered only once it has a
-// board column; none has one yet, so every status here is "not started" or "in progress".
+// board column and a converter. Only Fabric -> NeoForge has a column, and no converter exists, so every
+// status here is "not started" or "in progress".
 const buildOrder = [
   {
     step: 1,
@@ -117,7 +118,8 @@ const buildOrder = [
       <h2 id="directions-title">Directions</h2>
       <p class="directions-lead">
         Twelve directions, built in a fixed order. None is available yet: a direction is offered here only once it
-        has its own column on the nightly board, and no column exists yet.
+        has its own column on the nightly board and a converter. Only Fabric → NeoForge has a column so far, and
+        every mod in it is red because no converter exists yet.
       </p>
       <ol class="order">
         {

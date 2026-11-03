@@ -23,7 +23,7 @@ Today a mod built for one loader reaches players of another in one of two ways: 
 2. **Convert.** Tier A mods convert in your browser (the engine is Rust compiled to WebAssembly), so the JAR never leaves your machine. Tier B mods need a deeper conversion that runs as a short-lived GitHub Actions job.
 3. **Prove.** A parity harness starts the original mod on a server with its own loader and the converted mod on a server with the target loader, dumps what each one registers (blocks, items, recipes, tags, loot tables and more) and compares the two. Only that comparison can mark a conversion green.
 
-The 12 directions are built one at a time, in a fixed order that starts with Fabric to NeoForge. A direction is offered only once it has its own column on the nightly board, and today none has one. See [Directions](/docs/directions/).
+The 12 directions are built one at a time, in a fixed order that starts with Fabric to NeoForge. A direction is offered only once it has its own column on the nightly board and a converter. Today only Fabric → NeoForge has a column, where every mod is red because no converter exists yet, so none is offered. See [Directions](/docs/directions/).
 
 ## Built by an AI agent, in the open
 

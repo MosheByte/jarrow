@@ -1,5 +1,6 @@
 // Run with: npm test (node --test, using Node's built-in TypeScript type stripping).
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import {
@@ -8,14 +9,23 @@ import {
   type BoardKV,
   DIRECTIONS,
   LOADERS,
+  boardOutcome,
   columns,
   directionLabel,
   emptyBoard,
   greenPercent,
   hasRun,
+  isDirection,
   loadBoard,
+  outcomeForScore,
   parseBoard,
 } from './board.ts';
+
+/** The board.json `jarrow-board merge` writes, kept current by crates/board/tests/sample.rs. */
+const CRATE_SAMPLE = readFileSync(
+  new URL('../../../crates/board/tests/fixtures/board-sample.json', import.meta.url),
+  'utf8',
+);
 
 const ZERO = { mods: 0, green: 0, yellow: 0, red: 0 };
 
@@ -23,6 +33,7 @@ const ZERO = { mods: 0, green: 0, yellow: 0, red: 0 };
 const EMPTY_EXPECTED = {
   schema: 2,
   generated_at: null,
+  started_at: null,
   run_id: null,
   engine: null,
   game_versions: ['1.20.1', '1.21.1', '1.21.11'],
@@ -47,10 +58,13 @@ const EMPTY_EXPECTED = {
     order,
     bar_percent,
     column: false,
+    game_versions: [],
+    list_fetched_at: null,
     rules_version: null,
     totals: ZERO,
     top_reasons: [],
   })),
+  stats: null,
   rows: [],
 };
 
@@ -70,6 +84,7 @@ function result(overrides: Record<string, unknown> = {}) {
     direction: 'fabric-neoforge',
     game_version: '1.21.11',
     version_id: 'abc',
+    version_number: '1.0.0',
     file_sha512: 'f'.repeat(128),
     mod_id: 'example',
     mod_version: '1.0.0',
@@ -79,7 +94,7 @@ function result(overrides: Record<string, unknown> = {}) {
     score: 1,
     reason_kind: null,
     reason: null,
-    report_key: 'reports/nightly-20261104/fabric-neoforge/AANobbMI/1.21.11.json',
+    report_key: 'report:fabric-neoforge:AANobbMI:1.21.11',
     report_hash: 'sha256:00',
     duration_ms: 412,
     ...overrides,
@@ -90,14 +105,18 @@ function result(overrides: Record<string, unknown> = {}) {
 function validBoard(): BoardJson {
   const board = emptyBoard();
   board.generated_at = '2026-11-04T02:41:00Z';
+  board.started_at = '2026-11-04T02:20:00Z';
   board.run_id = 'nightly-20261104';
   board.engine = { version: '0.1.0', git_sha: '0123abcd' };
+  board.stats = { shards: 10, files: 3 };
   board.totals = { mods: 2, green: 1, yellow: 0, red: 1 };
   const column = board.directions[0]!;
   column.column = true;
+  column.game_versions = ['1.20.1', '1.21.1', '1.21.11'];
+  column.list_fetched_at = '2026-11-03T14:00:00Z';
   column.rules_version = 'sha256:rules';
   column.totals = { mods: 2, green: 1, yellow: 0, red: 1 };
-  column.top_reasons = [{ kind: 'mixin_failure', count: 1 }];
+  column.top_reasons = [{ kind: 'mixin_failure', label: 'Mixin failure', count: 1 }];
   board.rows = [
     {
       direction: 'fabric-neoforge',
@@ -176,6 +195,69 @@ describe('DIRECTIONS', () => {
   });
 });
 
+describe('outcomes', () => {
+  it('maps harness scores as D-024 says', () => {
+    assert.deepEqual(
+      [1, 0.75, 0.5, 0.25, 0].map((s) => outcomeForScore(s as 0)),
+      ['green', 'green', 'yellow', 'red', 'red'],
+    );
+  });
+
+  it('counts a result that was not run as red, or yellow when only client-only content was unmeasured', () => {
+    assert.equal(boardOutcome('not-run', 'no_converter'), 'red');
+    assert.equal(boardOutcome('not-run', 'client_only_not_measured'), 'yellow');
+    assert.equal(boardOutcome('green', null), 'green');
+    assert.equal(boardOutcome('red', 'crash'), 'red');
+  });
+
+  it('knows the 12 direction ids', () => {
+    assert.equal(isDirection('fabric-neoforge'), true);
+    assert.equal(isDirection('quilt-forge'), true);
+    for (const bad of ['fabric', 'fabric-fabric', 'fabric-rift', 'fabric-neoforge-forge', 1, null]) {
+      assert.equal(isDirection(bad), false, String(bad));
+    }
+  });
+});
+
+describe('the board crates/board writes', () => {
+  it('is accepted, with fabric-neoforge as its one column', () => {
+    const parsed = parseBoard(CRATE_SAMPLE);
+    assert.equal(parsed.ok, true, parsed.ok ? '' : parsed.problem);
+    if (!parsed.ok) return;
+    const board = parsed.board;
+    assert.deepEqual(
+      columns(board).map((d) => d.id),
+      ['fabric-neoforge'],
+    );
+    assert.equal(board.rows.length, board.totals.mods);
+    for (const row of board.rows) {
+      assert.equal(row.direction, 'fabric-neoforge');
+      assert.equal(row.outcome, 'red');
+      assert.equal(row.tier, null);
+      for (const result of row.results) {
+        assert.equal(result.outcome, 'not-run');
+        assert.equal(result.score, null);
+        assert.match(result.report_key ?? '', /^report:fabric-neoforge:/);
+      }
+    }
+    assert.equal(greenPercent(columns(board)[0]!.totals), 0);
+  });
+
+  it('is refused when it claims green without a harness score', () => {
+    const board = JSON.parse(CRATE_SAMPLE);
+    board.rows[0].outcome = 'green';
+    board.rows[0].reason_kind = null;
+    assert.equal(parseBoard(JSON.stringify(board)).ok, false);
+  });
+
+  it('is refused with a row in a direction that has no column', () => {
+    const board = JSON.parse(CRATE_SAMPLE);
+    board.rows[0].direction = 'neoforge-fabric';
+    for (const r of board.rows[0].results) r.direction = 'neoforge-fabric';
+    assert.equal(parseBoard(JSON.stringify(board)).ok, false);
+  });
+});
+
 describe('emptyBoard', () => {
   it('matches the documented empty structure exactly', () => {
     assert.deepEqual(emptyBoard(), EMPTY_EXPECTED);
@@ -249,6 +331,13 @@ describe('loadBoard', () => {
     assert.equal(load.status, 'invalid');
   });
 
+  it('reports a schema 1 board from the first pipeline as invalid', async () => {
+    const old = JSON.parse(CRATE_SAMPLE);
+    old.schema = 1;
+    const load = await loadBoard(kvWith(JSON.stringify(old)));
+    assert.equal(load.status, 'invalid');
+  });
+
   it('reports a failed KV read without throwing', async () => {
     const kv: BoardKV = {
       async get() {
@@ -283,7 +372,8 @@ describe('parseBoard', () => {
     board.rows[1].results[0].tier = null;
     board.rows[1].results[0].outcome = 'not-run';
     board.rows[1].results[0].score = null;
-    board.directions[0].top_reasons = [{ kind: 'download_failed', count: 1 }];
+    board.rows[1].results[0].reason_kind = 'download_failed';
+    board.directions[0].top_reasons = [{ kind: 'download_failed', label: 'Download failed', count: 1 }];
     const parsed = parseBoard(JSON.stringify(board));
     assert.equal(parsed.ok, true, parsed.ok ? '' : parsed.problem);
   });
@@ -305,7 +395,15 @@ describe('parseBoard', () => {
     ['a direction with the wrong loaders', (b) => (b.directions[1].from = 'forge')],
     ['column that is not a boolean', (b) => (b.directions[0].column = 'yes')],
     ['direction totals that do not add up', (b) => (b.directions[0].totals.green = 2)],
-    ['an unknown top reason', (b) => (b.directions[0].top_reasons = [{ kind: 'bad luck', count: 1 }])],
+    ['an unknown top reason', (b) => (b.directions[0].top_reasons = [{ kind: 'bad luck', label: 'Bad luck', count: 1 }])],
+    ['a top reason without a label', (b) => (b.directions[0].top_reasons = [{ kind: 'mixin_failure', count: 1 }])],
+    ['a column without a list time', (b) => (b.directions[0].list_fetched_at = null)],
+    ['a column without game versions', (b) => (b.directions[0].game_versions = [])],
+    ['a column measuring an unlisted game version', (b) => (b.directions[0].game_versions = ['1.19.2'])],
+    ['a direction without a column but with game versions', (b) => (b.directions[1].game_versions = ['1.21.1'])],
+    ['a direction without a column but with a list time', (b) => (b.directions[1].list_fetched_at = '2026-11-03T14:00:00Z')],
+    ['bad started_at', (b) => (b.started_at = 'yesterday')],
+    ['stats that are not an object', (b) => (b.stats = 3)],
     [
       'numbers in a direction without a column',
       (b) => {
@@ -324,6 +422,20 @@ describe('parseBoard', () => {
     ['an unknown tier', (b) => (b.rows[0].tier = 'A')],
     ['an unknown outcome', (b) => (b.rows[0].outcome = 'blue')],
     ['a board row that was not run', (b) => (b.rows[1].outcome = 'not-run')],
+    ['the tier "unknown" of the first pipeline', (b) => {
+      b.rows[1].tier = 'unknown';
+      b.rows[1].results[0].tier = 'unknown';
+    }],
+    ['a red result without a harness score', (b) => (b.rows[1].results[0].score = null)],
+    ['a result whose score maps to another outcome', (b) => (b.rows[1].results[0].score = 1)],
+    ['a row whose outcome is not its primary result\'s', (b) => {
+      b.rows[0].results[0].outcome = 'not-run';
+      b.rows[0].results[0].score = null;
+      b.rows[0].results[0].reason_kind = 'no_converter';
+    }],
+    ['a row whose tier is not its primary result\'s', (b) => (b.rows[1].tier = 'a')],
+    ['a primary game version that is not the newest result', (b) => (b.rows[0].primary_game_version = '1.21.1')],
+    ['a not-run result without a reason_kind', (b) => (b.rows[0].results[1].reason_kind = null)],
     ['green without a harness score', (b) => (b.rows[0].results[0].score = null)],
     ['green at score 0.5', (b) => (b.rows[0].results[0].score = 0.5)],
     ['a green row over a red result', (b) => {

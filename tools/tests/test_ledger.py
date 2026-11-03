@@ -12,9 +12,12 @@ import pytest
 import ledger
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
+# The board-summary.json `jarrow-board merge` writes, kept current by crates/board/tests/sample.rs.
+CRATE_SUMMARY = Path(__file__).resolve().parents[2] / "crates" / "board" / "tests" / "fixtures" / "board-summary-sample.json"
 
 BOARD: dict[str, Any] = {
     "schema": 1,
+    "direction": "fabric-neoforge",
     "run": "nightly-2026-11-04",
     "date": "2026-11-04",
     "commit": SHA,
@@ -152,6 +155,8 @@ def test_full_inputs_render_every_number(tmp_path: Path) -> None:
     text = ledger.render(tmp_path)
     assert "No nightly has run yet" not in text
     assert "Last nightly: `nightly-2026-11-04` on 2026-11-04, commit `0123456789ab`" in text
+    assert "The numbers below are the Fabric → NeoForge column of the board." in text
+    assert "nightly board, Fabric → NeoForge column" in section(text, "Numbers from the last nightly")
     numbers = section(text, "Numbers from the last nightly")
     assert "612 green (61.2%), 231 yellow (23.1%), 157 red (15.7%), 0 not run, of 1,000 mods" in numbers
     assert "99.0% (990 of 1,000 runs produced a score)" in numbers
@@ -253,6 +258,9 @@ def mutate(path: list[Any], value: Any) -> dict[str, Any]:
         (mutate(["date"], "2026-11-4"), "date must match"),
         (mutate(["commit"], "abc"), "commit must match"),
         (mutate(["run"], KeyError), "run is required"),
+        (mutate(["direction"], KeyError), "direction is required"),
+        (mutate(["direction"], "fabric-bukkit"), "direction must match"),
+        (mutate(["direction"], "fabric-fabric"), "direction must name two different loaders"),
         (mutate(["surprise"], 1), "has unknown keys: surprise"),
         (mutate(["harness", "completed"], 1001), "completed exceeds attempted"),
         (mutate(["areas", 0, "green"], 900), "areas[0] green exceeds measured"),
@@ -268,6 +276,16 @@ def test_invalid_board_is_rejected(tmp_path: Path, board: dict[str, Any], messag
         ledger.render(tmp_path)
     assert str(err.value).startswith("ledger/inputs/board-summary.json")
     assert message in str(err.value)
+
+
+def test_the_summary_crates_board_writes_is_accepted(tmp_path: Path) -> None:
+    summary = json.loads(CRATE_SUMMARY.read_text(encoding="utf-8"))
+    write_inputs(tmp_path, {"board-summary.json": summary})
+    text = ledger.render(tmp_path)
+    assert f"Last nightly: `{summary['run']}` on {summary['date']}" in text
+    assert "Fabric → NeoForge column" in text
+    reasons = section(text, "Open red reasons")
+    assert "| No converter yet (milestone M2) |" in reasons
 
 
 def test_invalid_json_is_rejected(tmp_path: Path) -> None:

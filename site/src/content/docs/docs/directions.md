@@ -4,18 +4,18 @@ description: The 12 conversion directions planned for Jarrow v1, the order they 
 ---
 
 :::note[Status]
-No direction is available yet. No direction has a board column, and nothing converts.
+No direction is available yet, and nothing converts. Only Fabric → NeoForge has a board column: the nightly board measures it with conversion stubbed, so every mod in it is red until a converter exists. The other 11 directions have no column.
 :::
 
 The goal for v1 is any loader to any loader: Fabric, NeoForge, Forge and Quilt, every pair in both directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11. Four loaders make 12 directions.
 
 ## Build order and status
 
-The order is fixed. Each direction gets its own column on the nightly board, and its bar is the share of that column the parity harness marks green. A direction is offered on this site only once its column exists.
+The order is fixed. Each direction gets its own column on the nightly board, and its bar is the share of that column the parity harness marks green. A direction is offered on this site only once its column exists, and nothing is offered before a converter exists.
 
 | Order | Direction | Bar for v1 | Board column | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Fabric → NeoForge | At least 60% green | Not yet | In progress: milestone M0 now, then M1 (the harness and the board) |
+| 1 | Fabric → NeoForge | At least 60% green | [On the board](/board/), every mod red: no converter yet | In progress: milestone M0 now, then M1 (the harness and the board) |
 | 2 | NeoForge → Fabric | At least 50% green | Not yet | Not started |
 | 3 | Fabric → Quilt | At least 50% green | Not yet | Not started |
 | 3 | Quilt → Fabric | At least 50% green | Not yet | Not started |

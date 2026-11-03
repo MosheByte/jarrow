@@ -6,17 +6,17 @@ Drop a Minecraft mod JAR on a web page and get the same mod back for another loa
 
 The goal for v1 is any loader to any loader: Fabric, NeoForge, Forge and Quilt, every pair in both directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11, with a harness report for each result.
 
-**Status: pre-alpha — milestone M0; nothing converts yet.** The repository, CI, site skeleton and docs are being set up. There is no converter, no harness and no board yet. See [ROADMAP.md](ROADMAP.md) for what comes when.
+**Status: pre-alpha — milestone M0; nothing converts yet.** The repository, CI, site skeleton and docs are being set up. There is no converter and no harness yet. The nightly board runs for one direction, Fabric → NeoForge, and every mod in it is red until a converter exists. See [ROADMAP.md](ROADMAP.md) for what comes when.
 
 ## Directions
 
 Four loaders make 12 directions. They are built in a fixed order, starting with Fabric → NeoForge (decision D-029 in [DECISIONS.md](DECISIONS.md)).
 
-A direction is measured by its own column on the nightly board, where the parity harness marks each mod green, yellow or red. No direction is offered on the site before its column exists. Today no column exists, so no direction is offered.
+A direction is measured by its own column on the nightly board, where the parity harness marks each mod green, yellow or red. No direction is offered on the site before its column exists. Today only Fabric → NeoForge has a column, where every mod is red because no converter exists, so no direction is offered.
 
 | Order | Direction | Bar for v1 | Board column | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Fabric → NeoForge | At least 60% green | Not yet | First in the order. Milestone M0 now, then M1 (the harness and the board). Nothing converts yet |
+| 1 | Fabric → NeoForge | At least 60% green | Yes, every mod red (no converter yet) | First in the order. Milestone M0 now, then M1 (the harness and the board). Nothing converts yet |
 | 2 | NeoForge → Fabric | At least 50% green | Not yet | Not started |
 | 3 | Fabric → Quilt | At least 50% green | Not yet | Not started |
 | 3 | Quilt → Fabric | At least 50% green | Not yet | Not started |
@@ -37,7 +37,7 @@ Each direction gets its own page in [docs/directions/](docs/directions/), writte
 | --- | --- |
 | Site | https://jarrow.pages.dev |
 | Docs | [docs/](docs/) in this repository; Rust API docs at https://moshebyte.github.io/jarrow/ |
-| Board | Not built yet (milestone M1). It will have one column per direction, starting with Fabric → NeoForge. The site shows its counter, which is zero until the first nightly run. |
+| Board | https://jarrow.pages.dev/board, one column per direction. Only Fabric → NeoForge has one (milestone M1, wave 1: every mod red until a converter exists). The counter is zero until the first nightly run. |
 | Roadmap | [ROADMAP.md](ROADMAP.md) and the project board at https://github.com/users/MosheByte/projects/1 |
 | Discussions | https://github.com/MosheByte/jarrow/discussions |
 
@@ -73,7 +73,7 @@ Every person who authored or committed a commit on main, shown by GitHub login, 
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MosheByte"><img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=80" width="80px;" alt="MosheByte"/><br /><sub><b>MosheByte</b></sub></a><br /><sub>Owner: sets direction, holds the accounts. Commits through this account are written by the agent and disclosed in their trailers.</sub><br /><sub>4 commits</sub><br /><a href="#ideas-MosheByte" title="Ideas, Planning, &amp; Feedback">🤔</a> <a href="#projectManagement-MosheByte" title="Project Management">📆</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MosheByte"><img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=80" width="80px;" alt="MosheByte"/><br /><sub><b>MosheByte</b></sub></a><br /><sub>Owner: sets direction, holds the accounts. Commits through this account are written by the agent and disclosed in their trailers.</sub><br /><sub>15 commits</sub><br /><a href="#ideas-MosheByte" title="Ideas, Planning, &amp; Feedback">🤔</a> <a href="#projectManagement-MosheByte" title="Project Management">📆</a></td>
     </tr>
   </tbody>
 </table>
@@ -85,7 +85,7 @@ Agents have no GitHub account of their own here. They act through the owner's ac
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://www.anthropic.com/claude"><img src="https://avatars.githubusercontent.com/u/76263028?v=4&amp;s=80" width="80px;" alt="Claude Opus 5.5"/><br /><sub><b>Claude Opus 5.5</b></sub></a><br /><sub>Engineering: writes the code, docs and infrastructure; co-author of every commit it touches</sub><br /><sub>4 commits</sub><br /><a href="#agent-claude-opus-5-5" title="AI agent">🤖</a> <a href="#code-claude-opus-5-5" title="Code">💻</a> <a href="#doc-claude-opus-5-5" title="Documentation">📖</a> <a href="#test-claude-opus-5-5" title="Tests">⚠️</a> <a href="#infra-claude-opus-5-5" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://www.anthropic.com/claude"><img src="https://avatars.githubusercontent.com/u/76263028?v=4&amp;s=80" width="80px;" alt="Claude Opus 5.5"/><br /><sub><b>Claude Opus 5.5</b></sub></a><br /><sub>Engineering: writes the code, docs and infrastructure; co-author of every commit it touches</sub><br /><sub>15 commits</sub><br /><a href="#agent-claude-opus-5-5" title="AI agent">🤖</a> <a href="#code-claude-opus-5-5" title="Code">💻</a> <a href="#doc-claude-opus-5-5" title="Documentation">📖</a> <a href="#test-claude-opus-5-5" title="Tests">⚠️</a> <a href="#infra-claude-opus-5-5" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     </tr>
   </tbody>
 </table>
@@ -99,8 +99,8 @@ Every GitHub App, bot and workflow that acts on the repository, and what it does
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://codeql.github.com"><img src="https://avatars.githubusercontent.com/in/57789?v=4&amp;s=80" width="80px;" alt="CodeQL"/><br /><sub><b>CodeQL</b></sub></a><br /><sub>Code scanning with CodeQL (codeql.yml) for Actions workflows, JavaScript/TypeScript, Python and Rust.</sub><br /><a href="#ci-github-advanced-security" title="CI and scheduled workflows">🔁</a> <a href="#security-github-advanced-security" title="Security">🛡️</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/apps/dependabot"><img src="https://avatars.githubusercontent.com/in/29110?v=4&amp;s=80" width="80px;" alt="Dependabot"/><br /><sub><b>Dependabot</b></sub></a><br /><sub>Opens dependency update pull requests for Cargo, npm, GitHub Actions and pip (.github/dependabot.yml).</sub><br /><a href="#bot-dependabot" title="Bot or GitHub App">⚙️</a> <a href="#maintenance-dependabot" title="Maintenance">🚧</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/apps/github-actions"><img src="https://avatars.githubusercontent.com/in/15368?v=4&amp;s=80" width="80px;" alt="GitHub Actions"/><br /><sub><b>GitHub Actions</b></sub></a><br /><sub>Runs the workflows in .github/workflows: CI, CodeQL, this list, site deploy, infra apply, PR labels, GitLab mirror, API docs, Scorecard and stale sweep.</sub><br /><a href="#ci-github-actions" title="CI and scheduled workflows">🔁</a> <a href="#infra-github-actions" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MosheByte/jarrow/blob/main/.github/workflows/contributors.yml"><img src="docs/assets/key.svg" width="80px;" alt="jarrow-bot (deploy key)"/><br /><sub><b>jarrow-bot (deploy key)</b></sub></a><br /><sub>SSH deploy key with write access. Actions pushes jarrow-bot commits with it: the nightly refresh of this list (contributors.yml).</sub><br /><a href="#bot-jarrow-bot" title="Bot or GitHub App">⚙️</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/apps/github-actions"><img src="https://avatars.githubusercontent.com/in/15368?v=4&amp;s=80" width="80px;" alt="GitHub Actions"/><br /><sub><b>GitHub Actions</b></sub></a><br /><sub>Runs the workflows in .github/workflows: nightly board, CI, CodeQL, this list, site deploy, devcontainer, harness, infra apply, PR labels, GitLab mirror, nightly, API docs, Scorecard and stale sweep.</sub><br /><a href="#ci-github-actions" title="CI and scheduled workflows">🔁</a> <a href="#infra-github-actions" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/jarrow-dev/jarrow/blob/main/.github/workflows/board.yml"><img src="docs/assets/key.svg" width="80px;" alt="jarrow-bot (deploy key)"/><br /><sub><b>jarrow-bot (deploy key)</b></sub></a><br /><sub>SSH deploy key with write access. Actions pushes jarrow-bot commits with it: LEDGER and board-data commits (board.yml); the nightly refresh of this list (contributors.yml).</sub><br /><a href="#bot-jarrow-bot" title="Bot or GitHub App">⚙️</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/apps/socket-security"><img src="https://avatars.githubusercontent.com/in/156372?v=4&amp;s=80" width="80px;" alt="Socket Security"/><br /><sub><b>Socket Security</b></sub></a><br /><sub>Dependency review: reports supply-chain risk in the project&#x27;s dependencies and in those a pull request adds or changes.</sub><br /><a href="#bot-socket-security" title="Bot or GitHub App">⚙️</a> <a href="#security-socket-security" title="Security">🛡️</a></td>
     </tr>
   </tbody>

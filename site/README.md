@@ -22,7 +22,7 @@ Set `ASTRO_TELEMETRY_DISABLED=1` in CI.
 | Path | What it is |
 | --- | --- |
 | `src/lib/site.ts` | `SITE_URL` and every other site-wide constant. Change the domain here and in `wrangler.toml` `[vars]` |
-| `src/lib/board.ts` | The `BoardJson` type (schema 1) and `loadBoard()`, the one loader for `board.json` from KV. Never throws; a missing binding or key gives the empty board |
+| `src/lib/board.ts` | The `BoardJson` type (schema 2: all 12 directions, a column for each measured one; contract in `docs/board.md`) and `loadBoard()`, the one loader for `board.json` from KV. Never throws; a missing binding or key gives the empty board |
 | `src/lib/runtime.ts` | The only module that imports `cloudflare:workers` |
 | `src/pages/index.astro`, `board.astro`, `api/board.json.ts` | Server-rendered (`export const prerender = false`); everything else is prerendered |
 | `src/content/docs/docs/` | Starlight docs, served under `/docs/` |

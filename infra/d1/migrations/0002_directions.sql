@@ -39,13 +39,16 @@ CREATE TABLE board_rows (
   mod_id        TEXT,                       -- from the source loader's manifest, when readable
   mod_version   TEXT,
   tier          TEXT CHECK (tier IS NULL OR tier IN ('a', 'b', 'unsupported')),
-                                            -- NULL only when the classifier could not run
+                                            -- NULL when the classifier did not run (not built
+                                            -- yet, or no file to classify)
   outcome       TEXT NOT NULL CHECK (outcome IN ('green', 'yellow', 'red', 'not-run')),
+                                            -- the result: a colour only from a harness score
   score         REAL CHECK (score IS NULL OR score IN (0, 0.25, 0.5, 0.75, 1)),
                                             -- harness score, NULL when not run
   reason_kind   TEXT,                       -- classified reason (docs/board.md vocabulary)
   reason        TEXT,
-  report_key    TEXT,                       -- R2 key of the full report
+  report_key    TEXT,                       -- KV key of the full report:
+                                            --   report:<direction>:<project_id>:<game_version>
   report_hash   TEXT,
   duration_ms   INTEGER CHECK (duration_ms IS NULL OR duration_ms >= 0),
   is_primary    INTEGER NOT NULL DEFAULT 0 CHECK (is_primary IN (0, 1)),

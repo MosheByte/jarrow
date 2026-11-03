@@ -5,7 +5,7 @@ export const prerender = false;
 import BoardCounter from '../components/BoardCounter.astro';
 import NotBuilt from '../components/NotBuilt.astro';
 import Base from '../layouts/Base.astro';
-import { RESULT_LABEL, TIER_LABEL, hasRun } from '../lib/board.ts';
+import { RESULT_LABEL, TIER_LABEL, directionLabel, hasRun } from '../lib/board.ts';
 import { formatCount, formatList, formatUtc } from '../lib/format.ts';
 import { readBoard } from '../lib/runtime.ts';
 
@@ -21,7 +21,7 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
 
 <Base
   title="Board"
-  description="The nightly board: popular mods, each converted and checked by the parity harness, with one column per direction. Empty until the first nightly runs."
+  description="The nightly board: popular mods, one column per direction, each mod to be converted and checked by the parity harness. One column so far, Fabric → NeoForge, where every mod is red until a converter exists."
 >
   <div class="wrap">
     <header class="intro">
@@ -32,10 +32,11 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
         yellow or red, with the reason. Rows link to the mod's own page, never to a converted JAR.
       </p>
       <p class="lead">
-        The board will have one column per direction. The first, Fabric → NeoForge, will take the 1,000
-        most-downloaded Fabric mods on Modrinth for the pinned game versions. The other eleven directions get their
-        columns in the fixed order on the <a href="/docs/directions/">Directions</a> page. No column exists yet,
-        and a direction is offered by the converter only once its column does.
+        The board has one column per direction. The first and only column so far is Fabric → NeoForge: the 1,000
+        most-downloaded Fabric mods on Modrinth for the pinned game versions. Until the converter exists (milestone
+        M2), every mod in it is red with the reason "no converter yet". The other eleven directions get their
+        columns in the fixed order on the <a href="/docs/directions/">Directions</a> page; none has one yet, and a
+        direction is offered by the converter only once its column does.
       </p>
     </header>
 
@@ -69,6 +70,7 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
             <thead>
               <tr>
                 <th scope="col">Mod</th>
+                <th scope="col">Direction</th>
                 <th scope="col">Downloads</th>
                 <th scope="col">Tier</th>
                 <th scope="col">Result</th>
@@ -84,6 +86,7 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
                       {row.title}
                     </a>
                   </th>
+                  <td class="nowrap">{directionLabel(row.direction)}</td>
                   <td class="num">{formatCount(row.downloads)}</td>
                   <td>
                     {row.tier ? <span class={`tier tier-${row.tier}`}>{TIER_LABEL[row.tier]}</span> : '—'}
@@ -196,6 +199,10 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
   .num {
     font-variant-numeric: tabular-nums;
     text-align: right;
+  }
+
+  .nowrap {
+    white-space: nowrap;
   }
 
   .result {

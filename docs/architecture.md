@@ -2,7 +2,7 @@
 
 One Rust workspace is the product. The website, the CLI and the GitHub Actions jobs are thin shells around it. Nothing conversion-related is written in TypeScript. This page is the map; the decisions behind it are logged in [DECISIONS.md](../DECISIONS.md).
 
-Status on 2026-11-03 (milestone M0): only `crates/report` and `crates/cli` exist, as skeletons. Nothing converts yet, in any direction, and no direction has a board column. Everything below marked "planned" is a design, not code.
+Status on 2026-11-03: `crates/report` and `crates/cli` exist as M0 skeletons, and `crates/jar`, `crates/mappings` and `crates/board` exist from M1 (see the table). Nothing converts yet, in any direction. The nightly board measures one direction, Fabric → NeoForge, with conversion stubbed, so every mod in that column is red; no other direction has a board column. Everything below marked "planned" is a design, not code.
 
 ## One engine, four loader profiles
 
@@ -22,9 +22,9 @@ Every package is named `jarrow-<crate>` (library `jarrow_<crate>`), except the C
 | Crate | Owns | Notes | Status |
 | --- | --- | --- | --- |
 | `crates/loaders` | Loads and validates the loader profiles in `loaders/` | Refuses a profile that breaks [loaders.md](loaders.md); answers "unknown" as an error, never as a default | Planned (M1) |
-| `crates/jar` | Reading and writing JARs and manifests; signatures stripped; deterministic output | Pure Rust zip; byte-stable output so two runs give identical hashes | Planned (M1) |
+| `crates/jar` | Reading and writing JARs and manifests; signatures stripped; deterministic output | Pure Rust zip; byte-stable output so two runs give identical hashes | Exists (M1: read with zip64 and zip-bomb limits, deterministic write, manifests, signature stripping, nested jars; [jar.md](jar.md)) |
 | `crates/classfile` | Java class-file parser and writer: constant pool, attributes, stack maps | Bytecode only, no decompilation. Round-trip tests on the JDK class library and the board set | Planned (M1) |
-| `crates/mappings` | Mapping files and formats: intermediary, Mojang, Yarn, Parchment, and the SRG (MCP config) and Quilt hashed sets once they are pinned; tiny v2 and ProGuard; composition and inversion | Mojang mappings are fetched from the version manifest at runtime, never vendored. Namespace ids are listed in [loaders.md](loaders.md#versionsvmappings) | Planned (M1) |
+| `crates/mappings` | Mapping files and formats: intermediary, Mojang, Yarn, Parchment, and the SRG (MCP config) and Quilt hashed sets once they are pinned; tiny v2 and ProGuard; composition and inversion | Mojang mappings are fetched from the version manifest at runtime, never vendored. Namespace ids are listed in [loaders.md](loaders.md#versionsvmappings) | Exists (M1: tiny v1 and v2, ProGuard, TSRG and TSRG2 read and write; compose, invert, chain; see [mappings.md](mappings.md). Parchment not built yet) |
 | `crates/remap` | Class, member and descriptor remapping over `classfile`, including string constants that name classes (reflection, mixin targets) | Remaps between the namespaces the profiles name: `intermediary`, `mojang`, `srg` and `quilt-hashed`. Rules match in Mojang names, so a conversion remaps the source to `mojang`, applies rules, then remaps to the target's runtime namespace. Differential-tested against tiny-remapper output | Planned (M2) |
 | `crates/manifest` | Reads and writes each loader's manifest, mixin configs, access files and `pack.mcmeta`, as the profiles describe them | Profile-driven. The first pair is `fabric.mod.json` and `neoforge.mods.toml`, access wideners and access transformers. Lossless where possible; the report lists every field it could not translate | Planned (M1) |
 | `crates/rules` | Rule-table loader and matcher: call rewrites, class substitutions, event bridges, entrypoint adapters | Data-driven; tables are TOML under `rules/<from>-<to>/<game-version>/` ([rules.md](rules.md)). Checks that every table has its inverse or a "not invertible" mark | Planned (M2) |
@@ -35,7 +35,7 @@ Every package is named `jarrow-<crate>` (library `jarrow_<crate>`), except the C
 | `crates/wasm` | `wasm-bindgen` surface for the browser: `classify`, `convert`, streaming progress | Budget: 4 MB gzipped | Planned (M3) |
 | `crates/cli` | The `jarrow` binary: `convert`, `check`, `report`, `board-run` | Released with cargo-dist | Exists (M0 skeleton: `--version` and `tokens` only; `check` in M1, `convert` in M2) |
 | `crates/harness` | Starts headless servers for all four loaders as their profiles describe, dumps registries, recipes, tags, loot and worldgen, diffs and scores; also scores round trips | Needs a JDK; runs in Actions and locally ([harness.md](harness.md)) | Planned (M1) |
-| `crates/board` | Fetches each source loader's top-1,000 list from Modrinth, runs classify, convert and harness per direction column, writes results | Nightly job ([board.md](board.md)) | Planned (M1) |
+| `crates/board` | Fetches each source loader's top-1,000 list from Modrinth, runs classify, convert and harness per direction column, writes results | Nightly job ([board.md](board.md)) | Exists (M1 wave 1: `list`, `shard`, `merge` and `board.yml`, running the Fabric → NeoForge column only; classify, convert and the harness are not wired yet, so every mod is red with "no converter yet"; [board-pipeline.md](board-pipeline.md)) |
 
 ### Dependency direction
 
@@ -112,13 +112,13 @@ Other Workers (the board ingest Worker, the Tier B queue Worker) keep their conf
 
 ## Board data flow
 
-Planned for M1. The contract is [board.md](board.md).
+Built in M1, wave 1, for one column: the pipeline is `crates/board` and `.github/workflows/board.yml` ([board-pipeline.md](board-pipeline.md)), and the contract is [board.md](board.md). The classifier, the converter and the harness are not wired into it yet.
 
-1. The board has one column per direction. A column exists once `.github/workflows/board.yml` runs that direction; the first is Fabric → NeoForge in M1, and the others follow the build order.
-2. Each direction's source list is the top 1,000 mods of its source loader on Modrinth for the pinned versions. Directions with the same source loader share one list.
-3. The nightly runs at 02:00 UTC, sharded across runners. Each shard runs `jarrow board-run` over its slice of a column: classify, convert (Tier A only in the nightly), harness.
-4. A final job merges the shards into `board.json` plus one report JSON per mod, direction and game version, and writes them to KV (`BOARD`), D1 (`DB`) and R2 (`REPORTS`) with the `CLOUDFLARE_API_TOKEN` secret (D-021). The same files go to the GitHub release `board-latest` as a public mirror. These files hold results and reports only, never a JAR and never decompiled code.
-5. The same workflow runs `tools/ledger.py` to regenerate `LEDGER.md`, regenerates the badges, and posts a summary to GitHub Discussions in "Nightly results" (D-011).
+1. The board has one column per direction. A column exists once `.github/workflows/board.yml` runs that direction. Today it runs one, Fabric → NeoForge; the others follow the build order.
+2. Each direction's source list is the top 1,000 mods of its source loader on Modrinth for the pinned versions. Directions with the same source loader share one list (`board-list-<loader>.json`).
+3. The nightly runs at 02:00 UTC, in 10 shards. Each shard runs `jarrow-board shard` over its slice of a column: download and verify each file, inspect it, then classify, convert (Tier A only in the nightly) and harness, once those exist.
+4. A final job merges the shards into `board.json`, `board-summary.json` and one report JSON per mod, direction and game version, and writes them to D1 (`DB`), KV (`BOARD`: every report, then `board.json`) and R2 (`REPORTS`: the reports tarball) with the `CLOUDFLARE_API_TOKEN` secret (D-021). The same files go to the GitHub release `board-latest` as a public mirror. These files hold results and reports only, never a JAR and never decompiled code.
+5. The same workflow runs `tools/ledger.py` to regenerate `LEDGER.md` and posts a summary per column to GitHub Discussions in "Nightly results" (D-011). Badges come in M5.
 
 The site reads `board.json` from KV at `/api/board.json`. Until the first nightly run, the board has no columns and no rows, and every count is zero.
 

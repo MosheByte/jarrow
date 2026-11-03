@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "direction": "fabric-neoforge",
+  "run": "nightly-20261104",
+  "date": "2026-11-04",
+  "commit": "0123456789abcdef0123456789abcdef01234567",
+  "game_versions": [
+    "1.20.1",
+    "1.21.1",
+    "1.21.11"
+  ],
+  "mods": 4,
+  "green": 0,
+  "yellow": 0,
+  "red": 4,
+  "not_run": 0,
+  "harness": {
+    "completed": 0,
+    "attempted": 0
+  },
+  "areas": [],
+  "red_reasons": [
+    {
+      "reason": "No converter yet (milestone M2)",
+      "count": 3
+    },
+    {
+      "reason": "Download failed or did not match its sha512",
+      "count": 1
+    }
+  ]
+}

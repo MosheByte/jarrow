@@ -1,6 +1,6 @@
 # Fabric → NeoForge
 
-**Status: in progress: M1 (harness and board) next.** No rule table exists for this direction yet, it has no board column, and nothing converts. Milestones M0 to M6 in [ROADMAP.md](../../ROADMAP.md) build the shared engine together with this direction.
+**Status: in progress: M1 (harness and board) next.** No rule table exists for this direction yet, and nothing converts. It has the board's only column, where every mod is red until a converter exists. Milestones M0 to M6 in [ROADMAP.md](../../ROADMAP.md) build the shared engine together with this direction.
 
 Newer research: [docs/research/loaders.md](../research/loaders.md), read on 2026-11-03, answers many of the questions this page marks as not researched yet, with sources. This page and the loader profiles in [`loaders/`](../../loaders/) have not been updated from it yet; that happens before this direction's first rule table.
 
@@ -70,7 +70,7 @@ None exist yet. They will live in `rules/fabric-neoforge/1.21.1/` and `rules/fab
 
 ## Board column
 
-None yet. The column appears in milestone M1, when the board runs over the source list with conversion stubbed, so every mod in it starts red with the reason `no_converter`. A share of green can only come from harness results after the converter exists (M2).
+The nightly board (`.github/workflows/board.yml`, milestone M1 wave 1) measures this direction over the Fabric source list on 1.20.1, 1.21.1 and 1.21.11, with conversion stubbed, so every mod in it is red with the reason `no_converter` ([board.md](../board.md)). A share of green can only come from harness results after the converter exists (M2).
 
 [s1]: ../research/fabric-neoforge-notes.md#1-names-at-runtime-mappings
 [s2]: ../research/fabric-neoforge-notes.md#2-fabric-entrypoints

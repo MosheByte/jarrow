@@ -16,14 +16,16 @@ ledger says so and names the milestone that produces it. Unknown keys and wrong 
 errors, so a typo in the nightly cannot silently drop a number. All counts are
 non-negative integers; dates are YYYY-MM-DD (UTC); "schema" is 1 in every file.
 
-ledger/inputs/board-summary.json  (nightly board, from milestone M1)
+ledger/inputs/board-summary.json  (nightly board, from milestone M1; docs/board.md)
     {
       "schema": 1,
+      "direction": "fabric-neoforge",         the board column these numbers are for:
+                                              the first one in build order
       "run": "nightly-2026-11-04",           id of the nightly run
       "date": "2026-11-04",
       "commit": "<40 hex chars>",             commit of jarrow the nightly ran
-      "game_versions": ["1.21.1", "1.21.11"],
-      "mods": 1000,                           mods on the board
+      "game_versions": ["1.20.1", "1.21.1", "1.21.11"],
+      "mods": 1000,                           mods in the column
       "green": 612, "yellow": 231, "red": 157, "not_run": 0,
                                               outcomes; the four must sum to "mods"
       "harness": {"completed": 1000, "attempted": 1000},
@@ -92,6 +94,8 @@ NO_NIGHTLY = "No nightly has run yet."
 
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
+_DIRECTION = re.compile(r"^(fabric|neoforge|forge|quilt)-(fabric|neoforge|forge|quilt)$")
+LOADER_NAMES = {"fabric": "Fabric", "neoforge": "NeoForge", "forge": "Forge", "quilt": "Quilt"}
 
 
 class LedgerInputError(ValueError):
@@ -200,8 +204,17 @@ def _load(root: Path, name: str) -> _Reader | None:
     return reader
 
 
+def _direction_label(direction: str) -> str:
+    source, target = direction.split("-")
+    return f"{LOADER_NAMES[source]} → {LOADER_NAMES[target]}"
+
+
 def _board(r: _Reader) -> dict[str, Any]:
+    direction = r.text("direction", _DIRECTION)
+    if direction.split("-")[0] == direction.split("-")[1]:
+        raise r.error("must name two different loaders", "direction")
     board: dict[str, Any] = {
+        "direction": direction,
         "run": r.text("run"),
         "date": r.text("date", _DATE),
         "commit": r.text("commit", _SHA),
@@ -374,7 +387,7 @@ def _numbers(inputs: dict[str, dict[str, Any] | None]) -> list[list[str]]:
             f"{board['red']:,} red ({_pct(board['red'], mods)}), "
             f"{board['not_run']:,} not run, of {mods:,} mods"
         )
-        rows.append(["Board totals", totals, "nightly board"])
+        rows.append(["Board totals", totals, f"nightly board, {_direction_label(board['direction'])} column"])
         harness = (
             f"{_pct(board['completed'], board['attempted'])} "
             f"({board['completed']:,} of {board['attempted']:,} runs produced a score)"
@@ -438,7 +451,8 @@ def render(root: Path) -> str:
         versions = ", ".join(board["game_versions"])
         out.append(
             f"Last nightly: `{_md(board['run'])}` on {board['date']}, commit "
-            f"`{board['commit'][:12]}`, game versions {_md(versions)}."
+            f"`{board['commit'][:12]}`, game versions {_md(versions)}. The numbers below are "
+            f"the {_direction_label(board['direction'])} column of the board."
         )
     out.append("")
 

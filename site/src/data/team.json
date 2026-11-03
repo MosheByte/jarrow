@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-03T15:39:46Z",
+  "generated_at": "2026-11-03T17:06:14Z",
   "groups": [
     {
       "id": "people",
@@ -16,7 +16,7 @@
             "ideas",
             "projectManagement"
           ],
-          "commits": 4,
+          "commits": 15,
           "icon": null
         }
       ]
@@ -39,7 +39,7 @@
             "test",
             "infra"
           ],
-          "commits": 4,
+          "commits": 15,
           "icon": null
         }
       ]
@@ -80,7 +80,7 @@
           "name": "GitHub Actions",
           "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
           "profile_url": "https://github.com/apps/github-actions",
-          "role": "Runs the workflows in .github/workflows: CI, CodeQL, this list, site deploy, infra apply, PR labels, GitLab mirror, API docs, Scorecard and stale sweep.",
+          "role": "Runs the workflows in .github/workflows: nightly board, CI, CodeQL, this list, site deploy, devcontainer, harness, infra apply, PR labels, GitLab mirror, nightly, API docs, Scorecard and stale sweep.",
           "contributions": [
             "ci",
             "infra"
@@ -92,8 +92,8 @@
           "login": "jarrow-bot",
           "name": "jarrow-bot (deploy key)",
           "avatar_url": null,
-          "profile_url": "https://github.com/MosheByte/jarrow/blob/main/.github/workflows/contributors.yml",
-          "role": "SSH deploy key with write access. Actions pushes jarrow-bot commits with it: the nightly refresh of this list (contributors.yml).",
+          "profile_url": "https://github.com/jarrow-dev/jarrow/blob/main/.github/workflows/board.yml",
+          "role": "SSH deploy key with write access. Actions pushes jarrow-bot commits with it: LEDGER and board-data commits (board.yml); the nightly refresh of this list (contributors.yml).",
           "contributions": [
             "bot"
           ],

@@ -44,7 +44,7 @@ The build order is fixed:
 | 5 | Fabric → Forge, Forge → Fabric | At least 50% green | Not started |
 | 6 | Quilt → Forge, Forge → Quilt, Quilt → NeoForge, NeoForge → Quilt | At least 50% green | Not started |
 
-No direction has a board column yet, and none is offered on the site.
+Only Fabric → NeoForge has a board column (the M1 board, conversion stubbed, every mod red), and no direction is offered on the site.
 
 ## Definition of done for v1
 

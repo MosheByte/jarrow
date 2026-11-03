@@ -4,6 +4,10 @@ Thanks for looking. Jarrow is pre-alpha (milestone M0): nothing converts yet. Th
 
 Read [AGENTS.md](AGENTS.md) for the map of the repository and [docs/architecture.md](docs/architecture.md) for how the parts fit. Both are kept current. The status and design of each direction are in [docs/directions/](docs/directions/), and the loader profiles are in [loaders/](loaders/).
 
+## Without installing anything
+
+Open a [GitHub Codespace](https://codespaces.new/MosheByte/jarrow) on this repository: the devcontainer in `.devcontainer/` has every tool below preinstalled. Then pick an issue labelled `good-first-rule` or `good first issue` and follow [docs/contributing/](docs/contributing/README.md), which also says which parts of that path exist today and which arrive in M1 and M2.
+
 ## Build and test
 
 You need Rust stable (the version is pinned in `rust-toolchain.toml`), Python 3.12, Node 24 and, from milestone M1 on, JDK 21 for the harness.

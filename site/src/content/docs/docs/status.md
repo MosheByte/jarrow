@@ -13,7 +13,7 @@ What exists in M0 is the ground the rest is built on: the public repository, its
 
 ## Directions
 
-No direction is available. The goal for v1 is any loader to any loader: Fabric, NeoForge, Forge and Quilt, all 12 directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11. They are built in a fixed order. The first, Fabric → NeoForge, is in progress: the milestones below build it. The other 11 have not started, and none has a board column yet. [Directions](/docs/directions/) has the order and the bar for each.
+No direction is available. The goal for v1 is any loader to any loader: Fabric, NeoForge, Forge and Quilt, all 12 directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11. They are built in a fixed order. The first, Fabric → NeoForge, is in progress: the milestones below build it. It has the board's only column, where every mod is red until a converter exists. The other 11 have not started and have no board column. [Directions](/docs/directions/) has the order and the bar for each.
 
 ## What comes next
 

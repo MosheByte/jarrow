@@ -3,18 +3,22 @@
  * `/api/board.json` route use to read it. The contract is docs/board.md; change both together.
  *
  * `board.json` lives in the KV namespace bound as `BOARD` under the key `board.json`. The
- * nightly board pipeline (crates/board, milestone M1) writes it. Until the first nightly runs,
- * the key is missing and the site shows an empty board: every direction listed, none with a
- * column, zero everywhere, no rows. Nothing here invents a row or a number.
+ * nightly board pipeline (crates/board, `jarrow-board merge`, run by board.yml) writes it.
+ * Until the first nightly runs, the key is missing and the site shows an empty board: every
+ * direction listed, none with a column, zero everywhere, no rows. Nothing here invents a row
+ * or a number.
  *
- * The board has one column per direction (D-029): 12 directions between Fabric, NeoForge,
- * Forge and Quilt, listed in build order in DIRECTIONS. A row is one mod in one direction
- * column, and its `results` hold one entry per game version.
+ * The board has one column per direction (D-029, D-042): 12 directions between Fabric,
+ * NeoForge, Forge and Quilt, listed in build order in DIRECTIONS. The nightly measures one of
+ * them today, fabric-neoforge. A row is one mod in one direction column, and its `results`
+ * hold one entry per game version.
  *
  * Tier and outcome ids match `jarrow_report::Tier` and `jarrow_report::Outcome`
- * (crates/report/src/outcome.rs, D-024): tiers are "a", "b", "unsupported"; outcomes are
- * "green", "yellow", "red", "not-run". A board row's outcome is never "not-run", and nothing
- * is green without a harness score of 1.0 or 0.75.
+ * (crates/report/src/outcome.rs, D-024): tiers are "a", "b", "unsupported" (null when the
+ * classifier did not run); outcomes are "green", "yellow", "red", "not-run". Only a harness
+ * score makes a result green, yellow or red; a result without one is "not-run". A board row's
+ * outcome is never "not-run" (it counts as red, or yellow for client_only_not_measured), and
+ * nothing is green without a harness score of 1.0 or 0.75.
  *
  * This module has no runtime dependency on Astro or Cloudflare, so its tests run with
  * `node --test` (see board.test.ts).
@@ -61,6 +65,11 @@ export type DirectionId = (typeof DIRECTIONS)[number]['id'];
 
 const DIRECTION_IDS: readonly string[] = DIRECTIONS.map((d) => d.id);
 
+/** Whether `value` is one of the 12 direction ids, `<source>-<target>`. */
+export function isDirection(value: unknown): value is DirectionId {
+  return typeof value === 'string' && DIRECTION_IDS.includes(value);
+}
+
 /** "Fabric → NeoForge" for "fabric-neoforge". */
 export function directionLabel(id: DirectionId): string {
   const spec = DIRECTIONS.find((d) => d.id === id)!;
@@ -82,6 +91,18 @@ export type BoardOutcome = (typeof BOARD_OUTCOMES)[number];
 export const SCORES = [0, 0.25, 0.5, 0.75, 1] as const;
 export type Score = (typeof SCORES)[number];
 const GREEN_SCORES: readonly number[] = [0.75, 1];
+
+/** The outcome a harness score maps to (D-024). */
+export function outcomeForScore(score: Score): 'green' | 'yellow' | 'red' {
+  if (GREEN_SCORES.includes(score)) return 'green';
+  return score === 0.5 ? 'yellow' : 'red';
+}
+
+/** A row's outcome on the board from its primary result: not-run counts as red, or yellow when only client-only content was left unmeasured. */
+export function boardOutcome(outcome: Outcome, reasonKind: ReasonKind | null): BoardOutcome {
+  if (outcome !== 'not-run') return outcome;
+  return reasonKind === 'client_only_not_measured' ? 'yellow' : 'red';
+}
 
 /** The closed reason vocabulary (docs/board.md). */
 export const REASON_KINDS = [
@@ -114,6 +135,8 @@ export interface BoardTotals {
 
 export interface ReasonCount {
   kind: ReasonKind;
+  /** The kind's one-line label, as crates/board writes it. */
+  label: string;
   count: number;
 }
 
@@ -126,7 +149,11 @@ export interface BoardDirection {
   bar_percent: number;
   /** True once the nightly measured this direction. */
   column: boolean;
-  /** Content hash of rules/<from>-<to>/ used in the run; null without a column. */
+  /** The pinned game versions the column measured; empty without a column. */
+  game_versions: string[];
+  /** When the column's source list was fetched from Modrinth; null without a column. */
+  list_fetched_at: string | null;
+  /** "sha256:<hex>" over rules/<from>-<to>/, or "none" while it has no tables; null without a column. */
   rules_version: string | null;
   totals: BoardTotals;
   top_reasons: ReasonCount[];
@@ -137,16 +164,21 @@ export interface BoardResult {
   direction: DirectionId;
   game_version: string;
   version_id: string | null;
+  /** The author's version string on Modrinth. */
+  version_number: string | null;
   file_sha512: string | null;
   /** The mod id from the source loader's manifest, when readable. */
   mod_id: string | null;
   mod_version: string | null;
+  /** Null when the classifier did not run (not built yet, or no file). */
   tier: Tier | null;
   tier_reasons: string[];
+  /** Green, yellow or red from a harness score; not-run without one. */
   outcome: Outcome;
   score: Score | null;
   reason_kind: ReasonKind | null;
   reason: string | null;
+  /** KV key of the full report: report:<direction>:<project_id>:<game_version>. */
   report_key: string | null;
   report_hash: string | null;
   duration_ms: number | null;
@@ -168,15 +200,16 @@ export interface BoardRow {
   license: string | null;
   /** The newest pinned version the mod ships a source-loader file for. */
   primary_game_version: string;
-  /** Null only when the classifier could not run (for example download_failed). */
+  /** Null when the classifier did not run (not built yet, or download_failed). */
   tier: Tier | null;
+  /** The primary result's outcome, with not-run counted as red (or yellow for client_only_not_measured). */
   outcome: BoardOutcome;
   /** Classified reason; always present for yellow and red. */
   reason_kind: ReasonKind | null;
   reason: string | null;
-  /** ISO 8601 time of the last harness run for this mod in this column. */
+  /** ISO 8601 time the nightly last processed this mod in this column. */
   last_run: string | null;
-  /** Link to the full report, when one exists. */
+  /** Link to the site page of the primary report; null until the site has report pages. */
   report_url: string | null;
   /** Informational: whether Modrinth lists the target loader's tag for the project. */
   target_build_exists: boolean;
@@ -188,13 +221,18 @@ export interface BoardJson {
   schema: typeof BOARD_SCHEMA;
   /** ISO 8601 time the nightly wrote this file; null before the first nightly. */
   generated_at: string | null;
+  /** ISO 8601 time the nightly's first shard started; null before the first nightly. */
+  started_at: string | null;
   run_id: string | null;
   engine: { version: string; git_sha: string } | null;
+  /** Every game version a column measured, oldest first (the pinned set before the first nightly). */
   game_versions: string[];
   /** The sum of every direction's totals: one entry per mod per column. */
   totals: BoardTotals;
   /** All 12 directions, in build order. */
   directions: BoardDirection[];
+  /** Counts and durations of the run (crates/board BoardStats); null before the first nightly. */
+  stats: Record<string, unknown> | null;
   rows: BoardRow[];
 }
 
@@ -212,6 +250,7 @@ export function emptyBoard(): BoardJson {
   return {
     schema: BOARD_SCHEMA,
     generated_at: null,
+    started_at: null,
     run_id: null,
     engine: null,
     game_versions: [...GAME_VERSIONS],
@@ -223,10 +262,13 @@ export function emptyBoard(): BoardJson {
       order: d.order,
       bar_percent: d.bar_percent,
       column: false,
+      game_versions: [],
+      list_fetched_at: null,
       rules_version: null,
       totals: zeroTotals(),
       top_reasons: [],
     })),
+    stats: null,
     rows: [],
   };
 }
@@ -294,7 +336,11 @@ function checkTotals(value: unknown, at: string): string | null {
   return null;
 }
 
-function checkDirection(value: unknown, index: number): string | null {
+function isDistinctStrings(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(isNonEmptyString) && new Set(value).size === value.length;
+}
+
+function checkDirection(value: unknown, index: number, gameVersions: readonly string[]): string | null {
   const spec = DIRECTIONS[index]!;
   const at = `directions[${index}]`;
   if (!isObject(value)) return `${at} is not an object`;
@@ -304,19 +350,42 @@ function checkDirection(value: unknown, index: number): string | null {
     }
   }
   if (typeof value.column !== 'boolean') return `${at}.column must be true or false`;
-  if (!isNullableString(value.rules_version)) return `${at}.rules_version must be a string or null`;
+  if (!isDistinctStrings(value.game_versions) || !value.game_versions.every((v) => gameVersions.includes(v))) {
+    return `${at}.game_versions must be distinct game versions from the board's game_versions`;
+  }
+  if (value.list_fetched_at !== null && !isIsoTime(value.list_fetched_at)) {
+    return `${at}.list_fetched_at must be an ISO 8601 time or null`;
+  }
+  if (value.rules_version !== null && !isNonEmptyString(value.rules_version)) {
+    return `${at}.rules_version must be a non-empty string or null`;
+  }
   const totals = checkTotals(value.totals, `${at}.totals`);
   if (totals) return totals;
   if (!Array.isArray(value.top_reasons)) return `${at}.top_reasons must be an array`;
   for (const [i, reason] of value.top_reasons.entries()) {
-    if (!isObject(reason) || !oneOf(REASON_KINDS, reason.kind) || !isCount(reason.count)) {
-      return `${at}.top_reasons[${i}] must be a known reason kind with a count`;
+    if (
+      !isObject(reason) ||
+      !oneOf(REASON_KINDS, reason.kind) ||
+      !isNonEmptyString(reason.label) ||
+      !isCount(reason.count)
+    ) {
+      return `${at}.top_reasons[${i}] must be a known reason kind with a label and a count`;
     }
   }
-  if (!value.column) {
+  if (value.column) {
+    if (value.game_versions.length === 0 || value.list_fetched_at === null || value.rules_version === null) {
+      return `${at} has a column, so it needs its game_versions, list_fetched_at and rules_version`;
+    }
+  } else {
     const t = value.totals as BoardTotals;
-    if (t.mods !== 0 || value.top_reasons.length !== 0 || value.rules_version !== null) {
-      return `${at} has no column, so its totals must be zero, with no top reasons and no rules_version`;
+    if (
+      t.mods !== 0 ||
+      value.top_reasons.length !== 0 ||
+      value.rules_version !== null ||
+      value.list_fetched_at !== null ||
+      value.game_versions.length !== 0
+    ) {
+      return `${at} has no column, so its totals must be zero, with no top reasons, game versions, list time or rules_version`;
     }
   }
   return null;
@@ -328,7 +397,7 @@ function checkResult(value: unknown, at: string, gameVersions: readonly string[]
   if (typeof value.game_version !== 'string' || !gameVersions.includes(value.game_version)) {
     return `${at}.game_version must be one of game_versions`;
   }
-  for (const key of ['version_id', 'file_sha512', 'mod_id', 'mod_version', 'reason', 'report_key', 'report_hash'] as const) {
+  for (const key of ['version_id', 'version_number', 'file_sha512', 'mod_id', 'mod_version', 'reason', 'report_key', 'report_hash'] as const) {
     if (!isNullableString(value[key])) return `${at}.${key} must be a string or null`;
   }
   if (value.tier !== null && !oneOf(TIERS, value.tier)) return `${at}.tier must be one of ${TIERS.join(', ')} or null`;
@@ -341,13 +410,28 @@ function checkResult(value: unknown, at: string, gameVersions: readonly string[]
     return `${at} is green without a harness score of 1.0 or 0.75`;
   }
   if (value.outcome === 'not-run' && value.score !== null) return `${at} was not run, so its score must be null`;
+  if (value.outcome !== 'not-run' && (value.score === null || outcomeForScore(value.score as Score) !== value.outcome)) {
+    return `${at} is ${value.outcome}, which only the harness score that maps to it can make it (D-024)`;
+  }
   if (value.reason_kind !== null && !oneOf(REASON_KINDS, value.reason_kind)) {
     return `${at}.reason_kind is not a known reason kind`;
   }
+  if (value.outcome !== 'green' && value.reason_kind === null) return `${at} is ${value.outcome} without a reason_kind`;
   if (value.duration_ms !== null && !isCount(value.duration_ms)) {
     return `${at}.duration_ms must be a non-negative integer or null`;
   }
   return null;
+}
+
+/** Orders release versions numerically per component: 1.21.11 is newer than 1.21.1. */
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function checkRow(row: unknown, index: number, gameVersions: readonly string[]): string | null {
@@ -389,6 +473,16 @@ function checkRow(row: unknown, index: number, gameVersions: readonly string[]):
   if (row.outcome === 'green' && (primary.outcome !== 'green' || !oneOf(GREEN_SCORES, primary.score))) {
     return `${at} is green without a harness score of 1.0 or 0.75 on its primary game version`;
   }
+  if (row.outcome !== boardOutcome(primary.outcome, primary.reason_kind)) {
+    return `${at}.outcome must be its primary result's outcome on the board`;
+  }
+  if (row.tier !== primary.tier || row.reason_kind !== primary.reason_kind) {
+    return `${at}.tier and reason_kind must be its primary result's`;
+  }
+  const newest = [...(row.results as BoardResult[])]
+    .map((r) => r.game_version)
+    .sort((a, b) => compareVersions(b, a))[0];
+  if (newest !== row.primary_game_version) return `${at}.primary_game_version must be its newest result`;
   return null;
 }
 
@@ -401,6 +495,9 @@ export function validateBoard(value: unknown): ParseResult {
   if (value.generated_at !== null && !isIsoTime(value.generated_at)) {
     return { ok: false, problem: 'generated_at must be an ISO 8601 time or null' };
   }
+  if (value.started_at !== null && !isIsoTime(value.started_at)) {
+    return { ok: false, problem: 'started_at must be an ISO 8601 time or null' };
+  }
   if (value.run_id !== null && !isNonEmptyString(value.run_id)) {
     return { ok: false, problem: 'run_id must be a non-empty string or null' };
   }
@@ -409,8 +506,11 @@ export function validateBoard(value: unknown): ParseResult {
     return { ok: false, problem: 'engine must be {version, git_sha} or null' };
   }
   const versions = value.game_versions;
-  if (!Array.isArray(versions) || !versions.every(isNonEmptyString) || new Set(versions).size !== versions.length) {
+  if (!isDistinctStrings(versions)) {
     return { ok: false, problem: 'game_versions must be an array of distinct strings' };
+  }
+  if (value.stats !== null && !isObject(value.stats)) {
+    return { ok: false, problem: 'stats must be an object or null' };
   }
   const totals = checkTotals(value.totals, 'totals');
   if (totals) return { ok: false, problem: totals };
@@ -419,7 +519,7 @@ export function validateBoard(value: unknown): ParseResult {
     return { ok: false, problem: `directions must list all ${DIRECTIONS.length} directions` };
   }
   for (let i = 0; i < DIRECTIONS.length; i++) {
-    const problem = checkDirection(value.directions[i], i);
+    const problem = checkDirection(value.directions[i], i, versions);
     if (problem) return { ok: false, problem };
   }
   const directions = value.directions as BoardDirection[];
@@ -435,10 +535,13 @@ export function validateBoard(value: unknown): ParseResult {
   if (!Array.isArray(value.rows)) return { ok: false, problem: 'rows must be an array' };
   const counted = new Map<string, BoardTotals>(directions.map((d) => [d.id, zeroTotals()]));
   const keys = new Set<string>();
+  const byId = new Map<string, BoardDirection>(directions.map((d) => [d.id, d]));
   for (let i = 0; i < value.rows.length; i++) {
-    const problem = checkRow(value.rows[i], i, versions);
+    const candidate = value.rows[i];
+    const column = isObject(candidate) ? byId.get(candidate.direction as string) : undefined;
+    const problem = checkRow(candidate, i, column ? column.game_versions : versions);
     if (problem) return { ok: false, problem };
-    const row = value.rows[i] as BoardRow;
+    const row = candidate as BoardRow;
     const key = `${row.direction}/${row.project_id}`;
     if (keys.has(key)) return { ok: false, problem: `rows[${i}] repeats ${row.project_id} in ${row.direction}` };
     keys.add(key);

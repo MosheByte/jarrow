@@ -19,7 +19,7 @@ Last updated: 2026-11-03, during milestone M0.
 | Site | `SITE_URL` = https://jarrow.pages.dev (Cloudflare Pages project `jarrow`) |
 | Rust API docs | https://moshebyte.github.io/jarrow/ (GitHub Pages) |
 | Roadmap project | https://github.com/users/MosheByte/projects/1 |
-| Loaders and directions | `fabric`, `neoforge`, `forge`, `quilt`; all 12 ordered pairs, built in the fixed order in `ROADMAP.md` (D-029). No direction converts yet and none has a board column |
+| Loaders and directions | `fabric`, `neoforge`, `forge`, `quilt`; all 12 ordered pairs, built in the fixed order in `ROADMAP.md` (D-029). No direction converts yet; only Fabric → NeoForge has a board column, every mod red until a converter exists |
 | Pinned game versions | 1.20.1, 1.21.1 and 1.21.11. 1.21.1 and 1.21.11 are the two most-downloaded 1.21 minors (D-002, evidence: `docs/research/game-versions.json`); 1.20.1 is in scope by D-029. Pins in `research-lock.json` |
 | Cloudflare bindings | KV `jarrow-board` as `BOARD`, D1 `jarrow` as `DB`, R2 `jarrow-reports` as `REPORTS` |
 | Rust packages | `jarrow-<crate>` in `crates/<crate>/`, lib name `jarrow_<crate>`; the CLI package is `jarrow` (binary `jarrow`) in `crates/cli/`; edition 2024 |

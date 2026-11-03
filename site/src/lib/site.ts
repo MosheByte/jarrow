@@ -17,7 +17,7 @@ export const MISSION =
 
 /** Shorter description used in meta tags. */
 export const DESCRIPTION =
-  'Jarrow will convert a Minecraft mod JAR from any loader to any loader and prove each result with a behaviour harness. Nothing converts yet: the project is in milestone M0, and no direction has a board column.';
+  'Jarrow will convert a Minecraft mod JAR from any loader to any loader and prove each result with a behaviour harness. Nothing converts yet: the project is in milestone M0, and the nightly board measures only Fabric → NeoForge, where every mod is red until a converter exists.';
 
 export const REPO_SLUG = 'MosheByte/jarrow';
 export const REPO_URL = `https://github.com/${REPO_SLUG}`;
