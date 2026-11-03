@@ -39,9 +39,17 @@ To be attempted through the API in M4. If GitHub refuses, the error will be past
 
 The owner signed in at bestpractices.dev, and the agent created project 16297 (https://www.bestpractices.dev/en/projects/16297) and answered the basics with repository evidence.
 
+### crates.io and npm tokens for the first publish — done by the owner
+
+The owner set the Actions secrets `CARGO_REGISTRY_TOKEN` (2026-11-03, 16:28 UTC) and `NPM_TOKEN` (16:31 UTC) on `jarrow-dev/jarrow`. `.github/workflows/publish.yml` uses them to publish `jarrow` and `jarrow-report` to crates.io and `jarrow` to npm (D-012, docs/releases.md). The agent cannot read secret values and never publishes from a machine.
+
+If a publish fails with 401 or 403 (or `EOTP` on npm), the token is missing, expired or lacks a permission. Replace it; `gh secret set` prompts for the value:
+
+- crates.io: a token from https://crates.io/settings/tokens with the scopes `publish-new` and `publish-update`, for all crates or for `jarrow` and `jarrow-report`. Then `gh secret set CARGO_REGISTRY_TOKEN --repo jarrow-dev/jarrow`.
+- npm: a granular access token (npmjs.com, Access Tokens, Generate New Token) with read and write on all packages (`jarrow` does not exist until the first publish) and "Bypass two-factor authentication" enabled, since CI cannot answer a one-time password. Then `gh secret set NPM_TOKEN --repo jarrow-dev/jarrow`.
+
 These items are attempted through every route when M5 starts. They move here with the pasted error only if all routes fail:
 
-- the crates.io and npm first publish (the names were free on 2026-11-03; the publish workflow is written in M5)
 - the org `jarrow-dev` and repository transfer (needed for the merge queue)
 - Sponsors enrolment
 - the Discord webhook
