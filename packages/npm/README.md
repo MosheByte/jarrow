@@ -8,12 +8,12 @@ The npm package of [Jarrow](https://github.com/jarrow-dev/jarrow), a converter f
 
 | File | Contents |
 | --- | --- |
-| `tokens.css` | CSS custom properties named `--jw-*`: dark values on `:root`, light values on `[data-theme='light']` |
-| `tokens.json` | The same tokens as JSON: for each one its name, CSS property, role, dark value, light value and a usage note |
+| `tokens.css` | CSS custom properties named `--jw-*`, all on `:root` with `color-scheme: dark` (the design is dark only): colours, the type scale, the 4 px spacing scale, layout, radii, card, button and motion values |
+| `tokens.json` | The same tokens as JSON: for each one its name, CSS property, group, CSS value and a usage note |
 
-Both files are generated when the package is published, by `jarrow tokens` and `jarrow tokens --json` from [`crates/report`](https://github.com/jarrow-dev/jarrow/tree/main/crates/report). The Jarrow site's stylesheet comes from the same source.
+Both files are generated when the package is published, by `jarrow tokens` and `jarrow tokens --json` from [`crates/report`](https://github.com/jarrow-dev/jarrow/tree/main/crates/report). The Jarrow site's `site/tokens.css` comes from the same source.
 
-Two rules come with the colours: `--jw-result-*` (green, yellow, red and none) mark harness results only and are never decorative, and `--jw-accent` is for actions such as buttons and links.
+Two rules come with the colours: `--jw-tier-green`, `--jw-tier-amber` and `--jw-tier-red` mark result tiers and warnings only and are never decorative, and `--jw-accent` (amber, `#ffb454`) is for focus rings, links, pills, bar fills and the accent of a page heading. The values follow the measured design analysis in [`docs/design-research/horizon.md`](https://github.com/jarrow-dev/jarrow/blob/main/docs/design-research/horizon.md).
 
 ## Use
 

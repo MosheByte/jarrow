@@ -12,7 +12,7 @@ publish = true
 readme = "README.md"
 keywords = ["minecraft", "fabric", "neoforge", "design-tokens", "report"]
 categories = ["game-development", "development-tools"]
-# tokens_current checks ../../site/src/styles/tokens.css, which only exists in the repository.
+# tokens_current checks ../../site/tokens.css, which only exists in the repository.
 exclude = ["tests/tokens_current.rs"]
 
 [lib]

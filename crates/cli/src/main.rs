@@ -36,7 +36,7 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Print the design tokens as CSS (the source of site/src/styles/tokens.css).
+    /// Print the design tokens as CSS (the source of site/tokens.css).
     Tokens {
         /// Print them as JSON instead (the tokens.json of the npm package `jarrow`).
         #[arg(long)]

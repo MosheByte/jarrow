@@ -53,7 +53,8 @@ When you create a crate, add or update its row here and in `docs/architecture.md
 | --- | --- |
 | `rules/fabric-neoforge/<game-version>/` | Rule tables (TOML), one file per API area, plus `rules/SOURCES.md` |
 | `site/` | Astro + Starlight site on Cloudflare Pages; `site/wrangler.toml` holds the Pages bindings (amendment A-5) |
-| `site/src/styles/tokens.css` | Generated from `crates/report`. Never edit it by hand: change the tokens in `crates/report/src/tokens.rs`, then run `JARROW_BLESS=1 cargo test -p jarrow-report --test tokens_current`. Without `JARROW_BLESS`, that test fails when the file drifts. `jarrow tokens` prints the same CSS, and `jarrow tokens --json` the same tokens as JSON |
+| `site/tokens.css` | Generated from `crates/report`. Never edit it by hand: change the tokens in `crates/report/src/tokens.rs`, then run `JARROW_BLESS=1 cargo test -p jarrow-report --test tokens_current`. Without `JARROW_BLESS`, that test fails when the file drifts. `jarrow tokens` prints the same CSS, and `jarrow tokens --json` the same tokens as JSON. `npm run build` ends with `site/scripts/check-colors.mjs`, which fails on any colour in `site/dist/` that is not a token |
+| `.claude/skills/jarrow-design/` | The site's design system as a skill (Claude Code loads it by itself; other tools read it as rules): every rule anchored to a token or to `docs/design-research/horizon.md`. Read it before touching `site/` |
 | `packages/npm/` | The npm package `jarrow` (design tokens now, the WASM engine from M3). `tokens.css` and `tokens.json` are written by `publish.yml` at publish time and never committed |
 | `tools/` | Python tools: `pr_ready.py`, `ledger.py`, `board_summary.py`, `contributors.py` (the "Who works on Jarrow" list, D-028), research scripts; tests in `tools/tests/`; Tier B job in `tools/tierb/` (M4) |
 | `tests/fixtures/` | Permissively licensed sample mods, vendored with their LICENSE, and golden outputs |

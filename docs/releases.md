@@ -110,7 +110,7 @@ gh workflow run publish.yml --repo jarrow-dev/jarrow --ref main -f what=both
 | Job | Runs | Token permissions | Secret |
 | --- | --- | --- | --- |
 | `crates` | Packages and builds both crates (`cargo package -p jarrow-report -p jarrow`), publishes `jarrow-report`, polls the crates.io API and the sparse index until it is served, then publishes `jarrow` and waits for it the same way | `contents: read` | `CARGO_REGISTRY_TOKEN`, in the publishing step only |
-| `npm tokens` | Builds the CLI and writes `packages/npm/tokens.css` and `tokens.json`; checks the CSS equals `site/src/styles/tokens.css` | `contents: read` | none |
+| `npm tokens` | Builds the CLI and writes `packages/npm/tokens.css` and `tokens.json`; checks the CSS equals `site/tokens.css` | `contents: read` | none |
 | `npm` | Publishes `packages/npm` with `npm publish --provenance --access public --tag alpha` (npm refuses a pre-release without `--tag`). It runs no code built in this run | `contents: read`, `id-token: write` | `NPM_TOKEN` as `NODE_AUTH_TOKEN`, in the publishing step only |
 
 A version that a registry already has is skipped, so a run that failed halfway can be run again. Versions are never deleted; a broken one is yanked (`cargo yank`) or deprecated (`npm deprecate`), and the next one is `0.1.0-alpha.2`. To publish a new pre-release, bump `version` in the root `Cargo.toml` (and `jarrow-report` in `[workspace.dependencies]`) and in `packages/npm/package.json` together; `tools/tests/test_publish.py` fails when they differ.

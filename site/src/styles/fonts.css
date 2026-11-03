@@ -1,0 +1,60 @@
+/*
+ * The three typefaces, self-hosted through Fontsource (no font comes from another host), and
+ * their metric-matched fallbacks, so the swap from the fallback to the web font moves nothing
+ * (CLS 0). docs/design-research/horizon.md, sections 2.1 and 9.
+ *
+ *   Bricolage Grotesque, weight 600: h1, h2, display numbers      --jw-font-display
+ *   Geist: everything else                                        --jw-font-body
+ *   Geist Mono: code                                              --jw-font-mono
+ *
+ * Every face is font-display: swap (Fontsource's default). The Latin files of Geist and
+ * Bricolage Grotesque are preloaded by src/layouts/Base.astro; the other subsets are declared
+ * with a unicode-range and only load for their code points.
+ *
+ * The fallbacks are local Arial, scaled and placed to the web font's metrics, the way
+ * next/font and Capsize compute them: size-adjust is the ratio of the fonts' average
+ * character widths (xWidthAvg / unitsPerEm), and each override is the web font's ascent,
+ * descent or line gap divided by (unitsPerEm x size-adjust). Measured from the woff2 files
+ * this package ships, with @capsizecss/unpack, against C:\Windows\Fonts\arial.ttf
+ * (xWidthAvg 913, unitsPerEm 2048):
+ *
+ *   Geist        xWidthAvg 467/1000, ascent 1005, descent -295, line gap 0
+ *   Geist Mono   xWidthAvg 600/1000, ascent 1005, descent -295, line gap 0
+ *   Bricolage    ascent 930, descent -270, line gap 0
+ *
+ * Geist (104.76 %) and Geist Mono (134.59 %) match the report's measured fallbacks exactly.
+ * Bricolage Grotesque keeps the report's 105.43 % (the regular instance's width; the variable
+ * file's default instance is the 800 weight, which measures 111.04 %), and 930 / 1054.3 gives
+ * the report's 88.21 % ascent-override.
+ */
+
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+@font-face {
+  font-family: 'Bricolage Grotesque Fallback';
+  src: local('Arial');
+  size-adjust: 105.43%;
+  ascent-override: 88.21%;
+  descent-override: 25.61%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Geist Fallback';
+  src: local('Arial');
+  size-adjust: 104.76%;
+  ascent-override: 95.94%;
+  descent-override: 28.16%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Geist Mono Fallback';
+  src: local('Arial');
+  size-adjust: 134.59%;
+  ascent-override: 74.67%;
+  descent-override: 21.92%;
+  line-gap-override: 0%;
+}

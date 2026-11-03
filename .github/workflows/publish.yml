@@ -126,8 +126,8 @@ jobs:
           "$jarrow" tokens > packages/npm/tokens.css
           "$jarrow" tokens --json > packages/npm/tokens.json
           jq -e '.tokens | length > 0' packages/npm/tokens.json > /dev/null
-          if ! cmp -s packages/npm/tokens.css site/src/styles/tokens.css; then
-            echo "::error::jarrow tokens differs from site/src/styles/tokens.css"
+          if ! cmp -s packages/npm/tokens.css site/tokens.css; then
+            echo "::error::jarrow tokens differs from site/tokens.css"
             exit 1
           fi
           wc -c packages/npm/tokens.css packages/npm/tokens.json

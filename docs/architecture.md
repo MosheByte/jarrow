@@ -18,7 +18,7 @@ Every package is named `jarrow-<crate>` (library `jarrow_<crate>`), except the C
 | `crates/rules` | Rule-table loader and matcher: call rewrites, class substitutions, event bridges, entrypoint adapters | Data-driven; tables are TOML under `rules/fabric-neoforge/<game-version>/` ([rules.md](rules.md)) | Planned (M2) |
 | `crates/rewrite` | Applies rules to bytecode: call-site rewriting, generated adapter classes, entrypoint shims | Every rewrite emits a report entry | Planned (M2) |
 | `crates/classify` | The tier classifier: scans a JAR and decides A, B or unsupported, with ordered reasons | Budget: under 300 ms for a 5 MB JAR in WASM | Planned (M1) |
-| `crates/report` | Report model, JSON and Markdown rendering, badge data, design tokens | One report format everywhere: browser, CLI, Actions, board. Generates `site/src/styles/tokens.css`; a test fails when the file drifts | Exists (M0 skeleton: tokens and the first report types; full model in M1) |
+| `crates/report` | Report model, JSON and Markdown rendering, badge data, design tokens | One report format everywhere: browser, CLI, Actions, board. Generates `site/tokens.css`; a test fails when the file drifts | Exists (M0 skeleton: tokens and the first report types; full model in M1) |
 | `crates/engine` | Orchestrates the crates above into `convert()` | The one public API | Planned (M2) |
 | `crates/wasm` | `wasm-bindgen` surface for the browser: `classify`, `convert`, streaming progress | Budget: 4 MB gzipped | Planned (M3) |
 | `crates/cli` | The `jarrow` binary: `convert`, `check`, `report`, `board-run` | Released with cargo-dist | Exists (M0 skeleton: `--version` and `tokens` only; `check` in M1, `convert` in M2) |
@@ -82,7 +82,7 @@ Decompiled code never reaches the Actions log, an analytics or error service, or
   | `REPORTS` | R2 bucket `jarrow-reports` | Per-mod reports and rule-table snapshots. Never JARs |
 
 - **Static pages** work without JavaScript (docs and board are server-rendered). The converter needs JavaScript and says so.
-- **Design tokens** come from `crates/report`, which generates `site/src/styles/tokens.css`, so badge colours and site colours have one source. Green, amber and red are reserved for results.
+- **Design tokens** come from `crates/report`, which generates `site/tokens.css`, so badge colours and site colours have one source; `site/scripts/check-colors.mjs` fails the site build on any other colour. Green, amber and red are reserved for result tiers and warnings.
 - **Auth** is GitHub OAuth only (M4). No email and password.
 
 Other Workers (the board ingest Worker, the Tier B queue Worker) keep their configuration in `infra/`.
