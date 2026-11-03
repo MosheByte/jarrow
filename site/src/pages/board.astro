@@ -6,7 +6,7 @@ import BoardCounter from '../components/BoardCounter.astro';
 import NotBuilt from '../components/NotBuilt.astro';
 import Base from '../layouts/Base.astro';
 import { RESULT_LABEL, TIER_LABEL, hasRun } from '../lib/board.ts';
-import { formatCount, formatUtc } from '../lib/format.ts';
+import { formatCount, formatList, formatUtc } from '../lib/format.ts';
 import { readBoard } from '../lib/runtime.ts';
 
 const load = await readBoard();
@@ -21,16 +21,21 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
 
 <Base
   title="Board"
-  description="The nightly board: the most-downloaded Fabric mods, each converted and checked by the parity harness. Empty until the first nightly runs."
+  description="The nightly board: popular mods, each converted and checked by the parity harness, with one column per direction. Empty until the first nightly runs."
 >
   <div class="wrap">
     <header class="intro">
-      <p class="eyebrow">Minecraft {board.game_versions.join(' and ')}</p>
+      <p class="eyebrow">Minecraft {formatList(board.game_versions)}</p>
       <h1>Nightly board</h1>
       <p class="lead">
-        Every night, the board will take the 1,000 most-downloaded Fabric mods on Modrinth for the pinned game
-        versions, convert each one and run the parity harness on it. Each row will say green, yellow or red,
-        with the reason. Rows link to the mod's own page, never to a converted JAR.
+        Every night, the board will convert mods and run the parity harness on each one. Each row will say green,
+        yellow or red, with the reason. Rows link to the mod's own page, never to a converted JAR.
+      </p>
+      <p class="lead">
+        The board will have one column per direction. The first, Fabric → NeoForge, will take the 1,000
+        most-downloaded Fabric mods on Modrinth for the pinned game versions. The other eleven directions get their
+        columns in the fixed order on the <a href="/docs/directions/">Directions</a> page. No column exists yet,
+        and a direction is offered by the converter only once its column does.
       </p>
     </header>
 
@@ -76,17 +81,17 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
                 <tr>
                   <th scope="row">
                     <a href={row.page_url} rel="noopener">
-                      {row.name}
+                      {row.title}
                     </a>
                   </th>
                   <td class="num">{formatCount(row.downloads)}</td>
                   <td>
-                    <span class={`tier tier-${row.tier}`}>{TIER_LABEL[row.tier]}</span>
+                    {row.tier ? <span class={`tier tier-${row.tier}`}>{TIER_LABEL[row.tier]}</span> : '—'}
                   </td>
                   <td>
                     <span class="result">
-                      <span class={`result-dot result-${row.result}`} aria-hidden="true" />
-                      {row.report_url ? <a href={row.report_url}>{RESULT_LABEL[row.result]}</a> : RESULT_LABEL[row.result]}
+                      <span class={`result-dot result-${row.outcome}`} aria-hidden="true" />
+                      {row.report_url ? <a href={row.report_url}>{RESULT_LABEL[row.outcome]}</a> : RESULT_LABEL[row.outcome]}
                     </span>
                   </td>
                   <td>{row.reason ?? '—'}</td>
@@ -112,8 +117,8 @@ Astro.response.headers.set('Cache-Control', unreadable ? 'no-store' : 'public, m
           )}
           <NotBuilt milestone="M1" what="The board pipeline">
             <p>
-              Milestone M1 builds the harness and runs the board against the 1,000-mod list. Until the converter
-              exists (M2), every mod will be red with the reason "no converter yet".
+              Milestone M1 builds the harness and runs the first column, Fabric → NeoForge, against the 1,000-mod
+              list. Until the converter exists (M2), every mod will be red with the reason "no converter yet".
             </p>
           </NotBuilt>
         </section>

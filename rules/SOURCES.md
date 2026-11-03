@@ -1,6 +1,6 @@
 # Sources for the rule tables
 
-This file lists every source used to learn the Fabric and NeoForge APIs for Jarrow's rule tables (`rules/`), the research lock (`research-lock.json`) and the research notes ([`docs/research/fabric-neoforge-notes.md`](../docs/research/fabric-neoforge-notes.md)). Each entry gives its license, what it informs, and when it was read.
+This file lists every source used to learn the Fabric and NeoForge APIs for Jarrow's rule tables (`rules/`), the research lock (`research-lock.json`) and the research notes ([`docs/research/fabric-neoforge-notes.md`](../docs/research/fabric-neoforge-notes.md) and [`docs/research/loaders.md`](../docs/research/loaders.md)). The Fabric and NeoForge sections also cover 1.20.1; Forge and Quilt have their own sections. Each entry gives its license, what it informs, and when it was read.
 
 The format is fixed in [`docs/rules.md`](../docs/rules.md):
 - Each source is a level-3 heading. The heading text is the id that rules cite in `sources = [...]`.
@@ -12,10 +12,10 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
 ## Clean-room statement
 
 - **Rule tables describe API shapes, never mod bodies.** A table entry names public symbols: classes, method names and descriptors, event types, JSON keys, manifest fields. It says how a Fabric-side shape maps to a NeoForge-side shape. It never contains code from a mod, decompiled or otherwise, and never contains code from the loaders or their APIs.
-- **No code from Sinytra Connector, Architectury or Forgified Fabric API** appears in `rules/` or `crates/`, and nobody on this project reads their source to write a rule. Connector's public issue tracker is used for titles only, to locate known divergences. Those issues are listed below so rules can credit them.
-- **The loaders are read, not copied.** Fabric Loader and Fabric API (Apache-2.0) and NeoForge and FancyModLoader (LGPL-2.1) are read to learn their public API, lifecycle order and data formats. What we learn is restated in our own words and as symbol names. No source file, patch or doc paragraph is pasted into this repository.
+- **No code from Sinytra Connector, Architectury or Forgified Fabric API** appears in `rules/` or `crates/`, and nobody on this project reads their source to write a rule. Their public issue trackers and docs may be cited; Connector's tracker is used for titles only, to locate known divergences. Those issues are listed below so rules can credit them.
+- **The loaders are read, not copied.** Fabric Loader and Fabric API (Apache-2.0), NeoForge and FancyModLoader (LGPL-2.1), Forge (LGPL-2.1), and Quilt Loader, QSL and QFAPI (Apache-2.0) are read to learn their public API, lifecycle order and data formats. What we learn is restated in our own words and as symbol names. No source file, patch or doc paragraph is pasted into this repository.
 - **Mapping files are never vendored.** Mojang's mappings are fetched from the version manifest at runtime, under their license header. Intermediary and Parchment (both CC0-1.0) are pinned by URL and hash in `research-lock.json`, not committed.
-- **Rule tables are CC0-1.0** (see `rules/LICENSE`). So nothing under share-alike or non-commercial terms, such as the Fabric documentation (CC BY-NC-SA 4.0), may be copied into them. Facts learned from those pages are restated, never quoted.
+- **Rule tables are CC0-1.0** (see `rules/LICENSE`). So nothing under share-alike or non-commercial terms, such as the Fabric documentation (CC BY-NC-SA 4.0) or the Quilt RFCs (CC BY-SA 4.0), may be copied into them. Facts learned from those pages are restated, never quoted.
 
 ## Fabric
 
@@ -52,6 +52,17 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
 - Read: 2026-11-03
 - Used for: the same files as fabric-api/1.21.1 at tag `0.141.6+1.21.11`, compared version against version.
 
+### fabric-api/1.20.1
+- URL: https://github.com/FabricMC/fabric/tree/ba3f3da8411fb8dd27fa5eb3551d9ff775bb2c0a
+- License: Apache-2.0
+- Read: 2026-11-03
+- Used for: the API surface for 1.20.1 (tag `0.92.12+1.20.1`):
+  - the `fabric.mod.json` requirements (`fabricloader >=0.16.10`, `java >=17`)
+  - event phases (`Event`, default phase `fabric:default`)
+  - the registry bootstrap redirect (`BootstrapMixin`)
+  - resource conditions as an array of objects keyed by `condition` (`ResourceConditions`)
+  - channel networking with `PacketByteBuf`, `FabricPacket` and `PacketType` (`ServerPlayNetworking`)
+
 ### fabric-docs
 - URL: https://github.com/FabricMC/fabric-docs/tree/2e637f701af37e6a5305f3ed11bbe3472073b0b0
 - License: CC BY-NC-SA 4.0 (facts only, never copied into rules)
@@ -84,6 +95,12 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
 - Used for:
   - stable loader, installer and intermediary versions per game version
   - the server launcher endpoint `/v2/versions/loader/{game}/{loader}/{installer}/server/jar`
+
+### fabric-meta/1.20.1
+- URL: https://meta.fabricmc.net/v2/versions/loader/1.20.1/0.20.1
+- License: service; each artefact carries its own license
+- Read: 2026-11-03
+- Used for: the 1.20.1 launch profile for Fabric Loader 0.20.1 (intermediary 1.20.1, minimum Java 8) and the 1.20.1 server launcher endpoint.
 
 ### fabric-maven
 - URL: https://maven.fabricmc.net/
@@ -138,6 +155,24 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
 - Read: 2026-11-03
 - Used for: the same files as neoforge/1.21.1, compared version against version, plus `RegisterClientPayloadHandlersEvent`.
 
+### neoforge/1.20.1
+- URL: https://github.com/neoforged/NeoForge/tree/a3317fc07a2b36793b8b87c19dd4b05265135d7c
+- License: LGPL-2.1
+- Read: 2026-11-03
+- Used for: NeoForge for 1.20.1 (head of the `1.20.1` branch, last commit 2024-05-28; 47.1.106 is the newest build):
+  - the `net.minecraftforge` package layout kept from Forge 47
+  - the `forge:conditions` key (`ICondition`)
+  - `NetworkRegistry.newSimpleChannel`
+
+### neoforge-installer/1.20.1-47.1.106
+- URL: https://maven.neoforged.net/releases/net/neoforged/forge/1.20.1-47.1.106/forge-1.20.1-47.1.106-installer.jar
+- License: LGPL-2.1
+- Read: 2026-11-03 (opened in a temp directory and deleted)
+- Used for: from `install_profile.json`, `version.json` and `data/run.sh`:
+  - the SRG rename of the vanilla server (MCP config merged with Mojang's mappings)
+  - FancyModLoader 47.2.2, `eventbus 6.0.5`, `mixin 0.8.5`
+  - the `run.sh` start line and the `BootstrapLauncher` main class
+
 ### neoforge-installer/21.1.265
 - URL: https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.265/neoforge-21.1.265-installer.jar
 - License: LGPL-2.1
@@ -164,6 +199,12 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
 - Read: 2026-11-03
 - Used for: the NeoForge version list, the stable versus beta split, and the newest stable build per game version.
 
+### neoforge-maven-api/forge
+- URL: https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/forge
+- License: service
+- Read: 2026-11-03
+- Used for: the 1.20.1 build list (`1.20.1-47.1.N`), its newest build 47.1.106, and the stray `47.1.82` entry that has no artifact.
+
 ### neoforge-docs
 - URL: https://github.com/neoforged/Documentation/tree/4a680cdd4d15013b65fd84998d1f4cd7e2885ae5
 - License: MIT
@@ -178,6 +219,7 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
   - sides
   - Jar-in-Jar
   - server install
+  - the list of versioned docs, which starts at 1.20.4 (no 1.20.1 version)
 
 ### neoforge-primers
 - URL: https://github.com/neoforged/.github/tree/2bb6f9f3bdaec6efe2b69c3241b15fb47b64fc53/primers
@@ -212,6 +254,12 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
   - the client payload handler event
   - recipe sync in 1.21.4
 
+### neoforge-mdk/1.20.1
+- URL: https://github.com/neoforged/MDK/tree/80aef8cefff5d43d54341d007376a2ed5150a74e
+- License: no repository license detected; the template ships `TEMPLATE_LICENSE.txt` (MIT) for mods made from it (facts only)
+- Read: 2026-11-03
+- Used for: branch `1.20.1-legacy`: the `mods.toml` template (dependency on mod id `forge`), `loader_version_range=[47,)`, Parchment 2023.09.03, and the `@Mod` constructor with `FMLJavaModLoadingContext.get().getModEventBus()` and `DeferredRegister`.
+
 ### neoforge-mdk/1.21.1
 - URL: https://github.com/NeoForgeMDKs/MDK-1.21.1-ModDevGradle/tree/e93d7f09d4eec12c76d1d7be9bf4eaad0246e9e0
 - License: no license file detected (facts only)
@@ -230,6 +278,149 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
 - Read: 2026-11-03
 - Used for: access transformer syntax, `+f` / `-f`, and the class, method and field directive forms.
 
+## Forge
+
+### forge/1.20.1-47.4.28
+- URL: https://github.com/MinecraftForge/MinecraftForge/tree/d13dd327bdc75c010f3358992e80e7e92f51e030
+- License: LGPL-2.1 (LICENSE.txt: LGPL 2.1 unless noted otherwise)
+- Read: 2026-11-03
+- Used for: the commit of the 47.4.28 changelog entry on branch `1.20.1`:
+  - the MDK `mods.toml` template (`modLoader`, `loaderVersion`, dependency on `forge`)
+  - access transformer lookup (`ModFile`: `accessTransformers` list, default `META-INF/accesstransformer.cfg`)
+  - the `forge:conditions` key (`ICondition`)
+  - `NetworkRegistry.newSimpleChannel`
+
+### forge/1.21.1-52.1.20
+- URL: https://github.com/MinecraftForge/MinecraftForge/tree/8199135df7b0ce1e321c5a59ac3e4e982f301812
+- License: LGPL-2.1
+- Read: 2026-11-03
+- Used for: the commit of the 52.1.20 changelog entry on branch `1.21.1`:
+  - the MDK `mods.toml` template and `ExampleMod` (constructor takes `FMLJavaModLoadingContext`)
+  - access transformer lookup (`ModFile`)
+  - the single `forge:condition` field (`ICondition`)
+  - `ChannelBuilder` (`simpleChannel`, `eventNetworkChannel`, `payloadChannel`)
+
+### forge/1.21.11-61.2.4
+- URL: https://github.com/MinecraftForge/MinecraftForge/tree/94f2c3df41b209c9c0680d5c4cedc83916a5e1c3
+- License: LGPL-2.1
+- Read: 2026-11-03
+- Used for: the commit of the 61.2.4 changelog entry on branch `1.21.11`:
+  - EventBus 7 shapes: record events with a static `BUS` (`TickEvent`), `getModBusGroup()` (`FMLJavaModLoadingContext`), `getBus(modBusGroup)` (`FMLCommonSetupEvent`, `RegisterEvent`)
+  - the MDK `mods.toml` template, `ModFile`, `ICondition`, `ChannelBuilder`, `DeferredRegister`
+
+### forge-installer/1.20.1-47.4.28
+- URL: https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.28/forge-1.20.1-47.4.28-installer.jar
+- License: LGPL-2.1
+- Read: 2026-11-03 (opened in a temp directory and deleted)
+- Used for: from `install_profile.json`, `version.json` and `data/run.sh`: the SRG rename of the vanilla server, `eventbus 6.2.33`, `mixin 0.8.5`, the `run.sh` start line and the `BootstrapLauncher` main class.
+
+### forge-installer/1.21.1-52.1.20
+- URL: https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.1-52.1.20/forge-1.21.1-52.1.20-installer.jar
+- License: LGPL-2.1
+- Read: 2026-11-03 (opened in a temp directory and deleted)
+- Used for: from `install_profile.json`, `version.json` and `data/run.sh`: the rename with Mojang's server mappings, `eventbus 6.2.33`, `mixin 0.8.7`, the shim jar start and the `ForgeBootstrap` main class.
+
+### forge-installer/1.21.11-61.2.4
+- URL: https://maven.minecraftforge.net/net/minecraftforge/forge/1.21.11-61.2.4/forge-1.21.11-61.2.4-installer.jar
+- License: LGPL-2.1
+- Read: 2026-11-03 (opened in a temp directory and deleted)
+- Used for: from `install_profile.json`, `version.json` and `data/run.sh`: the rename with Mojang's server mappings, `eventbus 7.0.5`, `mixin 0.8.7`, `mixinextras-forge 0.5.4`, the shim jar start and the `ForgeBootstrap` main class.
+
+### forge-promotions
+- URL: https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json
+- License: service
+- Read: 2026-11-03
+- Used for: the `recommended` and `latest` builds per game version (47.4.28, 52.1.20 and 61.2.4 recommended).
+
+### forge-maven
+- URL: https://maven.minecraftforge.net/
+- License: service; each artefact carries its own license
+- Read: 2026-11-03
+- Used for: the installer `.sha1` / `.sha256` / `.sha512` sidecars pinned in `research-lock.json`, and the per-build changelogs that tie each build to a commit.
+
+### forge-docs/1.20.1
+- URL: https://github.com/MinecraftForge/Documentation/tree/2bd2b1e3cfdc899057ba57b992e157cdc2094ded
+- License: MIT
+- Read: 2026-11-03
+- Used for: branch `1.20.1` (rendered at https://docs.minecraftforge.net): `mods.toml` keys and the mod id pattern, events and priorities, the lifecycle order, registries, access transformers (SRG names), conditional recipes. Also read for NeoForge 1.20.1, which shares the Forge 47 base.
+
+### forge-docs/1.21.x
+- URL: https://github.com/MinecraftForge/Documentation/tree/ac05e12aae903703cb8a9908a153623ce476a509
+- License: MIT
+- Read: 2026-11-03
+- Used for: branch `1.21.x`: `clientSideOnly`, the `FMLJavaModLoadingContext` constructor parameter, the `MONITOR` priority, the lifecycle and registries. Its access transformer and SimpleImpl pages still describe SRG names and `newSimpleChannel`, which the 52.1.20 source and installer contradict.
+
+### forge-eventbus/7.0
+- URL: https://github.com/MinecraftForge/EventBus/tree/cab319a5fea8b205d8c8f205d6d55af2ba16126d
+- License: LGPL-2.1
+- Read: 2026-11-03
+- Used for: the EventBus 7 model from the README at tag `7.0`: one `EventBus<T>` per event type, `RecordEvent`, compile-time validation.
+
+### forge-mdkexamples
+- URL: https://github.com/MinecraftForge/MDKExamples/tree/c0a20b210732654a261f9c040af9fe115d32137e
+- License: no license file detected (facts only)
+- Read: 2026-11-03
+- Used for: mixin configs listed in the jar manifest's `MixinConfigs` attribute (`mixins-only/fg7/build.gradle`), and the README's note that obfuscated mod jars are needed for 1.20.4 and older.
+
+## Quilt
+
+### quilt-loader/0.30.2
+- URL: https://github.com/QuiltMC/quilt-loader/tree/c36b50f62eebd9cd653a1f065596d3018700d9f0
+- License: Apache-2.0
+- Read: 2026-11-03
+- Used for: tag `0.30.2`:
+  - `gradle.properties`: `sponge-mixin 0.17.4+mixin.0.8.7`, MixinExtras 0.5.5, `class_tweaker 0.3.0-beta.2`
+  - `quilt.mod.json`: provides `fabricloader` 0.19.5, depends on `mixinextras`
+  - the production namespace `intermediary` (`MappingConfigurationImpl`)
+  - the `main` / `client` / `server` entrypoint order (`Hooks`) and `fabric.mod.json` support (`FabricModMetadataReader`)
+  - the server launcher's game jar lookup (`QuiltServerLauncher`)
+
+### quilt-rfc/0002-quilt.mod.json
+- URL: https://github.com/QuiltMC/rfcs/blob/ca458de2fef50da15d892e96be1165ce775255f2/specification/0002-quilt.mod.json.md
+- License: CC BY-SA 4.0 (facts only, never copied into rules)
+- Read: 2026-11-03
+- Used for: the `quilt.mod.json` fields: `schema_version`, the mod id pattern, entrypoint notation, `intermediate_mappings`, `mixin`, `access_widener` and `minecraft.environment`.
+
+### qsl/6.3.0+1.20.1
+- URL: https://github.com/QuiltMC/quilt-standard-libraries/tree/e6cbb6c9c1160d33bdf758572f4e325f051a7a03
+- License: Apache-2.0
+- Read: 2026-11-03
+- Used for: the commit that sets `QSL_VERSION = "6.3.0"` on branch `1.20`:
+  - the `init` / `client_init` / `server_init` entrypoints (`qsl_base`)
+  - `Event` with the `quilt:default` phase
+  - `RegistryEvents`, `ServerPlayNetworking`
+  - the module list, which has no resource conditions module
+
+### qfapi/7.7.0+0.92.2-1.20.1
+- URL: https://github.com/QuiltMC/quilted-fabric-api/tree/9a6fea07586d32d4519b3fdbc0d79f2d8672c8b5
+- License: Apache-2.0
+- Read: 2026-11-03
+- Used for: the release commit on branch `1.20.1`: `gradle.properties` (version 7.7.0, upstream Fabric API 0.92.2, QSL 6.3.0+1.20.1) and the bundled Fabric modules (resource conditions, networking, registry sync, lifecycle events).
+
+### quilt-installer/0.15.1
+- URL: https://github.com/QuiltMC/quilt-installer/tree/4916835f50ec8c29be25838188fcf1667738810e
+- License: Apache-2.0
+- Read: 2026-11-03
+- Used for: tag `0.15.1`: the `install server <game> <loader>` command line with `--install-dir` and `--download-server` (`CliInstaller`), and the `quilt-server-launch.jar` it writes (`InstallServer`).
+
+### quilt-meta
+- URL: https://meta.quiltmc.org/v3/versions/loader
+- License: service; each artefact carries its own license
+- Read: 2026-11-03
+- Used for: Quilt Loader versions with sizes and hashes, the per-game profiles (`/v3/versions/loader/<game>`) that pair a loader with intermediary, and the installer list (`/v3/versions/installer`).
+
+### quilt-maven
+- URL: https://maven.quiltmc.org/repository/release/
+- License: service; each artefact carries its own license
+- Read: 2026-11-03
+- Used for: the `.sha1` / `.sha256` / `.sha512` sidecars of Quilt Loader 0.30.2 and the Quilt installer 0.15.1, and the QFAPI maven artifact, which is a different file from the Modrinth one.
+
+### quilt-blog/2024-07-03
+- URL: https://quiltmc.org/en/blog/2024-07-03-qfapi-moving-forward/
+- License: Apache-2.0 (the quiltmc.org site repository's LICENSE.md; facts only)
+- Read: 2026-11-03
+- Used for: from 1.20.6 on, QSL ships only `qsl_base` and `crash_info`, and Quilt modders are told to use the Fabric API equivalents.
+
 ## Shared tooling and data
 
 ### mojang/version-manifest
@@ -239,6 +430,12 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
 - Used for:
   - the version JSON, server jar and mapping URLs, sha1s and sizes
   - the required Java version for 1.21.1 and 1.21.11
+
+### mojang/version-1.20.1
+- URL: https://piston-meta.mojang.com/v1/packages/72ae93b0934df5541860e3e6b72cf883c74da491/1.20.1.json
+- License: Mojang / Microsoft terms (https://www.minecraft.net/en-us/eula)
+- Read: 2026-11-03
+- Used for: the 1.20.1 server jar and mapping URLs, sha1s and sizes, and Java 17.
 
 ### mojang/mappings
 - URL: https://piston-data.mojang.com/v1/objects/03f8985492bda0afc0898465341eb0acef35f570/server.txt
@@ -252,6 +449,12 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
 - Read: 2026-11-03
 - Used for: the Mixin config keys `package`, `mixins`, `client`, `server`, `refmap`, `priority`, `plugin`, `required`, `minVersion`.
 
+### mixin/0.8.5
+- URL: https://github.com/SpongePowered/Mixin/tree/155314e6e91465dad727e621a569906a410cd6f4
+- License: MIT
+- Read: 2026-11-03
+- Used for: tag `releases/0.8.5`: the `MixinConfigs` manifest attribute (`Constants`) that the platform agent reads from each jar (`MixinPlatformAgentDefault`), which is how Forge and NeoForge 1.20.1 mods list their configs.
+
 ### modrinth/api
 - URL: https://docs.modrinth.com/api/
 - License: Modrinth Terms of Service (https://modrinth.com/legal/terms). The API requires a uniquely identifying User-Agent and allows 300 requests per minute.
@@ -261,11 +464,29 @@ The `rules` crate (M2) will reject a rule that cites an id missing from this fil
   - the game-version ranking in `docs/research/game-versions.json`
   - the board's mod list ([`docs/board.md`](../docs/board.md))
 
+### modrinth/qfapi
+- URL: https://api.modrinth.com/v2/project/qvIfYCYJ/version
+- License: Modrinth Terms of Service (https://modrinth.com/legal/terms)
+- Read: 2026-11-03
+- Used for: QFAPI 7.7.0+0.92.2-1.20.1 and its hashes, and the absence of any QFAPI or QSL release for 1.21.1 and 1.21.11.
+
+### modrinth/loader-tags
+- URL: https://api.modrinth.com/v2/tag/loader
+- License: Modrinth Terms of Service (https://modrinth.com/legal/terms)
+- Read: 2026-11-03
+- Used for: the loader tags `fabric`, `neoforge`, `forge` and `quilt`.
+
 ### parchment
 - URL: https://maven.parchmentmc.org/org/parchmentmc/data/
 - License: CC0-1.0
 - Read: 2026-11-03
 - Used for: Parchment 2024.11.17 (1.21.1) and 2025.12.20 (1.21.11), for parameter names in Tier B only.
+
+### parchment/1.20.1
+- URL: https://maven.parchmentmc.org/org/parchmentmc/data/parchment-1.20.1/maven-metadata.xml
+- License: CC0-1.0
+- Read: 2026-11-03
+- Used for: Parchment 2023.09.03 for 1.20.1 (the release in maven-metadata.xml), for parameter names in Tier B only.
 
 ### vineflower
 - URL: https://repo1.maven.org/maven2/org/vineflower/vineflower/1.12.0/

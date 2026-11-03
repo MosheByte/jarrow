@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-03T15:26:28Z",
+  "generated_at": "2026-11-03T15:39:46Z",
   "groups": [
     {
       "id": "people",
@@ -16,7 +16,7 @@
             "ideas",
             "projectManagement"
           ],
-          "commits": 3,
+          "commits": 4,
           "icon": null
         }
       ]
@@ -39,7 +39,7 @@
             "test",
             "infra"
           ],
-          "commits": 3,
+          "commits": 4,
           "icon": null
         }
       ]

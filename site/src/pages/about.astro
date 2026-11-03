@@ -11,7 +11,7 @@ import Key from '@lucide/astro/icons/key';
 import PageIntro from '../components/PageIntro.astro';
 import Base from '../layouts/Base.astro';
 import { formatUtc } from '../lib/format.ts';
-import { CURRENT_MILESTONE, GAME_VERSIONS, REPO_URL, repoFile } from '../lib/site.ts';
+import { CURRENT_MILESTONE, REPO_URL, repoFile } from '../lib/site.ts';
 
 type GroupId = 'people' | 'agents' | 'bots';
 
@@ -143,19 +143,23 @@ const showCommits = (group: Group, m: Member) => m.commits !== null && (group.id
     <PageIntro
       eyebrow="About"
       title="About Jarrow"
-      lead="Jarrow will convert a Fabric mod JAR into a NeoForge JAR and prove the result with a behaviour harness. Nothing converts yet."
+      lead="Jarrow will convert a Minecraft mod JAR from one loader to another and prove the result with a behaviour harness. Nothing converts yet."
     />
 
     <div class="prose body">
       <h2>What it is</h2>
       <p>
-        Jarrow is an open-source web service and command-line tool. The first version covers one direction, Fabric
-        to NeoForge, for Minecraft {GAME_VERSIONS.join(' and ')}. It will rewrite the JAR itself instead of relying
-        on a runtime shim, and only a parity harness can call a result green.
+        Jarrow is an open-source web service and command-line tool. The goal for v1 is any loader to any loader:
+        Fabric, NeoForge, Forge and Quilt, every pair in both directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11.
+        It will rewrite the JAR itself instead of relying on a runtime shim, and only a parity harness can call a
+        result green.
       </p>
       <p>
-        Nothing converts yet: the project is in milestone {CURRENT_MILESTONE}. See <a href="/docs/status/">Status</a>
-        for what exists today and the <a href="/roadmap/">roadmap</a> for the milestones.
+        Nothing converts yet: the project is in milestone {CURRENT_MILESTONE}. The 12 directions are built in a fixed
+        order, starting with Fabric → NeoForge, and a direction is offered only once it has its own column on the
+        nightly board. None has one yet. See <a href="/docs/directions/">Directions</a> for the order and the status
+        of each, <a href="/docs/status/">Status</a> for what exists today and the <a href="/roadmap/">roadmap</a>
+        for the milestones.
       </p>
 
       <h2>Who builds it</h2>

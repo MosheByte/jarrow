@@ -225,3 +225,139 @@ Every default the build agent takes is logged here. The project requires this lo
 **Why:** People are shown by GitHub login only, and the project owner is always listed. Agents have no account here, so they are counted from the Co-Authored-By trailers of the commits they wrote. A bot or app is listed only when something shows that it acts on the repository: a check run or a non-empty check suite, a pull request, a commit, the deploy key, or its config in `.github/`. Listing installed apps directly (`gh api repos/MosheByte/jarrow/installations`, then `user/installations`) needs a GitHub App token and fails with 404 and 403 for a user token, so check suites stand in. GitHub creates an empty check suite for every installed app on each push, so an empty suite does not count: on 2026-11-03 the Claude GitHub App was installed but had no check run, pull request or comment here, so it is not listed. Renovate is not enabled (D-014), release-please is not used, and the stale sweep is a GitHub Actions workflow. Refresh commits carry the trailer `Jarrow-Generated: contributors` and are not counted, so a refresh never causes another one.
 **Reversal cost:** Low: delete the workflow, the script and the four generated files.
 **Links:** tools/contributors.py, .github/workflows/contributors.yml, docs/team.md, .all-contributorsrc, site/src/pages/about.astro
+
+## D-029 — v1 is any loader to any loader
+
+**Date:** 2026-11-03
+**Decision:** v1 converts mods between Fabric, NeoForge, Forge and Quilt, in all 12 ordered directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11. It is done when every direction has a board column and each column is at least 50% green, with Fabric → NeoForge at least 60%. The build order is fixed: Fabric → NeoForge; NeoForge → Fabric; Fabric → Quilt and Quilt → Fabric; Forge → NeoForge and NeoForge → Forge; Fabric → Forge and Forge → Fabric; then Quilt → Forge, Forge → Quilt, Quilt → NeoForge and NeoForge → Quilt. No direction is offered or advertised on the site before its board column exists. One engine serves every direction: each loader is described once, in a profile `loaders/<name>.toml`; rule tables live in `rules/<from>-<to>/<game-version>/` and come in inverse pairs (A → B with B → A), and the harness scores each pair by an A → B → A round trip; each direction has a page `docs/directions/<from>-<to>.md`, written before its rule tables. Milestones M0 to M6 keep their meaning for the engine and the first direction, and the other directions follow in the order above. `research-lock.json` gains 1.20.1 and the Forge and Quilt pins for all three game versions (D-030 to D-036). This extends D-002. On this date no direction converts and none has a board column.
+**Why:** The project owner widened v1 on 2026-11-03. With four loaders and twelve directions, loader facts belong in data that one engine reads, not in twelve converters, and inverse pairs let the harness check each pair by a round trip. 1.20.1 is in scope by this change, not by the download ranking behind D-002.
+**Reversal cost:** Medium, and higher with every rule table. The board contract, the D1 schema, the site, the harness design and the lock all carry directions and the third game version. No rule table exists yet, so narrowing the scope again would lose no conversion work.
+**Links:** docs/directions/README.md, loaders/README.md, docs/loaders.md, ROADMAP.md, research-lock.json, docs/spec-amendments.md A-13
+
+## D-030 — Forge is pinned to its recommended builds
+
+**Date:** 2026-11-03
+**Decision:** Forge is pinned to the `recommended` promotion of each game version in `promotions_slim.json`: 47.4.28 (1.20.1), 52.1.20 (1.21.1) and 61.2.4 (1.21.11), with installer hashes from the maven.minecraftforge.net sidecars. A `latest` build is allowed only for a game version without a recommended one, and then needs a `promotion_note`. The `mods.toml` facts in the lock name the exact game version as the `minecraft` range (`[1.21.1]`, for example), and `loaderVersion` is `[<Forge major>,)`.
+**Why:** Forge publishes no release tags and no stable flag; the recommended promotion is the build its maintainers mark for players. All three versions have one, so no fallback was needed. Newer `latest` builds (52.1.21 and 61.2.5) exist, and `tools/research_lock.py --verify` reports them as information. A conversion stays within one game version, so the exact range claims no more than what is pinned.
+**Reversal cost:** Medium, as in D-022: a new pin means re-verifying rules and re-running the harness for that version.
+**Links:** research-lock.json, tools/research_lock.py, docs/research/loaders.md
+
+## D-031 — NeoForge on 1.20.1 is its own line
+
+**Date:** 2026-11-03
+**Decision:** NeoForge for 1.20.1 is pinned as the Forge 47.1 fork, `net.neoforged:forge` 1.20.1-47.1.106, and the lock and the profiles describe it apart from NeoForge 21.x: `META-INF/mods.toml`, loader dependency id `forge`, SRG names for fields and methods at runtime, Mixin 0.8.5 and EventBus 6.0.5. `tools/research_lock.py` derives the expected artifact, Maven version, installer name, manifest and runtime names from the game version.
+**Why:** NeoForge's 1.20.1 builds keep Forge's packages, file names and dependency id, and their installer renames the server into SRG member names; NeoForge dropped SRG only from 1.20.2 on. Treating 47.1 as one more NeoForge version would carry the 1.21 facts into a loader they do not describe.
+**Reversal cost:** Low: one branch in the lock checker and one table per profile.
+**Links:** research-lock.json, tools/research_lock.py, docs/research/loaders.md, loaders/neoforge.toml
+
+## D-032 — A stable Quilt Loader has no pre-release suffix
+
+**Date:** 2026-11-03
+**Decision:** Quilt Loader is pinned to 0.30.2 for all three game versions: the newest version on meta.quiltmc.org without a pre-release suffix. The lock records this rule next to the pin, and `tools/research_lock.py --check` refuses a Quilt Loader version with a suffix such as `-beta.5`.
+**Why:** Quilt meta v3 has no stable flag. 0.31.0-beta.5 is newer but a beta, and the project pins stable releases, as it does for NeoForge (D-022).
+**Reversal cost:** Low. If Quilt meta gains a stable flag, the rule reads it instead.
+**Links:** research-lock.json, tools/research_lock.py, docs/research/loaders.md
+
+## D-033 — Quilt's API library is pinned per game version
+
+**Date:** 2026-11-03
+**Decision:** On 1.20.1 the Quilt harness uses Quilted Fabric API 7.7.0+0.92.2-1.20.1, which bundles the Quilt Standard Libraries 6.3.0 and Fabric API 0.92.2, pinned to the Modrinth file and its Modrinth hashes. On 1.21.1 and 1.21.11 it uses the pinned Fabric API, and the lock says so (`kind = "fabric-api"`, `same_as = "fabric.api"`) with the reason.
+**Why:** Modrinth lists no Quilted Fabric API or Quilt Standard Libraries release for 1.21.1 or 1.21.11, only 1.21 alphas, and Quilt tells modders to use the Fabric API equivalents. On 1.20.1 the Quilt maven serves a different file under the same coordinate, so the pin is the file that players install.
+**Reversal cost:** Low. If a Quilt API release appears for a 1.21 pin, its entry changes to `kind = "qfapi"` with a D- entry.
+**Links:** research-lock.json, docs/research/loaders.md, loaders/quilt.toml
+
+## D-034 — Servers run on the Java of their game version
+
+**Date:** 2026-11-03
+**Decision:** `research-lock.json` records the Java major per game version in `jdk.by_game_version`: 17 for 1.20.1, 21 for 1.21.1 and 1.21.11, each equal to that version's Mojang `javaVersion.majorVersion`. The harness starts each version's servers on that Java. JDK 21 stays the build JDK.
+**Why:** Mojang's version JSON asks for Java 17 for 1.20.1. Whether the 1.20.1 servers also start on JDK 21 is not measured, so it is not assumed; it is an open question for the harness.
+**Reversal cost:** Low. If the harness shows that 1.20.1 runs on JDK 21, one JDK can serve all three versions.
+**Links:** research-lock.json, docs/harness.md, docs/research/loaders.md
+
+## D-035 — The 1.21 pins stay as they were when Mojang re-publishes
+
+**Date:** 2026-11-03
+**Decision:** Mojang re-published the 1.21.1 and 1.21.11 version JSON files again on 2026-11-03. Their pins were not changed. `tools/research_lock.py --verify` reports the new manifest hashes as drift warnings and still checks the pinned files, so `--verify --strict` exits 1 until the pins are refreshed on purpose.
+**Why:** The pinned URLs are content-addressed and still serve the files whose hashes are recorded. Re-pinning in the same change as the scope widening would mix two changes; a re-pin gets its own D- entry once the new files are compared.
+**Reversal cost:** Low: re-lock the two entries with a D- entry.
+**Links:** research-lock.json, tools/research_lock.py
+
+## D-036 — Lock layout for the third game version
+
+**Date:** 2026-11-03
+**Decision:** 1.20.1 is added after the two 1.21 pins in `research-lock.json`, with a `pinned_by` field naming D-029, and `decided_by` names both D-002 and D-029. Every game version lists all four loaders. A loader entry may be `null` only next to a non-empty `<loader>_note` that says why, as Parchment already could.
+**Why:** The order keeps the existing entries and their diffs readable, and `pinned_by` shows that 1.20.1 comes from the scope change, not from the download ranking. A missing loader must be a stated fact, never a gap the checker overlooks.
+**Reversal cost:** Low.
+**Links:** research-lock.json, tools/research_lock.py
+
+## D-037 — A planned leaf crate, crates/loaders, reads the profiles
+
+**Date:** 2026-11-03
+**Decision:** A new crate, `crates/loaders` (package `jarrow-loaders`), is planned for M1. It loads and validates `loaders/<name>.toml` against `docs/loaders.md` and has no Jarrow dependency. `manifest`, `rules`, `rewrite`, `classify`, `harness` and `board` read loader facts through it, and none of them names a loader in code.
+**Why:** With one engine for 12 directions, loader facts need one reader. As a leaf crate it serves the harness and the board without pulling in the converter.
+**Reversal cost:** Low until M1: no code exists yet.
+**Links:** docs/architecture.md, docs/loaders.md, loaders/README.md
+
+## D-038 — Loader profiles hold only researched facts
+
+**Date:** 2026-11-03
+**Decision:** Every value in a loader profile is copied from `research-lock.json` or a note in `docs/research/`, with its source. A fact that is not researched is the string `"unknown"`, with a comment naming the research still needed; no field is left out and none is guessed. Code that meets `"unknown"` stops with that reason and never borrows another loader's value. Fabric on 1.20.1 runs the same Fabric Loader 0.20.1, so it carries the loader's own facts (manifest, mod id, entrypoints, Mixin, access widener); what depends on Fabric API 0.92.12 stays `"unknown"` until it is researched.
+**Why:** A profile is what the engine trusts. A guessed field would turn into a wrong conversion that looks deliberate.
+**Reversal cost:** None.
+**Links:** docs/loaders.md, loaders/README.md
+
+## D-039 — Rules are written in Mojang names for every direction
+
+**Date:** 2026-11-03
+**Decision:** Every rule table, for every direction and game version, names Minecraft classes and members in Mojang names. The engine remaps the source into Mojang names, applies the rules, then remaps into the target's runtime names. The table header key `names` takes the value `"mojang"`; the earlier draft value `"official"` is dropped.
+**Why:** The four loaders run on three namespaces (intermediary, Mojang, and SRG members on 1.20.1), so one shared namespace keeps a rule readable in both halves of an inverse pair. `"official"` is what intermediary files call the obfuscated names, so the old value was misleading.
+**Reversal cost:** Low before M2, when the first table is written.
+**Links:** docs/rules.md, docs/architecture.md, docs/loaders.md
+
+## D-040 — An inverse table lands with its pair
+
+**Date:** 2026-11-03
+**Decision:** Rule tables live in `rules/<from>-<to>/<game-version>/<area>.toml`. Every A → B table lands in the same pull request as its B → A inverse, or with a "not invertible" mark and a reason, whatever the build order says about B → A. Both headers name each other, and each rule names its inverse rule or says why it has none.
+**Why:** The round trip needs both halves. The build order decides when a direction gets its board column and source list; it does not hold back an inverse table.
+**Reversal cost:** Low before M2.
+**Links:** docs/rules.md, docs/directions/README.md
+
+## D-041 — The harness judges a mod against its loader's baseline
+
+**Date:** 2026-11-03
+**Decision:** For each loader and game version, the harness first dumps a server with only the probe and the API library. A mod is judged on what it adds over its loader's baseline, and the probes are checked by comparing baselines on the entries vanilla defines. The A → B → A round trip runs the original and the round-tripped JAR on loader A servers and uses the same scores as any conversion. A round-trip score never replaces the A → B score.
+**Why:** Each loader adds content of its own, so two loaders never dump the same thing, even with no mod. Comparing what the mod adds keeps the score about the mod.
+**Reversal cost:** Medium after M1, because scores would change.
+**Links:** docs/harness.md
+
+## D-042 — One board row per mod per direction column
+
+**Date:** 2026-11-03
+**Decision:** `board.json` schema 2 lists all 12 directions in build order, each with `column`, `bar_percent`, its own totals and its top reasons. A row is one mod in one direction column, with one result per game version, and the same Modrinth project can have a row in several columns. The top-level `totals` is the sum over columns, and a page that shows one direction reads that direction's totals.
+**Why:** Each direction is measured against its own bar, so its numbers must stand on their own. Summing over columns keeps `green + yellow + red = mods` true at every level.
+**Reversal cost:** Medium after the first nightly: readers and stored history change with the schema.
+**Links:** docs/board.md, site/src/lib/board.ts
+
+## D-043 — The site refuses a board.json it does not understand
+
+**Date:** 2026-11-03
+**Decision:** `site/src/lib/board.ts` validates `board.json` strictly: schema 2, all 12 directions in build order with the expected ids, loaders and bars, totals that add up, and no rows for a direction without a column. A file that fails is reported as invalid and the site shows the board as unavailable, never a part of it. A missing KV key shows the empty board.
+**Why:** The board is the project's proof. Showing numbers from a file that breaks the contract could show something as green that the harness never measured.
+**Reversal cost:** Low.
+**Links:** site/src/lib/board.ts, docs/board.md
+
+## D-044 — D1 board tables are recreated with a direction
+
+**Date:** 2026-11-03
+**Decision:** Migration `infra/d1/migrations/0002_directions.sql` drops `board_runs` and `board_rows` and creates them again with a direction: one `board_rows` row per mod, direction and game version, keyed by run, direction, project and game version. Checks in the table keep any row from being green without a harness score of 1.0 or 0.75.
+**Why:** No nightly has run, so both tables are empty and dropping them loses nothing. Altering them in place would keep a primary key without the direction.
+**Reversal cost:** Low today. Once rows exist, the next schema change needs a real data migration.
+**Links:** infra/d1/migrations/0002_directions.sql, docs/board.md
+
+## D-045 — The four loaders are named in plain text
+
+**Date:** 2026-11-03
+**Decision:** The site shows no logo of Fabric, NeoForge, Forge or Quilt. All four are named in plain text.
+**Why:** The project shows a loader logo only under that loader's published brand guidelines. None was found for Fabric, NeoForge or Forge. Quilt's branding files are CC0, but CC0 grants no trademark rights and is not a guideline for showing the logo next to another project. Simple Icons has none of the four.
+**Reversal cost:** Low: add a logo to `site/BRAND-SOURCES.md` with its guideline, then to the site.
+**Links:** site/BRAND-SOURCES.md, docs/legal.md

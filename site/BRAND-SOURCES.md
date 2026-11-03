@@ -16,15 +16,16 @@ Lucide removed brand icons from its set, so the GitHub mark comes from Simple Ic
 
 ## Loader and game logos: none
 
-The site shows no Fabric, NeoForge, Minecraft, Mojang or Microsoft logo. Fabric and NeoForge are named in plain text only (text wordmarks).
+The site shows no logo of any of the four loaders (Fabric, NeoForge, Forge, Quilt), and no Minecraft, Mojang or Microsoft logo. The loaders are named in plain text only (text wordmarks).
 
 Why:
 
-- The project allows a loader logo only under that loader's published brand guidelines. A web search on 2026-11-03 found no published logo or brand guideline from either project, so the fallback applies: a text wordmark.
-- Simple Icons 16.36.0 has no Fabric, NeoForge or Minecraft icon to fall back on (checked against the package's exports).
-- A loader logo next to "Jarrow" could suggest an affiliation that does not exist. The footer says plainly that the project is not affiliated with Fabric, NeoForge, Mojang or Microsoft ([docs/legal.md](../docs/legal.md#trademarks)).
+- The project allows a loader logo only under that loader's published brand guidelines. Web searches on 2026-11-03 found no published logo or brand guideline from Fabric, NeoForge or Forge.
+- Quilt publishes its branding in [QuiltMC/art](https://github.com/QuiltMC/art), and the `brand/` folder there is under CC0 1.0. CC0 waives copyright only, and its text says that it licenses no trademark rights. That is a file license, not a guideline for showing the Quilt logo next to another project, so Quilt gets the same text wordmark as the other three.
+- Simple Icons 16.36.0 has no Fabric, NeoForge, Forge, Quilt or Minecraft icon to fall back on (checked against the package's exports).
+- A loader logo next to "Jarrow" could suggest an affiliation that does not exist. The footer says plainly that the project is not affiliated with Mojang, Microsoft, or the Fabric, NeoForge, Forge or Quilt projects ([docs/legal.md](../docs/legal.md#trademarks)).
 
-If either project publishes guidelines that allow this use, add the logo here first, with a link to the guideline, then on the site.
+If one of the four projects publishes guidelines that allow this use, add the logo here first, with a link to the guideline, then on the site.
 
 ## The Jarrow wordmark
 

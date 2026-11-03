@@ -1,6 +1,6 @@
 # AGENTS.md — the map for the next session
 
-You are continuing Jarrow, a Fabric to NeoForge mod converter with a parity harness. This file tells you where things are and how to work here. Keep it current: if you change a crate boundary, a command or a rule below, update this file in the same pull request.
+You are continuing Jarrow, a Minecraft mod converter with a parity harness. The v1 goal is any loader to any loader: Fabric, NeoForge, Forge and Quilt, all 12 directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11, built in the fixed order in `ROADMAP.md` that starts with Fabric to NeoForge (D-029). Each direction has its page in `docs/directions/`, and each loader its profile in `loaders/`. This file tells you where things are and how to work here. Keep it current: if you change a crate boundary, a command or a rule below, update this file in the same pull request.
 
 Last updated: 2026-11-03, during milestone M0.
 
@@ -19,7 +19,8 @@ Last updated: 2026-11-03, during milestone M0.
 | Site | `SITE_URL` = https://jarrow.pages.dev (Cloudflare Pages project `jarrow`) |
 | Rust API docs | https://moshebyte.github.io/jarrow/ (GitHub Pages) |
 | Roadmap project | https://github.com/users/MosheByte/projects/1 |
-| Pinned game versions | 1.21.1 and 1.21.11 (evidence: `docs/research/game-versions.json`; pins in `research-lock.json`) |
+| Loaders and directions | `fabric`, `neoforge`, `forge`, `quilt`; all 12 ordered pairs, built in the fixed order in `ROADMAP.md` (D-029). No direction converts yet and none has a board column |
+| Pinned game versions | 1.20.1, 1.21.1 and 1.21.11. 1.21.1 and 1.21.11 are the two most-downloaded 1.21 minors (D-002, evidence: `docs/research/game-versions.json`); 1.20.1 is in scope by D-029. Pins in `research-lock.json` |
 | Cloudflare bindings | KV `jarrow-board` as `BOARD`, D1 `jarrow` as `DB`, R2 `jarrow-reports` as `REPORTS` |
 | Rust packages | `jarrow-<crate>` in `crates/<crate>/`, lib name `jarrow_<crate>`; the CLI package is `jarrow` (binary `jarrow`) in `crates/cli/`; edition 2024 |
 | Licenses | Code MIT; rule tables under `rules/` CC0-1.0 |
@@ -30,11 +31,12 @@ Only `crates/report` and `crates/cli` exist after M0. Everything else is planned
 
 | Path | Package | Owns | Status |
 | --- | --- | --- | --- |
+| `crates/loaders` | `jarrow-loaders` | Loads and validates the loader profiles in `loaders/`; "unknown" is an error, never a default | Planned (M1) |
 | `crates/jar` | `jarrow-jar` | Reading and writing JARs; deterministic, byte-stable output | Planned (M1) |
 | `crates/classfile` | `jarrow-classfile` | Class-file parser and writer: constant pool, attributes, stack maps | Planned (M1) |
-| `crates/mappings` | `jarrow-mappings` | Intermediary, Mojang official, Yarn, Parchment; tiny v2 and ProGuard; composition and inversion | Planned (M1) |
+| `crates/mappings` | `jarrow-mappings` | Intermediary, Mojang, Yarn, Parchment, and SRG and Quilt hashed once pinned; tiny v2 and ProGuard; composition and inversion | Planned (M1) |
 | `crates/remap` | `jarrow-remap` | Class, member and descriptor remapping, including strings that name classes | Planned (M2) |
-| `crates/manifest` | `jarrow-manifest` | `fabric.mod.json` to `neoforge.mods.toml`, mixin configs, access wideners to access transformers | Planned (M1) |
+| `crates/manifest` | `jarrow-manifest` | Each loader's manifest, mixin configs and access files, as the profiles describe them; the first pair is `fabric.mod.json` and `neoforge.mods.toml` | Planned (M1) |
 | `crates/rules` | `jarrow-rules` | Rule-table loader and matcher | Planned (M2) |
 | `crates/rewrite` | `jarrow-rewrite` | Applies rules to bytecode; every rewrite emits a report entry | Planned (M2) |
 | `crates/classify` | `jarrow-classify` | Tier classifier: A, B or unsupported, with ordered reasons | Planned (M1) |
@@ -42,8 +44,8 @@ Only `crates/report` and `crates/cli` exist after M0. Everything else is planned
 | `crates/engine` | `jarrow-engine` | `convert()`, the one public API | Planned (M2) |
 | `crates/wasm` | `jarrow-wasm` | `wasm-bindgen` surface for the browser | Planned (M3) |
 | `crates/cli` | `jarrow` | The `jarrow` binary: convert, check, report, board-run | Exists (M0 skeleton: `--version`, `tokens`; `check` M1, `convert` M2) |
-| `crates/harness` | `jarrow-harness` | Headless Fabric and NeoForge servers, dumps, diff, score | Planned (M1) |
-| `crates/board` | `jarrow-board` | Top-1,000 list from Modrinth, nightly classify, convert and harness | Planned (M1) |
+| `crates/harness` | `jarrow-harness` | Headless servers for all four loaders, dumps, diff, score, round trips | Planned (M1) |
+| `crates/board` | `jarrow-board` | Top-1,000 lists from Modrinth per source loader; nightly classify, convert and harness per direction column | Planned (M1) |
 
 When you create a crate, add or update its row here and in `docs/architecture.md`. CI checks that every directory under `crates/` is listed in `docs/architecture.md`.
 
@@ -51,12 +53,14 @@ When you create a crate, add or update its row here and in `docs/architecture.md
 
 | Path | What lives there |
 | --- | --- |
-| `rules/fabric-neoforge/<game-version>/` | Rule tables (TOML), one file per API area, plus `rules/SOURCES.md` |
+| `rules/fabric-neoforge/<game-version>/` | Rule tables (TOML), one file per API area, plus `rules/SOURCES.md`. Each later direction gets its own `rules/<from>-<to>/` in the build order |
+| `loaders/<name>.toml` | One profile per loader: `fabric`, `neoforge`, `forge`, `quilt`; the format is in `docs/loaders.md` |
+| `docs/directions/` | One page per direction, `<from>-<to>.md`, written before that direction's rule tables; `README.md` there has the status of all 12 |
 | `site/` | Astro + Starlight site on Cloudflare Pages; `site/wrangler.toml` holds the Pages bindings (amendment A-5) |
 | `site/src/styles/tokens.css` | Generated from `crates/report`. Never edit it by hand: change the tokens in `crates/report/src/tokens.rs`, then run `JARROW_BLESS=1 cargo test -p jarrow-report --test tokens_current`. Without `JARROW_BLESS`, that test fails when the file drifts. `jarrow tokens` prints the same CSS |
 | `tools/` | Python tools: `pr_ready.py`, `ledger.py`, `board_summary.py`, `contributors.py` (the "Who works on Jarrow" list, D-028), research scripts; tests in `tools/tests/`; Tier B job in `tools/tierb/` (M4) |
 | `tests/fixtures/` | Permissively licensed sample mods, vendored with their LICENSE, and golden outputs |
-| `docs/` | `architecture.md`, `harness.md`, `rules.md`, `legal.md`, `telemetry.md`, `spec-amendments.md`, `team.md` (generated), `research/`, `journal/` |
+| `docs/` | `architecture.md`, `harness.md`, `rules.md`, `legal.md`, `telemetry.md`, `spec-amendments.md`, `team.md` (generated), `loaders.md`, `directions/`, `research/`, `journal/` |
 | `infra/` | `INVENTORY.md`, `TODO-OWNER.md`, Worker configs other than the Pages one, D1 migrations, dashboards and monitors as code |
 | `.github/` | Workflows, issue forms, PR template, CODEOWNERS, FUNDING.yml, labeler and Dependabot config |
 
@@ -76,13 +80,13 @@ py -3.12 tools/pr_ready.py             # what CI runs before a merge; run it bef
 
 ## Rule families
 
-Rule tables live in `rules/fabric-neoforge/1.21.1/*.toml` and `rules/fabric-neoforge/1.21.11/*.toml`, one file per API area. The file stem is the Fabric API module name without the `fabric-` prefix, for example `lifecycle-events-v1.toml` for `fabric-lifecycle-events-v1`. Areas that are not a Fabric API module use a plain name: `loader-entrypoints.toml` (Fabric Loader entrypoints) and `registries.toml` (vanilla registration).
+Rule tables live in `rules/<from>-<to>/<game-version>/*.toml`: one directory per direction and pinned game version, one file per API area. They come in inverse pairs (`fabric-neoforge` with `neoforge-fabric`, and so on), and each pair is tested by an A→B→A round trip that the harness scores. The first direction is `rules/fabric-neoforge/`; no table exists yet. In `fabric-neoforge`, the file stem is the Fabric API module name without the `fabric-` prefix, for example `lifecycle-events-v1.toml` for `fabric-lifecycle-events-v1`. Areas that are not a Fabric API module use a plain name: `loader-entrypoints.toml` (Fabric Loader entrypoints) and `registries.toml` (vanilla registration).
 
 The format is in `docs/rules.md`. It is a draft until the `rules` crate implements it in M2. Every source a rule relies on goes in `rules/SOURCES.md`.
 
 ## The harness locally
 
-Not built yet (milestone M1). The design is in `docs/harness.md`. It will need JDK 21 and network access to download the Minecraft server, Fabric Loader, Fabric API and NeoForge at the versions pinned in `research-lock.json`.
+Not built yet (milestone M1). The design is in `docs/harness.md`. It will need the Java version that Mojang's version JSON names for each game version (21 for 1.21.1 and 1.21.11, 17 for 1.20.1; the build JDK stays 21, D-034) and network access to download the Minecraft server and the loaders of the direction under test (for the first direction: Fabric Loader, Fabric API and NeoForge) at the versions pinned in `research-lock.json`.
 
 The harness refuses to start a Minecraft server unless `MINECRAFT_EULA_ACCEPTED` (or `MINECRAFT_EULA`) is `true` (amendment A-6). In CI it comes from the owner's repository secret `MINECRAFT_EULA_ACCEPTED`, because accepting the Minecraft EULA is a terms acceptance only the owner may give. Never set it yourself.
 

@@ -7,11 +7,11 @@ description: Tier A, Tier B and unsupported, and what each will mean for a mod.
 The tier classifier is not built yet (planned for milestone M1). This page describes what it will decide. No mod has a tier today.
 :::
 
-Every mod Jarrow sees will get exactly one tier, decided by a classifier that scans the JAR without converting it. The result page will name the tier and the reasons, in order.
+Every mod Jarrow sees will get exactly one tier for the direction you pick, decided by a classifier that scans the JAR without converting it. The result page will name the tier and the reasons, in order. Because the classifier checks the mod against that direction's rule tables, the same mod can get a different tier in another direction.
 
 | Tier | What it covers | Where it runs | Proof |
 | --- | --- | --- | --- |
-| A | Manifest, mappings, entrypoints, registries, resources, mixins, access wideners, and Fabric API calls covered by rule tables | Your browser (WebAssembly) or the CLI | Static checks, plus the harness in the nightly |
+| A | Manifest, mappings, entrypoints, registries, resources, mixins, access wideners and access transformers, and loader API calls covered by rule tables | Your browser (WebAssembly) or the CLI | Static checks, plus the harness in the nightly |
 | B | Everything in A, plus API calls with no rule, event-model differences, networking, and rendering hooks the agent can port | A GitHub Actions job (JVM plus agent) | The full parity harness before the result is returned |
 | Unsupported | Native libraries, coremod-style bytecode transformers, deep rendering pipelines, obfuscated or packed JARs, and mods whose license forbids modification | Nowhere | The page says so plainly and names the reason |
 
@@ -23,6 +23,6 @@ Every mod Jarrow sees will get exactly one tier, decided by a classifier that sc
 
 ## What the classifier will look at
 
-The manifest of the loader, native libraries (`.so`, `.dll`, `.dylib`), custom language adapters, use of Fabric Loader internals, bytecode transformer registration, signs of obfuscation, the Fabric API symbols the mod calls (matched against the rule tables), and the license.
+The manifest of the loader, native libraries (`.so`, `.dll`, `.dylib`), custom language adapters, use of the loader's internals, bytecode transformer registration, signs of obfuscation, the loader API symbols the mod calls (matched against the rule tables of the chosen direction), and the license.
 
 A tier is not a result. A Tier A mod can still come out red if the harness finds a difference. Results are green, yellow or red, and only the harness sets them.

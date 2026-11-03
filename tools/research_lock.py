@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Check, summarise and re-verify research-lock.json.
 
-research-lock.json pins every external artefact Jarrow depends on for the two
-game versions (Mojang server jar and mappings, Fabric Loader, intermediary,
-Fabric API, the Fabric installer and server launcher, NeoForge, Parchment,
-Vineflower) together with the hashes the publishers themselves provide.
+research-lock.json pins every external artefact Jarrow depends on for the
+three game versions (1.20.1, 1.21.1, 1.21.11) and the four loaders (Fabric,
+NeoForge, Forge, Quilt): the Mojang server jar and mappings; Fabric Loader,
+intermediary, Fabric API, the Fabric installer and server launcher; NeoForge;
+Forge; Quilt Loader, its API library and installer; Parchment; Vineflower.
+Each pin carries the hashes the publishers themselves provide. A loader block
+may be null only when a sibling '<loader>_note' says why.
 
 Modes (stdlib only, no third-party packages):
 
@@ -43,9 +46,20 @@ from typing import Any, Callable
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LOCK = ROOT / "research-lock.json"
 USER_AGENT = "MosheByte/jarrow-research/0.1 (github.com/MosheByte/jarrow)"
-REQUIRED_GAME_VERSIONS = ("1.21.1", "1.21.11")
+REQUIRED_GAME_VERSIONS = ("1.20.1", "1.21.1", "1.21.11")
+LOADERS = ("fabric", "neoforge", "forge", "quilt")
+REQUIRED_SOURCES = (
+    "mojang_version_manifest", "fabric_meta_loader", "fabric_meta_installer", "fabric_meta_intermediary",
+    "modrinth_api", "neoforge_versions", "neoforge_legacy_versions", "forge_promotions",
+    "quilt_meta_loader", "quilt_meta_loader_game", "quilt_meta_installer",
+)
 HEX_LENGTHS = {"sha1": 40, "sha256": 64, "sha512": 128}
 HASH_SOURCES = {"maven-sidecar", "mojang-version-json", "mojang-manifest", "modrinth-api", "observed"}
+RUNTIME_NAMES = {"srg", "mojang-official", "intermediary"}
+FABRIC_API_PROJECT = "P7dR8mSH"
+QFAPI_PROJECT = "qvIfYCYJ"
+FORGE_MAVEN = "https://maven.minecraftforge.net/net/minecraftforge/forge/"
+QUILT_MAVEN = "https://maven.quiltmc.org/repository/release/org/quiltmc/"
 METADATA_LIMIT = 8 * 1024 * 1024  # refuse to read anything bigger as "metadata"
 LAUNCHER_LIMIT = 1024 * 1024
 TIMEOUT = 60
@@ -53,6 +67,46 @@ TIMEOUT = 60
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _MAVEN_RANGE = re.compile(r"^[\[(][^\[\]()]*[\])]$")
 _GAME = re.compile(r"^1\.(\d+)(?:\.(\d+))?$")
+_FORGE_VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+_STABLE_VERSION = re.compile(r"^\d+(?:\.\d+)*$")
+
+
+def neoforge_line(game: str) -> dict | None:
+    """What a NeoForge pin looks like for a game version, or None when NeoForge has no build for it.
+
+    1.20.1 is the Forge 47.1 fork published as net.neoforged:forge (Maven version '<game>-47.1.N',
+    SRG member names at runtime, META-INF/mods.toml, dependency id 'forge'). From 1.20.2 on, NeoForge
+    is net.neoforged:neoforge with versions '<minor>.<patch>.N' and Mojang names at runtime.
+    """
+    m = _GAME.match(game)
+    if not m:
+        return None
+    minor, patch = int(m.group(1)), int(m.group(2) or 0)
+    if (minor, patch) == (20, 1):
+        return {
+            "artifact": "net.neoforged:forge",
+            "prefix": "47.1.",
+            "maven": "net.neoforged:forge:{game}-{version}:installer",
+            "installer": "forge-{game}-{version}-installer.jar",
+            "listed_as": "{game}-{version}",
+            "runtime_names": "srg",
+            "manifest": "META-INF/mods.toml",
+            "dependency_id": "forge",
+            "listing_source": "neoforge_legacy_versions",
+        }
+    if (minor, patch) >= (20, 2):
+        return {
+            "artifact": "net.neoforged:neoforge",
+            "prefix": f"{minor}.{patch}.",
+            "maven": "net.neoforged:neoforge:{version}:installer",
+            "installer": "neoforge-{version}-installer.jar",
+            "listed_as": "{version}",
+            "runtime_names": "mojang-official",
+            "manifest": "META-INF/neoforge.mods.toml",
+            "dependency_id": "neoforge",
+            "listing_source": "neoforge_versions",
+        }
+    return None
 
 
 # --------------------------------------------------------------------------
@@ -225,12 +279,24 @@ def _check_neoforge(node: Any, game: str, path: str, errors: _Errors) -> None:
     if not isinstance(node, dict):
         errors.add(path, "expected an object")
         return
+    line = neoforge_line(game)
+    if line is None:
+        errors.add(path, f"NeoForge has no build line for {game}; use null plus a 'neoforge_note'")
+        return
     version = _check_text(node, "version", path, errors)
-    m = _GAME.match(game)
-    if version is not None and m:
-        prefix = f"{m.group(1)}.{m.group(2) or 0}."
-        if not version.startswith(prefix):
-            errors.add(f"{path}.version", f"NeoForge versions for {game} start with {prefix!r}")
+    prefix = line["prefix"]
+    if version is not None and not version.startswith(prefix):
+        errors.add(f"{path}.version", f"NeoForge versions for {game} start with {prefix!r}")
+    if "artifact" in node or line["artifact"] != "net.neoforged:neoforge":
+        if node.get("artifact") != line["artifact"]:
+            errors.add(f"{path}.artifact", f"expected {line['artifact']!r} for {game}")
+    if version is not None:
+        expected_maven = line["maven"].format(game=game, version=version)
+        if node.get("maven") != expected_maven:
+            errors.add(f"{path}.maven", f"expected {expected_maven!r}")
+        listed = line["listed_as"].format(game=game, version=version)
+        if listed != version and node.get("maven_version") != listed:
+            errors.add(f"{path}.maven_version", f"expected {listed!r}")
     beta = node.get("beta")
     channel = node.get("channel")
     if not isinstance(beta, bool):
@@ -244,14 +310,21 @@ def _check_neoforge(node: Any, game: str, path: str, errors: _Errors) -> None:
     inst = _get(node, "installer", path, errors)
     if inst is not None:
         _check_artifact(inst, f"{path}.installer", errors, ("sha1", "sha256", "sha512"), "maven-sidecar")
-        if version is not None and isinstance(inst.get("url"), str) and f"neoforge-{version}-installer.jar" not in inst["url"]:
+        jar = line["installer"].format(game=game, version=version)
+        if version is not None and isinstance(inst.get("url"), str) and jar not in inst["url"]:
             errors.add(f"{path}.installer.url", "must point at this version's installer jar")
-    if node.get("runtime_names") != "mojang-official":
-        errors.add(f"{path}.runtime_names", "expected 'mojang-official'")
+    if node.get("runtime_names") != line["runtime_names"]:
+        errors.add(f"{path}.runtime_names", f"expected {line['runtime_names']!r} for {game}")
     _check_text(node, "install_command", path, errors)
     toml = _get(node, "mods_toml", path, errors)
     if toml is not None:
         p = f"{path}.mods_toml"
+        if "file" in toml or line["manifest"] != "META-INF/neoforge.mods.toml":
+            if toml.get("file") != line["manifest"]:
+                errors.add(f"{p}.file", f"expected {line['manifest']!r} for {game}")
+        if "loader_dependency_id" in toml or line["dependency_id"] != "neoforge":
+            if toml.get("loader_dependency_id") != line["dependency_id"]:
+                errors.add(f"{p}.loader_dependency_id", f"expected {line['dependency_id']!r} for {game}")
         if toml.get("modLoader") != "javafml":
             errors.add(f"{p}.modLoader", "expected 'javafml'")
         for key in ("loaderVersion", "neoforge_dependency_range", "minecraft_dependency_range"):
@@ -264,6 +337,130 @@ def _check_neoforge(node: Any, game: str, path: str, errors: _Errors) -> None:
         nf_range = toml.get("neoforge_dependency_range")
         if version is not None and isinstance(nf_range, str) and version not in nf_range:
             errors.add(f"{p}.neoforge_dependency_range", "the lower bound must be the pinned NeoForge version")
+
+
+def _check_forge(node: Any, game: str, path: str, errors: _Errors) -> None:
+    if not isinstance(node, dict):
+        errors.add(path, "expected an object")
+        return
+    version = _check_text(node, "version", path, errors)
+    major = None
+    if version is not None:
+        m = _FORGE_VERSION.match(version)
+        if not m:
+            errors.add(f"{path}.version", "Forge versions look like <major>.<minor>.<build>")
+        else:
+            major = m.group(1)
+    mv = f"{game}-{version}"
+    if version is not None and node.get("maven_version") != mv:
+        errors.add(f"{path}.maven_version", f"expected {mv!r}")
+    promotion = node.get("promotion")
+    if promotion not in ("recommended", "latest"):
+        errors.add(f"{path}.promotion", "must be 'recommended' or 'latest' (promotions_slim.json)")
+    else:
+        if node.get("promotions_key") != f"{game}-{promotion}":
+            errors.add(f"{path}.promotions_key", f"expected {game}-{promotion!s}")
+        if promotion == "latest":
+            _check_text(node, "promotion_note", path, errors)
+    if version is not None and node.get("maven") != f"net.minecraftforge:forge:{mv}:installer":
+        errors.add(f"{path}.maven", f"expected 'net.minecraftforge:forge:{mv}:installer'")
+    inst = _get(node, "installer", path, errors)
+    if inst is not None:
+        _check_artifact(inst, f"{path}.installer", errors, ("sha1", "sha256", "sha512"), "maven-sidecar")
+        expected = f"{FORGE_MAVEN}{mv}/forge-{mv}-installer.jar"
+        if version is not None and inst.get("url") != expected:
+            errors.add(f"{path}.installer.url", f"expected {expected}")
+    if node.get("runtime_names") not in ("srg", "mojang-official"):
+        errors.add(f"{path}.runtime_names", "must be 'srg' or 'mojang-official', as read from the installer's install_profile.json")
+    for key in ("runtime_names_evidence", "eventbus", "mixin"):
+        _check_text(node, key, path, errors)
+    command = _check_text(node, "install_command", path, errors)
+    if command is not None and version is not None and (f"forge-{mv}-installer.jar" not in command or "--installServer" not in command):
+        errors.add(f"{path}.install_command", "must run this version's installer with --installServer")
+    toml = _get(node, "mods_toml", path, errors)
+    if toml is not None:
+        p = f"{path}.mods_toml"
+        if toml.get("file") != "META-INF/mods.toml":
+            errors.add(f"{p}.file", "expected 'META-INF/mods.toml'")
+        if toml.get("modLoader") != "javafml":
+            errors.add(f"{p}.modLoader", "expected 'javafml'")
+        for key in ("loaderVersion", "forge_dependency_range", "minecraft_dependency_range"):
+            value = _check_text(toml, key, p, errors)
+            if value is not None and not _MAVEN_RANGE.match(value):
+                errors.add(f"{p}.{key}", f"not a Maven version range: {value!r}")
+        if major is not None and toml.get("loaderVersion") != f"[{major},)":
+            errors.add(f"{p}.loaderVersion", f"javafml's version is the Forge major version; expected '[{major},)'")
+        fr = toml.get("forge_dependency_range")
+        if version is not None and isinstance(fr, str) and version not in fr:
+            errors.add(f"{p}.forge_dependency_range", "the lower bound must be the pinned Forge version")
+
+
+def _check_quilt(node: Any, game: str, fabric: Any, path: str, errors: _Errors) -> None:
+    if not isinstance(node, dict):
+        errors.add(path, "expected an object")
+        return
+    loader = _get(node, "loader", path, errors)
+    if loader is not None:
+        p = f"{path}.loader"
+        version = _check_text(loader, "version", p, errors)
+        if version is not None and not _STABLE_VERSION.match(version):
+            errors.add(f"{p}.version", "the pinned Quilt Loader must not be a pre-release (no '-beta.N')")
+        if loader.get("stable") is not True:
+            errors.add(f"{p}.stable", "the pinned Quilt Loader must be a stable release")
+        if version is not None and loader.get("maven") != f"org.quiltmc:quilt-loader:{version}":
+            errors.add(f"{p}.maven", f"expected 'org.quiltmc:quilt-loader:{version}'")
+        _check_artifact(loader, p, errors, ("sha1", "sha256", "sha512"), "maven-sidecar")
+        if isinstance(loader.get("url"), str) and not loader["url"].startswith(QUILT_MAVEN + "quilt-loader/"):
+            errors.add(f"{p}.url", f"must be on {QUILT_MAVEN}quilt-loader/")
+        _check_text(loader, "provides_fabricloader", p, errors)
+    if node.get("runtime_names") != "intermediary":
+        errors.add(f"{path}.runtime_names", "expected 'intermediary' (Quilt Loader's production namespace)")
+    if node.get("intermediary") != f"net.fabricmc:intermediary:{game}":
+        errors.add(f"{path}.intermediary", f"expected 'net.fabricmc:intermediary:{game}'")
+    elif isinstance(fabric, dict) and isinstance(fabric.get("intermediary"), dict):
+        if fabric["intermediary"].get("maven") != node["intermediary"] + ":v2":
+            errors.add(f"{path}.intermediary", "must be the same intermediary as fabric.intermediary")
+    _check_text(node, "runtime_names_evidence", path, errors)
+
+    api = _get(node, "api", path, errors)
+    if api is not None:
+        p = f"{path}.api"
+        _check_text(api, "name", p, errors)
+        _check_url(api.get("source"), f"{p}.source", errors)
+        kind = api.get("kind")
+        if kind == "qfapi":
+            version = _check_text(api, "version", p, errors)
+            if version is not None and not version.endswith("-" + game):
+                errors.add(f"{p}.version", f"QFAPI versions end with the game version; expected '...-{game}'")
+            if api.get("modrinth_project_id") != QFAPI_PROJECT:
+                errors.add(f"{p}.modrinth_project_id", f"expected the QFAPI/QSL project id {QFAPI_PROJECT!r}")
+            _check_text(api, "modrinth_version_id", p, errors)
+            _check_artifact(api, p, errors, ("sha1", "sha512"), "modrinth-api")
+        elif kind == "fabric-api":
+            if api.get("same_as") != "fabric.api":
+                errors.add(f"{p}.same_as", "expected 'fabric.api'")
+            fabric_api = fabric.get("api") if isinstance(fabric, dict) else None
+            if not isinstance(fabric_api, dict) or api.get("version") != fabric_api.get("version"):
+                errors.add(f"{p}.version", "must equal the pinned fabric.api version")
+            _check_text(api, "why", p, errors)
+        else:
+            errors.add(f"{p}.kind", "must be 'qfapi' or 'fabric-api'")
+
+    inst = _get(node, "installer", path, errors)
+    if inst is not None:
+        p = f"{path}.installer"
+        version = _check_text(inst, "version", p, errors)
+        if version is not None and inst.get("maven") != f"org.quiltmc:quilt-installer:{version}":
+            errors.add(f"{p}.maven", f"expected 'org.quiltmc:quilt-installer:{version}'")
+        _check_artifact(inst, p, errors, ("sha1", "sha256", "sha512"), "maven-sidecar")
+
+    harness = _get(node, "harness", path, errors)
+    if harness is not None:
+        if harness.get("method") != "installer":
+            errors.add(f"{path}.harness.method", "expected 'installer'")
+        steps = harness.get("steps")
+        if not isinstance(steps, list) or not steps or not all(isinstance(s, str) and s.strip() for s in steps):
+            errors.add(f"{path}.harness.steps", "must be a non-empty list of strings")
 
 
 def _check_parchment(node: Any, note: Any, game: str, path: str, errors: _Errors) -> None:
@@ -302,8 +499,14 @@ def validate(lock: Any) -> list[str]:
     if sources is not None:
         if not sources:
             errors.add("$.sources", "must list the metadata sources")
+        for key in REQUIRED_SOURCES:
+            if key not in sources:
+                errors.add(f"$.sources.{key}", "missing (--verify reads it)")
         for key, url in sources.items():
             _check_url(url, f"$.sources.{key}", errors)
+        pattern = sources.get("quilt_meta_loader_game")
+        if isinstance(pattern, str) and "{game_version}" not in pattern:
+            errors.add("$.sources.quilt_meta_loader_game", "missing placeholder {game_version}")
     glob = _get(lock, "global", "$", errors)
     if glob is not None:
         vf = _get(glob, "vineflower", "$.global", errors)
@@ -320,7 +523,11 @@ def validate(lock: Any) -> list[str]:
     if games is not None:
         for game in REQUIRED_GAME_VERSIONS:
             if game not in games:
-                errors.add(f"$.game_versions.{game}", "missing (both pinned game versions are required)")
+                errors.add(f"$.game_versions.{game}", f"missing (all pinned game versions are required: {', '.join(REQUIRED_GAME_VERSIONS)})")
+        by_game = jdk.get("by_game_version") if isinstance(jdk, dict) else None
+        if by_game is not None and not isinstance(by_game, dict):
+            errors.add("$.jdk.by_game_version", "expected an object of game version -> Java major")
+            by_game = None
         for game, entry in games.items():
             path = f"$.game_versions.{game}"
             if not _GAME.match(game):
@@ -328,19 +535,33 @@ def validate(lock: Any) -> list[str]:
             if not isinstance(entry, dict):
                 errors.add(path, "expected an object")
                 continue
-            for key in ("mojang", "fabric", "neoforge"):
-                if key not in entry:
-                    errors.add(f"{path}.{key}", "missing")
-            if "mojang" in entry:
+            if "mojang" not in entry:
+                errors.add(f"{path}.mojang", "missing")
+            else:
                 _check_mojang(entry["mojang"], f"{path}.mojang", errors)
                 if jdk is not None and isinstance(entry["mojang"], dict):
                     java = entry["mojang"].get("java_major")
                     if isinstance(java, int) and isinstance(jdk.get("major"), int) and java > jdk["major"]:
                         errors.add(f"{path}.mojang.java_major", "needs a newer JDK than $.jdk.major")
-            if "fabric" in entry:
-                _check_fabric(entry["fabric"], game, f"{path}.fabric", errors)
-            if "neoforge" in entry:
-                _check_neoforge(entry["neoforge"], game, f"{path}.neoforge", errors)
+                    if by_game is not None and isinstance(java, int) and by_game.get(game) != java:
+                        errors.add(f"$.jdk.by_game_version.{game}", f"must equal the Mojang javaVersion.majorVersion ({java})")
+            for key in LOADERS:
+                if key not in entry:
+                    errors.add(f"{path}.{key}", f"missing (use null plus a '{key}_note' when no build exists)")
+                    continue
+                if entry[key] is None:
+                    note = entry.get(f"{key}_note")
+                    if not isinstance(note, str) or not note.strip():
+                        errors.add(f"{path}.{key}", f"null {key} for {game} needs a non-empty sibling '{key}_note' saying why")
+                    continue
+                if key == "fabric":
+                    _check_fabric(entry[key], game, f"{path}.{key}", errors)
+                elif key == "neoforge":
+                    _check_neoforge(entry[key], game, f"{path}.{key}", errors)
+                elif key == "forge":
+                    _check_forge(entry[key], game, f"{path}.{key}", errors)
+                else:
+                    _check_quilt(entry[key], game, entry.get("fabric"), f"{path}.{key}", errors)
             if "parchment" not in entry:
                 errors.add(f"{path}.parchment", "missing (use null plus a 'parchment_note' when none exists)")
             else:
@@ -521,6 +742,40 @@ class _Verifier:
             else:
                 self.report.add("FAIL", subject, f"{algo} mismatch: publisher {published}, pinned {art[algo]}")
 
+    def modrinth_file(self, subject: str, api: dict, game: str, loader: str) -> None:
+        """Compare a pinned Modrinth version (id, version, game, loader, primary file) with the live API."""
+        live = fetch_json(f"{self.lock['sources']['modrinth_api']}/version/{api['modrinth_version_id']}")
+        problems = []
+        if live.get("project_id") != api["modrinth_project_id"]:
+            problems.append(f"project {live.get('project_id')}")
+        if live.get("version_number") != api["version"]:
+            problems.append(f"version {live.get('version_number')}")
+        if game not in live.get("game_versions", []):
+            problems.append(f"game_versions {live.get('game_versions')}")
+        if loader not in live.get("loaders", []):
+            problems.append(f"loaders {live.get('loaders')}")
+        primary = next((f for f in live.get("files", []) if f.get("primary")), None)
+        if primary is None:
+            problems.append("no primary file")
+        else:
+            if primary.get("url") != api["url"]:
+                problems.append(f"url {primary.get('url')}")
+            if primary.get("size") != api["size"]:
+                problems.append(f"size {primary.get('size')}")
+            for algo in ("sha1", "sha512"):
+                if primary.get("hashes", {}).get(algo) != api[algo]:
+                    problems.append(f"{algo} {primary.get('hashes', {}).get(algo)}")
+        if problems:
+            self.report.add("FAIL", subject, "Modrinth disagrees: " + "; ".join(problems))
+        else:
+            self.report.add("OK", subject, "Modrinth version, file url, size, sha1 and sha512 match")
+
+    def modrinth_releases(self, project: str, game: str, loader: str) -> list[dict]:
+        """Release versions of a Modrinth project for one game version and loader, newest first."""
+        params = urllib.parse.urlencode({"game_versions": json.dumps([game]), "loaders": json.dumps([loader])})
+        versions = fetch_json(f"{self.lock['sources']['modrinth_api']}/project/{project}/version?{params}")
+        return [v for v in versions if v.get("version_type") == "release"]
+
     # --- per source ---------------------------------------------------------
 
     def mojang(self, game: str, node: dict) -> None:
@@ -590,38 +845,13 @@ class _Verifier:
 
         api = node["api"]
         subject = f"{game} fabric.api"
-        live = fetch_json(f"{self.lock['sources']['modrinth_api']}/version/{api['modrinth_version_id']}")
-        problems = []
-        if live.get("project_id") != api["modrinth_project_id"]:
-            problems.append(f"project {live.get('project_id')}")
-        if live.get("version_number") != api["version"]:
-            problems.append(f"version {live.get('version_number')}")
-        if game not in live.get("game_versions", []):
-            problems.append(f"game_versions {live.get('game_versions')}")
-        if "fabric" not in live.get("loaders", []):
-            problems.append(f"loaders {live.get('loaders')}")
-        primary = next((f for f in live.get("files", []) if f.get("primary")), None)
-        if primary is None:
-            problems.append("no primary file")
-        else:
-            if primary.get("url") != api["url"]:
-                problems.append(f"url {primary.get('url')}")
-            if primary.get("size") != api["size"]:
-                problems.append(f"size {primary.get('size')}")
-            for algo in ("sha1", "sha512"):
-                if primary.get("hashes", {}).get(algo) != api[algo]:
-                    problems.append(f"{algo} {primary.get('hashes', {}).get(algo)}")
-        if problems:
-            self.report.add("FAIL", subject, "Modrinth disagrees: " + "; ".join(problems))
-        else:
-            self.report.add("OK", subject, "Modrinth version, file url, size, sha1 and sha512 match")
+        self.modrinth_file(subject, api, game, "fabric")
         published = parse_sidecar(fetch(api["maven_url"] + ".sha1", limit=4096).decode("ascii", "replace"))
         self.report.add("OK" if published == api["maven_sha1"] else "FAIL", subject,
                         "Fabric maven .sha1 matches" if published == api["maven_sha1"] else f"Fabric maven .sha1 is {published}")
         self.reachable(subject, api)
-        params = urllib.parse.urlencode({"game_versions": json.dumps([game]), "loaders": json.dumps(["fabric"])})
-        versions = fetch_json(f"{self.lock['sources']['modrinth_api']}/project/{api['modrinth_project_id']}/version?{params}")
-        newest = next((v["version_number"] for v in versions if v.get("version_type") == "release"), None)
+        versions = self.modrinth_releases(api["modrinth_project_id"], game, "fabric")
+        newest = next((v["version_number"] for v in versions), None)
         if newest and newest != api["version"]:
             self.report.add("INFO", subject, f"a newer Fabric API release exists for {game}: {newest}")
 
@@ -646,13 +876,18 @@ class _Verifier:
 
     def neoforge(self, game: str, node: dict) -> None:
         subject = f"{game} neoforge"
-        listing = self.cached_json(self.lock["sources"]["neoforge_versions"])
+        line = neoforge_line(game)
+        if line is None:
+            self.report.add("FAIL", subject, f"NeoForge has no build line for {game}")
+            return
+        listing = self.cached_json(self.lock["sources"][line["listing_source"]])
         versions = listing.get("versions", [])
-        if node["version"] not in versions:
-            self.report.add("FAIL", subject, f"{node['version']} not listed by the NeoForge maven API")
+        listed = line["listed_as"].format(game=game, version=node["version"])
+        if listed not in versions:
+            self.report.add("FAIL", subject, f"{listed} not listed by the NeoForge maven API ({line['artifact']})")
         else:
-            self.report.add("OK", subject, f"{node['version']} listed by the NeoForge maven API")
-            prefix = node["version"].rsplit(".", 1)[0] + "."
+            self.report.add("OK", subject, f"{listed} listed by the NeoForge maven API ({line['artifact']})")
+            prefix = listed.rsplit(".", 1)[0] + "."
 
             def build(v: str) -> int:
                 tail = v[len(prefix):].split("-", 1)[0]
@@ -662,12 +897,98 @@ class _Verifier:
             stable = [v for v in same_line if not v.endswith("-beta")]
             pool = stable if stable else same_line
             newest = max(pool, key=build) if pool else None
-            if newest and newest != node["version"]:
+            if newest and newest != listed:
                 self.report.add("INFO", subject, f"a newer {'stable' if stable else 'beta'} build exists: {newest}")
             if node["beta"] and stable:
                 self.report.add("WARN", subject, "pinned a beta although a stable build now exists")
         self.sidecars(subject, node["installer"])
         self.reachable(subject, node["installer"])
+
+    def forge(self, game: str, node: dict) -> None:
+        subject = f"{game} forge"
+        promos = self.cached_json(self.lock["sources"]["forge_promotions"]).get("promos", {})
+        key = node["promotions_key"]
+        live = promos.get(key)
+        if live is None:
+            self.report.add("FAIL", subject, f"promotions_slim.json has no {key!r}")
+        elif live == node["version"]:
+            self.report.add("OK", subject, f"{key} is {live}, the pinned build")
+        else:
+            self.report.add("INFO", subject, f"{key} is now {live}, pinned {node['version']} (re-lock needs a D- entry)")
+        if node["promotion"] == "latest" and promos.get(f"{game}-recommended"):
+            self.report.add("INFO", subject, f"a recommended build now exists: {promos[f'{game}-recommended']}")
+        latest = promos.get(f"{game}-latest")
+        if node["promotion"] == "recommended" and latest and latest != node["version"]:
+            self.report.add("INFO", subject, f"a newer build that is not recommended exists: {latest}")
+        self.sidecars(subject, node["installer"])
+        self.reachable(subject, node["installer"])
+
+    def quilt(self, game: str, node: dict, fabric: dict | None) -> None:
+        src = self.lock["sources"]
+        loader = node["loader"]
+        subject = f"{game} quilt.loader"
+        listing = self.cached_json(src["quilt_meta_loader"])
+        entry = next((x for x in listing if x.get("version") == loader["version"]), None)
+        if entry is None:
+            self.report.add("FAIL", subject, f"{loader['version']} not listed by Quilt meta")
+        else:
+            problems = []
+            if entry.get("file_size") != loader["size"]:
+                problems.append(f"file_size {entry.get('file_size')}")
+            for algo in ("sha1", "sha256", "sha512"):
+                if entry.get("hashes", {}).get(algo) != loader[algo]:
+                    problems.append(f"{algo} {entry.get('hashes', {}).get(algo)}")
+            if problems:
+                self.report.add("FAIL", subject, "Quilt meta disagrees: " + "; ".join(problems))
+            else:
+                self.report.add("OK", subject, f"{loader['version']} listed by Quilt meta with the pinned size and hashes")
+            stable = [x["version"] for x in listing if _STABLE_VERSION.match(str(x.get("version", "")))]
+            newest = max(stable, key=lambda v: tuple(int(p) for p in v.split(".")), default=None)
+            if newest and newest != loader["version"]:
+                self.report.add("INFO", subject, f"a newer stable Quilt Loader exists: {newest} (re-lock needs a D- entry)")
+        per_game = fetch_json(src["quilt_meta_loader_game"].format(game_version=game))
+        profile = next((x for x in per_game if x.get("loader", {}).get("version") == loader["version"]), None)
+        if profile is None:
+            self.report.add("FAIL", subject, f"Quilt meta has no {game} profile for loader {loader['version']}")
+        elif profile.get("intermediary", {}).get("maven") != node["intermediary"]:
+            self.report.add("FAIL", subject, f"Quilt meta pairs it with {profile.get('intermediary')}, pinned {node['intermediary']}")
+        else:
+            self.report.add("OK", subject, f"meta pairs loader {loader['version']} with {node['intermediary']}")
+        self.sidecars(subject, loader)
+        self.reachable(subject, loader)
+
+        api = node["api"]
+        subject = f"{game} quilt.api"
+        if api["kind"] == "qfapi":
+            self.modrinth_file(subject, api, game, "quilt")
+            self.reachable(subject, api)
+            newest = next((v["version_number"] for v in self.modrinth_releases(QFAPI_PROJECT, game, "quilt")), None)
+            if newest and newest != api["version"]:
+                self.report.add("INFO", subject, f"a newer QFAPI release exists for {game}: {newest}")
+        else:
+            releases = self.modrinth_releases(QFAPI_PROJECT, game, "quilt")
+            if releases:
+                self.report.add("WARN", subject, f"a QFAPI release now exists for {game} ({releases[0]['version_number']}); the lock still uses Fabric API")
+            else:
+                self.report.add("OK", subject, f"Modrinth lists no QFAPI release for {game}; Quilt uses the pinned Fabric API")
+            fabric_version = (fabric or {}).get("api", {}).get("version")
+            if fabric_version != api["version"]:
+                self.report.add("FAIL", subject, f"pins Fabric API {api['version']}, fabric.api is {fabric_version}")
+
+        inst = node["installer"]
+        subject = f"{game} quilt.installer"
+        installers = self.cached_json(src["quilt_meta_installer"])
+        entry = next((x for x in installers if x.get("version") == inst["version"]), None)
+        if entry is None:
+            self.report.add("FAIL", subject, f"{inst['version']} not listed by Quilt meta")
+        else:
+            same = entry.get("file_size") == inst["size"] and all(entry.get("hashes", {}).get(a) == inst[a] for a in ("sha1", "sha256", "sha512"))
+            self.report.add("OK" if same else "FAIL", subject,
+                            f"{inst['version']} listed by Quilt meta with the pinned size and hashes" if same else f"Quilt meta disagrees: {entry}")
+            if installers and installers[0].get("version") != inst["version"]:
+                self.report.add("INFO", subject, f"Quilt meta's newest installer is {installers[0].get('version')}")
+        self.sidecars(subject, inst)
+        self.reachable(subject, inst)
 
     def parchment(self, game: str, node: dict | None) -> None:
         subject = f"{game} parchment"
@@ -706,8 +1027,16 @@ def verify(lock: dict, only: str | None = None) -> Report:
         if only and game != only:
             continue
         v.guard(f"{game} mojang", lambda: v.mojang(game, entry["mojang"]))
-        v.guard(f"{game} fabric", lambda: v.fabric(game, entry["fabric"]))
-        v.guard(f"{game} neoforge", lambda: v.neoforge(game, entry["neoforge"]))
+        for key, check in (
+            ("fabric", lambda: v.fabric(game, entry["fabric"])),
+            ("neoforge", lambda: v.neoforge(game, entry["neoforge"])),
+            ("forge", lambda: v.forge(game, entry["forge"])),
+            ("quilt", lambda: v.quilt(game, entry["quilt"], entry.get("fabric"))),
+        ):
+            if entry.get(key) is None:
+                report.add("INFO", f"{game} {key}", f"no {key} pinned ({key}_note: {entry.get(f'{key}_note')})")
+            else:
+                v.guard(f"{game} {key}", check)
         v.guard(f"{game} parchment", lambda: v.parchment(game, entry.get("parchment")))
     if not only:
         v.guard("global vineflower", lambda: v.vineflower(lock["global"]["vineflower"]))
@@ -735,22 +1064,46 @@ def summary_lines(lock: dict) -> list[str]:
             ("vanilla server", game, e["mojang"]["server_jar"]),
             ("server mappings", "proguard", e["mojang"]["server_mappings"]),
             ("client mappings", "proguard", e["mojang"]["client_mappings"]),
-            ("fabric loader", e["fabric"]["loader"]["version"], e["fabric"]["loader"]),
-            ("intermediary", e["fabric"]["intermediary"]["version"], e["fabric"]["intermediary"]),
-            ("fabric api", e["fabric"]["api"]["version"], e["fabric"]["api"]),
-            ("fabric installer", e["fabric"]["installer"]["version"], e["fabric"]["installer"]),
-            ("server launcher", "meta-generated", e["fabric"]["server_launcher"]),
-            ("neoforge", e["neoforge"]["version"] + (" (beta)" if e["neoforge"]["beta"] else ""), e["neoforge"]["installer"]),
         ]
+        fb, nf, fg, qu = (e.get(k) for k in LOADERS)
+        if fb:
+            rows += [
+                ("fabric loader", fb["loader"]["version"], fb["loader"]),
+                ("intermediary", fb["intermediary"]["version"], fb["intermediary"]),
+                ("fabric api", fb["api"]["version"], fb["api"]),
+                ("fabric installer", fb["installer"]["version"], fb["installer"]),
+                ("server launcher", "meta-generated", fb["server_launcher"]),
+            ]
+        if nf:
+            rows.append(("neoforge", nf["version"] + (" (beta)" if nf["beta"] else ""), nf["installer"]))
+        if fg:
+            rows.append(("forge", f"{fg['version']} ({fg['promotion']})", fg["installer"]))
+        if qu:
+            rows.append(("quilt loader", qu["loader"]["version"], qu["loader"]))
+            if qu["api"]["kind"] == "qfapi":
+                rows.append(("quilt api (qfapi)", qu["api"]["version"], qu["api"]))
+            rows.append(("quilt installer", qu["installer"]["version"], qu["installer"]))
         if e.get("parchment"):
             rows.append(("parchment", e["parchment"]["version"], e["parchment"]))
         for name, version, art in rows:
-            lines.append(f"  {name:<17} {version:<20} {art['size']:>10,} B  {short(art)}")
+            lines.append(f"  {name:<17} {version:<22} {art['size']:>10,} B  {short(art)}")
+        for key in LOADERS:
+            if not e.get(key):
+                lines.append(f"  {key:<17} none ({key}_note)")
+        if qu and qu["api"]["kind"] == "fabric-api":
+            lines.append(f"  quilt api         {qu['api']['version']} (the pinned Fabric API; no QFAPI for {game})")
         if not e.get("parchment"):
             lines.append("  parchment         none (see notes)")
-        toml = e["neoforge"]["mods_toml"]
-        lines.append(f"  mods.toml         modLoader={toml['modLoader']} loaderVersion={toml['loaderVersion']} "
-                     f"neoforge={toml['neoforge_dependency_range']} minecraft={toml['minecraft_dependency_range']}")
+        names = (["fabric=intermediary"] if fb else []) + [f"{k}={e[k]['runtime_names']}" for k in ("neoforge", "forge", "quilt") if e.get(k)]
+        lines.append("  runtime names     " + " ".join(names))
+        if nf:
+            toml = nf["mods_toml"]
+            lines.append(f"  neoforge toml     {toml.get('file', 'META-INF/neoforge.mods.toml')} modLoader={toml['modLoader']} loaderVersion={toml['loaderVersion']} "
+                         f"{toml.get('loader_dependency_id', 'neoforge')}={toml['neoforge_dependency_range']} minecraft={toml['minecraft_dependency_range']}")
+        if fg:
+            toml = fg["mods_toml"]
+            lines.append(f"  forge toml        {toml['file']} modLoader={toml['modLoader']} loaderVersion={toml['loaderVersion']} "
+                         f"forge={toml['forge_dependency_range']} minecraft={toml['minecraft_dependency_range']}")
         lines.append("")
     vf = lock["global"]["vineflower"]
     lines.append(f"Global: vineflower {vf['version']}  {vf['size']:,} B  {short(vf)}")

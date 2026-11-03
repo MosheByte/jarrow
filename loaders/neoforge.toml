@@ -1,0 +1,250 @@
+# NeoForge loader profile. Format: docs/loaders.md.
+# Every fact comes from research-lock.json or docs/research/. "unknown" means not
+# researched yet; the comment beside it names the research still needed.
+
+schema = 1
+id = "neoforge"
+name = "NeoForge"
+modrinth_loader = "unknown"   # research needed: the Modrinth loader tag for NeoForge projects (https://api.modrinth.com/v2/tag/loader); not recorded in the research yet
+lock_section = "neoforge"
+research = ["docs/research/fabric-neoforge-notes.md", "research-lock.json"]
+
+# --------------------------------------------------------------------------- 1.20.1
+# NeoForge for 1.20.1 is the Forge 47.1 fork, published as net.neoforged:forge
+# (research-lock.json). It keeps Forge's manifest file, packages and dependency id, and runs on
+# SRG member names. Its mod-id rule, entrypoints, event model, registration, access
+# transformers, resource conditions and networking are not researched yet.
+
+[versions."1.20.1"]
+status = "partial"
+loader = "47.1.106"   # Maven version 1.20.1-47.1.106; FML 47.2.2
+java = "17"   # the game's Java version (research-lock.json mojang.java_major)
+
+[versions."1.20.1".manifest]
+path = "META-INF/mods.toml"
+format = "toml"
+schema = "modLoader (javafml) and loaderVersion ([47,)) are mandatory; mods depend on the loader as modId \"forge\", not \"neoforge\""
+source = "research-lock.json game_versions.1.20.1.neoforge.mods_toml"
+
+# research needed: the mod-id rule and its exact pattern on the Forge 47.1 fork
+[versions."1.20.1".mod_id]
+rule = "unknown"
+pattern = "unknown"
+source = "unknown"
+
+# research needed: the @Mod entry class and lifecycle order on the Forge 47.1 fork
+[versions."1.20.1".entrypoints]
+model = "unknown"
+kinds = "unknown"
+order = "unknown"
+source = "unknown"
+
+# research needed: the event model (buses, priorities, cancellation) of this build
+[versions."1.20.1".events]
+model = "unknown"
+ordering = "unknown"
+cancellation = "unknown"
+summary = "net.minecraftforge:eventbus:6.0.5 ships with this build; how listeners, priorities and cancellation work is not researched yet"
+source = "research-lock.json game_versions.1.20.1.neoforge.eventbus"
+
+# research needed: the registration model and when the registries freeze on this build
+[versions."1.20.1".registration]
+model = "unknown"
+freeze = "unknown"
+summary = "unknown"
+source = "unknown"
+
+[versions."1.20.1".mappings]
+runtime = "srg"   # Mojang class names with SRG field and method names
+source = "research-lock.json game_versions.1.20.1.neoforge.runtime_names_evidence"
+
+# research needed: whether MixinExtras ships, and how a mod declares its mixin configs on this build
+[versions."1.20.1".mixin]
+service = "shipped with NeoForge (read from its installer)"
+artifact = "org.spongepowered:mixin:0.8.5"
+mixinextras = "unknown"
+configs = "unknown"
+source = "research-lock.json game_versions.1.20.1.neoforge.mixin"
+
+# research needed: the access transformer format, path and names on this build
+[versions."1.20.1".access]
+format = "unknown"
+path = "unknown"
+namespace = "unknown"
+source = "unknown"
+
+# research needed: the resource-condition key and condition fields on this build
+[versions."1.20.1".resources]
+condition_key = "unknown"
+condition_id_field = "unknown"
+source = "unknown"
+
+# research needed: the networking API on this build
+[versions."1.20.1".networking]
+family = "unknown"
+summary = "unknown"
+source = "unknown"
+
+[versions."1.20.1".harness]
+install = "installer"
+lock = "game_versions.1.20.1.neoforge"
+summary = "java -jar forge-1.20.1-47.1.106-installer.jar --installServer, then run.sh or run.bat."
+source = "research-lock.json"
+
+[versions."1.20.1".api]
+name = "NeoForge (the Forge 47.1 fork)"
+separate = false   # mods depend on the loader itself, as modId "forge" on this line (mods_toml.loader_dependency_id)
+artifact = "net.neoforged:forge:1.20.1-47.1.106"
+source = "research-lock.json"
+
+# --------------------------------------------------------------------------- 1.21.1
+
+[versions."1.21.1"]
+status = "partial"
+loader = "21.1.265"   # FML 4.0.45
+java = "21"
+
+[versions."1.21.1".manifest]
+path = "META-INF/neoforge.mods.toml"
+format = "toml"
+schema = "modLoader and loaderVersion are mandatory; license is mandatory"
+source = "docs/research/fabric-neoforge-notes.md#7-neoforgemodstoml-format"
+
+[versions."1.21.1".mod_id]
+rule = "lowercase letters, digits and underscores; 2 to 64 characters"
+pattern = "unknown"   # research needed: FML's exact mod-id pattern, including whether the first character may be a digit or '_'
+source = "docs/research/fabric-neoforge-notes.md#3-fabricmodjson-schema-v1-and-the-neoforge-counterpart"
+
+[versions."1.21.1".entrypoints]
+model = "mod-annotation"
+kinds = ["@Mod class", "@Mod class with dist = Dist.CLIENT"]
+order = ["mod constructors", "@EventBusSubscriber", "FMLConstructModEvent", "registry events (NewRegistryEvent, DataPackRegistryEvent.NewRegistry, RegisterEvent)", "FMLCommonSetupEvent", "FMLClientSetupEvent or FMLDedicatedServerSetupEvent", "InterModComms", "FMLLoadCompleteEvent"]
+source = "docs/research/fabric-neoforge-notes.md#4-neoforge-mod-event-buses-lifecycle"
+
+[versions."1.21.1".events]
+model = "event-bus"
+ordering = "by priority, HIGHEST to LOWEST, then registration order; priorities are ignored for parallel events"
+cancellation = "events implementing ICancellableEvent can be cancelled; later listeners skip them unless they receive cancelled events"
+summary = "Two buses: the game bus NeoForge.EVENT_BUS and one mod bus per mod (IModBusEvent). In builds after 21.1.180, the pin included, @EventBusSubscriber registers on both buses."
+source = "docs/research/fabric-neoforge-notes.md#4-neoforge-mod-event-buses-lifecycle"
+
+[versions."1.21.1".registration]
+model = "register-event"
+freeze = "registries are writable only while the RegisterEvents fire, after mod construction and before FMLCommonSetupEvent"
+summary = "RegisterEvent on the mod bus, once per registry, or a DeferredRegister attached to the mod bus; custom registries use RegistryBuilder."
+source = "docs/research/fabric-neoforge-notes.md#5-registries-deferredregister-registerevent-freezing"
+
+[versions."1.21.1".mappings]
+runtime = "mojang"
+source = "docs/research/fabric-neoforge-notes.md#1-names-at-runtime-mappings"
+
+[versions."1.21.1".mixin]
+service = "in the NeoForge installer's library list"
+artifact = "net.fabricmc:sponge-mixin:0.16.4+mixin.0.8.7"
+mixinextras = "unknown"   # research needed: open question 2 in the research notes (no MixinExtras artifact in the installer library list; maybe jar-in-jar)
+configs = "[[mixins]] config in neoforge.mods.toml; no side key"
+source = "docs/research/fabric-neoforge-notes.md#8-mixin-refmaps-and-loader-differences"
+
+[versions."1.21.1".access]
+format = "access-transformer"
+path = "META-INF/accesstransformer.cfg, or the files listed in [[accessTransformers]]"
+namespace = "mojang"
+source = "docs/research/fabric-neoforge-notes.md#9-access-wideners-vs-access-transformers"
+
+[versions."1.21.1".resources]
+condition_key = "neoforge:conditions"
+condition_id_field = "type"
+source = "docs/research/fabric-neoforge-notes.md#10-resource-conditions"
+
+[versions."1.21.1".networking]
+family = "neoforge-payload-registrar"
+summary = "RegisterPayloadHandlersEvent with a PayloadRegistrar (playToClient, playToServer, playBidirectional) over vanilla CustomPacketPayload; handlers run on the main thread by default; the network registry locks at the end of mod loading."
+source = "docs/research/fabric-neoforge-notes.md#11-networking-payloads"
+
+[versions."1.21.1".harness]
+install = "installer"
+lock = "game_versions.1.21.1.neoforge"
+summary = "java -jar neoforge-21.1.265-installer.jar --installServer, then run.sh or run.bat."
+source = "docs/research/fabric-neoforge-notes.md#13-harness-provisioning"
+
+[versions."1.21.1".api]
+name = "NeoForge"
+separate = false   # the event and registry API ships inside NeoForge; converted jars depend on the neoforge mod id
+artifact = "net.neoforged:neoforge:21.1.265"
+source = "research-lock.json"
+
+# --------------------------------------------------------------------------- 1.21.11
+
+[versions."1.21.11"]
+status = "partial"
+loader = "21.11.48"   # FML 10.0.36
+java = "21"
+
+[versions."1.21.11".manifest]
+path = "META-INF/neoforge.mods.toml"
+format = "toml"
+schema = "modLoader defaults to javafml and loaderVersion to any version; both keys still accepted; license is mandatory"
+source = "docs/research/fabric-neoforge-notes.md#7-neoforgemodstoml-format"
+
+[versions."1.21.11".mod_id]
+rule = "lowercase letters, digits and underscores; 2 to 64 characters"
+pattern = "unknown"   # research needed: FML's exact mod-id pattern, including whether the first character may be a digit or '_'
+source = "docs/research/fabric-neoforge-notes.md#3-fabricmodjson-schema-v1-and-the-neoforge-counterpart"
+
+[versions."1.21.11".entrypoints]
+model = "mod-annotation"
+kinds = ["@Mod class", "@Mod class with dist = Dist.CLIENT"]
+order = ["mod constructors", "@EventBusSubscriber", "FMLConstructModEvent", "registry events (NewRegistryEvent, DataPackRegistryEvent.NewRegistry, RegisterEvent)", "FMLCommonSetupEvent", "FMLClientSetupEvent or FMLDedicatedServerSetupEvent", "InterModComms", "FMLLoadCompleteEvent"]
+source = "docs/research/fabric-neoforge-notes.md#4-neoforge-mod-event-buses-lifecycle"
+
+[versions."1.21.11".events]
+model = "event-bus"
+ordering = "by priority, HIGHEST to LOWEST, then registration order; priorities are ignored for parallel events"
+cancellation = "events implementing ICancellableEvent can be cancelled; later listeners skip them unless they receive cancelled events"
+summary = "Two buses: the game bus NeoForge.EVENT_BUS and one mod bus per mod (IModBusEvent); @EventBusSubscriber registers on both buses."
+source = "docs/research/fabric-neoforge-notes.md#4-neoforge-mod-event-buses-lifecycle"
+
+[versions."1.21.11".registration]
+model = "register-event"
+freeze = "registries are writable only while the RegisterEvents fire, after mod construction and before FMLCommonSetupEvent"
+summary = "RegisterEvent on the mod bus, or a DeferredRegister (with Blocks, Items, DataComponents and Entities variants); game rules are registry entries since 1.21.11."
+source = "docs/research/fabric-neoforge-notes.md#5-registries-deferredregister-registerevent-freezing"
+
+[versions."1.21.11".mappings]
+runtime = "mojang"
+source = "docs/research/fabric-neoforge-notes.md#1-names-at-runtime-mappings"
+
+[versions."1.21.11".mixin]
+service = "in the NeoForge installer's library list"
+artifact = "net.fabricmc:sponge-mixin:0.16.5+mixin.0.8.7"
+mixinextras = "unknown"   # research needed: open question 2 in the research notes (no MixinExtras artifact in the installer library list; maybe jar-in-jar)
+configs = "[[mixins]] config in neoforge.mods.toml, with requiredMods and behaviorVersion; no side key"
+source = "docs/research/fabric-neoforge-notes.md#8-mixin-refmaps-and-loader-differences"
+
+[versions."1.21.11".access]
+format = "access-transformer"
+path = "META-INF/accesstransformer.cfg, or the files listed in [[accessTransformers]]"
+namespace = "mojang"
+source = "docs/research/fabric-neoforge-notes.md#9-access-wideners-vs-access-transformers"
+
+[versions."1.21.11".resources]
+condition_key = "neoforge:conditions"
+condition_id_field = "type"
+source = "docs/research/fabric-neoforge-notes.md#10-resource-conditions"
+
+[versions."1.21.11".networking]
+family = "neoforge-payload-registrar"
+summary = "As on 1.21.1, but client handlers register in a separate RegisterClientPayloadHandlersEvent."
+source = "docs/research/fabric-neoforge-notes.md#11-networking-payloads"
+
+[versions."1.21.11".harness]
+install = "installer"
+lock = "game_versions.1.21.11.neoforge"
+summary = "java -jar neoforge-21.11.48-installer.jar --installServer, then run.sh or run.bat."
+source = "docs/research/fabric-neoforge-notes.md#13-harness-provisioning"
+
+[versions."1.21.11".api]
+name = "NeoForge"
+separate = false   # the event and registry API ships inside NeoForge; converted jars depend on the neoforge mod id
+artifact = "net.neoforged:neoforge:21.11.48"
+source = "research-lock.json"

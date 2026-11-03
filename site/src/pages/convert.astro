@@ -6,17 +6,22 @@ import Base from '../layouts/Base.astro';
 
 <Base
   title="Convert"
-  description="The Jarrow converter will turn a Fabric mod JAR into a NeoForge JAR in your browser. It is not built yet (milestone M3)."
+  description="The Jarrow converter will turn a mod JAR for one loader into a JAR for another, in your browser. It is not built yet (milestone M3), and no direction is available yet."
 >
   <div class="wrap">
     <PageIntro
-      eyebrow="Fabric → NeoForge"
+      eyebrow="Any loader to any loader (planned)"
       title="Convert"
-      lead="Drop a Fabric mod JAR, get a NeoForge JAR back with a report of everything that changed."
+      lead="You will drop a mod JAR built for Fabric, NeoForge, Forge or Quilt and get it back for another of those loaders, with a report of everything that changed."
     />
 
     <NotBuilt milestone="M3" what="The converter">
       <p>There is no drop zone here yet, because nothing would happen if you used it.</p>
+      <p>
+        No direction is available yet. Fabric → NeoForge comes first; the other eleven follow in a fixed order, and
+        each one appears here only once it has its own column on the <a href="/board/">board</a>. See
+        <a href="/docs/directions/">Directions</a> for the order and the status of each.
+      </p>
     </NotBuilt>
 
     <div class="prose body">
@@ -24,10 +29,14 @@ import Base from '../layouts/Base.astro';
       <ol>
         <li>
           You drop one or more <code>.jar</code> files. Within two seconds the page shows, for each one: mod id,
-          name, version, loader, game version, license (from <code>fabric.mod.json</code>), dependencies, and the
-          <a href="/docs/tiers/">tier</a> the classifier assigned, with the reason.
+          name, version, loader, game version, license (from the loader's manifest, such as
+          <code>fabric.mod.json</code>), dependencies, and the <a href="/docs/tiers/">tier</a> the classifier
+          assigned, with the reason.
         </li>
-        <li>You pick the target: NeoForge, for Minecraft 1.21.1 or 1.21.11.</li>
+        <li>
+          You pick the target loader and game version. Only directions that have a board column will be offered;
+          the v1 goal is every pair of Fabric, NeoForge, Forge and Quilt on Minecraft 1.20.1, 1.21.1 and 1.21.11.
+        </li>
         <li>
           <span class="tier tier-a">Tier A</span> converts in your browser with a progress log. The JAR never
           leaves your machine. The result is a download link that exists only in that tab, plus a report: what

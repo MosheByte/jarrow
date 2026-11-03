@@ -2,9 +2,34 @@
 
 [![CI](https://github.com/MosheByte/jarrow/actions/workflows/ci.yml/badge.svg)](https://github.com/MosheByte/jarrow/actions/workflows/ci.yml)
 
-Drop a Minecraft Fabric mod JAR on a web page and get the same mod back for NeoForge, with a proof that it behaves the same.
+Drop a Minecraft mod JAR on a web page and get the same mod back for another loader, with a proof that it behaves the same.
+
+The goal for v1 is any loader to any loader: Fabric, NeoForge, Forge and Quilt, every pair in both directions, on Minecraft 1.20.1, 1.21.1 and 1.21.11, with a harness report for each result.
 
 **Status: pre-alpha — milestone M0; nothing converts yet.** The repository, CI, site skeleton and docs are being set up. There is no converter, no harness and no board yet. See [ROADMAP.md](ROADMAP.md) for what comes when.
+
+## Directions
+
+Four loaders make 12 directions. They are built in a fixed order, starting with Fabric → NeoForge (decision D-029 in [DECISIONS.md](DECISIONS.md)).
+
+A direction is measured by its own column on the nightly board, where the parity harness marks each mod green, yellow or red. No direction is offered on the site before its column exists. Today no column exists, so no direction is offered.
+
+| Order | Direction | Bar for v1 | Board column | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Fabric → NeoForge | At least 60% green | Not yet | First in the order. Milestone M0 now, then M1 (the harness and the board). Nothing converts yet |
+| 2 | NeoForge → Fabric | At least 50% green | Not yet | Not started |
+| 3 | Fabric → Quilt | At least 50% green | Not yet | Not started |
+| 3 | Quilt → Fabric | At least 50% green | Not yet | Not started |
+| 4 | Forge → NeoForge | At least 50% green | Not yet | Not started |
+| 4 | NeoForge → Forge | At least 50% green | Not yet | Not started |
+| 5 | Fabric → Forge | At least 50% green | Not yet | Not started |
+| 5 | Forge → Fabric | At least 50% green | Not yet | Not started |
+| 6 | Quilt → Forge | At least 50% green | Not yet | Not started |
+| 6 | Forge → Quilt | At least 50% green | Not yet | Not started |
+| 6 | Quilt → NeoForge | At least 50% green | Not yet | Not started |
+| 6 | NeoForge → Quilt | At least 50% green | Not yet | Not started |
+
+Each direction gets its own page in [docs/directions/](docs/directions/), written before its rule tables. Each loader is described once, in its profile under [loaders/](loaders/).
 
 ## Links
 
@@ -12,7 +37,7 @@ Drop a Minecraft Fabric mod JAR on a web page and get the same mod back for NeoF
 | --- | --- |
 | Site | https://jarrow.pages.dev |
 | Docs | [docs/](docs/) in this repository; Rust API docs at https://moshebyte.github.io/jarrow/ |
-| Board | Not built yet (milestone M1). The site shows its counter, which is zero until the first nightly run. |
+| Board | Not built yet (milestone M1). It will have one column per direction, starting with Fabric → NeoForge. The site shows its counter, which is zero until the first nightly run. |
 | Roadmap | [ROADMAP.md](ROADMAP.md) and the project board at https://github.com/users/MosheByte/projects/1 |
 | Discussions | https://github.com/MosheByte/jarrow/discussions |
 
@@ -24,7 +49,9 @@ Every JAR is sorted into one tier before anything else happens:
 - **Tier B** runs a short-lived GitHub Actions job (decompile, rules, agent fix, recompile, harness) for signed-in users, and the workspace is wiped afterwards.
 - **Unsupported** means the page tells you plainly why (native libraries, bytecode transformers, obfuscated JARs, or a license that forbids modification) and converts nothing.
 
-A result is "green" only when the parity harness says so. The harness starts a Fabric server with the original mod and a NeoForge server with the converted one, dumps registries, recipes, tags, loot tables and a worldgen sample, and compares them. Until the harness exists, nothing is green.
+One engine handles every direction. Each loader has one profile, and the rule tables come in inverse pairs (A → B together with B → A). Each pair is tested by a round trip: a mod converted from A to B and back to A is run through the harness against the original.
+
+A result is "green" only when the parity harness says so. The harness starts a server on the original loader with the original mod and a server on the target loader with the converted one, dumps registries, recipes, tags, loot tables and a worldgen sample, and compares them. Until the harness exists, nothing is green.
 
 Jarrow never hosts, caches or links to converted JARs. Conversion is for your own game unless you are the mod's author. Authors can opt their mod out completely. Details are in [docs/legal.md](docs/legal.md).
 
@@ -46,7 +73,7 @@ Every person who authored or committed a commit on main, shown by GitHub login, 
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MosheByte"><img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=80" width="80px;" alt="MosheByte"/><br /><sub><b>MosheByte</b></sub></a><br /><sub>Owner: sets direction, holds the accounts. Commits through this account are written by the agent and disclosed in their trailers.</sub><br /><sub>3 commits</sub><br /><a href="#ideas-MosheByte" title="Ideas, Planning, &amp; Feedback">🤔</a> <a href="#projectManagement-MosheByte" title="Project Management">📆</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MosheByte"><img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=80" width="80px;" alt="MosheByte"/><br /><sub><b>MosheByte</b></sub></a><br /><sub>Owner: sets direction, holds the accounts. Commits through this account are written by the agent and disclosed in their trailers.</sub><br /><sub>4 commits</sub><br /><a href="#ideas-MosheByte" title="Ideas, Planning, &amp; Feedback">🤔</a> <a href="#projectManagement-MosheByte" title="Project Management">📆</a></td>
     </tr>
   </tbody>
 </table>
@@ -58,7 +85,7 @@ Agents have no GitHub account of their own here. They act through the owner's ac
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://www.anthropic.com/claude"><img src="https://avatars.githubusercontent.com/u/76263028?v=4&amp;s=80" width="80px;" alt="Claude Opus 5.5"/><br /><sub><b>Claude Opus 5.5</b></sub></a><br /><sub>Engineering: writes the code, docs and infrastructure; co-author of every commit it touches</sub><br /><sub>3 commits</sub><br /><a href="#agent-claude-opus-5-5" title="AI agent">🤖</a> <a href="#code-claude-opus-5-5" title="Code">💻</a> <a href="#doc-claude-opus-5-5" title="Documentation">📖</a> <a href="#test-claude-opus-5-5" title="Tests">⚠️</a> <a href="#infra-claude-opus-5-5" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://www.anthropic.com/claude"><img src="https://avatars.githubusercontent.com/u/76263028?v=4&amp;s=80" width="80px;" alt="Claude Opus 5.5"/><br /><sub><b>Claude Opus 5.5</b></sub></a><br /><sub>Engineering: writes the code, docs and infrastructure; co-author of every commit it touches</sub><br /><sub>4 commits</sub><br /><a href="#agent-claude-opus-5-5" title="AI agent">🤖</a> <a href="#code-claude-opus-5-5" title="Code">💻</a> <a href="#doc-claude-opus-5-5" title="Documentation">📖</a> <a href="#test-claude-opus-5-5" title="Tests">⚠️</a> <a href="#infra-claude-opus-5-5" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     </tr>
   </tbody>
 </table>
@@ -92,8 +119,8 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). Security issues go through [SECURITY.md
 
 ## License
 
-The code is MIT ([LICENSE](LICENSE)). The rule tables under `rules/` are CC0-1.0, so anyone can reuse what they describe about the Fabric and NeoForge APIs.
+The code is MIT ([LICENSE](LICENSE)). The rule tables under `rules/` are CC0-1.0, so anyone can reuse what they describe about the loader APIs.
 
 ---
 
-Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Not affiliated with the Fabric or NeoForge projects.
+Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Not affiliated with the Fabric, NeoForge, Forge or Quilt projects.
