@@ -210,3 +210,11 @@ Every default the build agent takes is logged here. The project requires this lo
 **Reversal cost:** None to keep. GitHub may still serve the old commits by direct SHA until its caches expire. A full purge needs a GitHub Support request (noted in docs/spec-amendments.md A-12).
 **Links:** .gitignore, docs/spec-amendments.md A-12
 
+## D-027 — macOS CI runs on the Intel image
+
+**Date:** 2026-11-03
+**Decision:** The macOS leg of `ci.yml` uses `macos-15-intel` instead of `macos-latest` (arm64).
+**Why:** On 2026-11-03, GitHub could not schedule `macos-latest` jobs for this repository. Run https://github.com/MosheByte/jarrow/actions/runs/41656296502 ended with "The job was not acquired by Runner of type hosted even after multiple attempts" and the notice "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times". The rerun and the next run stayed queued for more than 20 minutes. Releases still build arm64 macOS binaries by cross-compiling (M5).
+**Reversal cost:** Low: change the matrix label back once arm64 capacity is reliable.
+**Links:** .github/workflows/ci.yml
+

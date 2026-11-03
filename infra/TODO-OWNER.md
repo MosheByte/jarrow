@@ -18,6 +18,12 @@ gh secret set MINECRAFT_EULA_ACCEPTED --repo MosheByte/jarrow --body true
 
 The owner set `CLOUDFLARE_API_TOKEN` as an Actions secret on 2026-11-03 at 14:27 UTC. It is a broad account token on purpose. Cloudflare is Connected (D-021), and no Cloudflare item goes on this list again.
 
+### Ask GitHub Support to purge the pre-rewrite commits (optional)
+
+`main`'s history was replaced once (D-026), but GitHub still serves the old commits by direct SHA.
+Evidence, 2026-11-03: after the force-push, `gh api repos/MosheByte/jarrow/commits/03b5d9a --jq .sha` still returned `03b5d9ad4e73710988781ecefffa657af821dfb0`.
+No REST or GraphQL endpoint, and no `gh` command, deletes cached commits or garbage-collects a repository. Only GitHub Support can do it, and only for the account owner. Open a request at https://support.github.com/request → "Remove sensitive data". Name the repository `MosheByte/jarrow` and the old commits `884864c`, `e8d672f`, `ba958d2`, `9e28d6c` and `03b5d9a`.
+
 ## M4 — Deep
 
 ### GitHub OAuth app (sign-in and author mode)
