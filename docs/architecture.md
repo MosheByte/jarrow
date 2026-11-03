@@ -10,7 +10,7 @@ Every package is named `jarrow-<crate>` (library `jarrow_<crate>`), except the C
 
 | Crate | Owns | Notes | Status |
 | --- | --- | --- | --- |
-| `crates/jar` | Reading and writing JARs and manifests; signatures stripped; deterministic output | Pure Rust zip; byte-stable output so two runs give identical hashes | Planned (M1) |
+| `crates/jar` | Reading and writing JARs and manifests; signatures stripped; deterministic output | Pure Rust zip; byte-stable output so two runs give identical hashes | Exists (M1: read with zip64 and zip-bomb limits, deterministic write, manifests, signature stripping, nested jars; [jar.md](jar.md)) |
 | `crates/classfile` | Java class-file parser and writer: constant pool, attributes, stack maps | Bytecode only, no decompilation. Round-trip tests on the JDK class library and the board set | Planned (M1) |
 | `crates/mappings` | Intermediary, Mojang official, Yarn, Parchment; tiny v2 and ProGuard formats; composition and inversion | Mojang mappings are fetched from the version manifest at runtime, never vendored | Planned (M1) |
 | `crates/remap` | Class, member and descriptor remapping over `classfile`, including string constants that name classes (reflection, mixin targets) | Differential-tested against tiny-remapper output | Planned (M2) |
