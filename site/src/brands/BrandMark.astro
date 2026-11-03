@@ -1,0 +1,64 @@
+---
+// A third-party brand, shown the way site/BRAND-SOURCES.md records it:
+//
+//   logo brands   the official inline mark (aria-hidden), then the brand's name as text
+//   text brands   the name alone, in the site's own type
+//
+// Use this for every brand the site names next to a mark or in a link row, so that switching a
+// brand from text to logo (once its terms allow it) is one change in brands.ts. The mark takes
+// the surrounding text colour; put it only in white or the white text greys, never in the
+// accent, since none of the logo brands allows recolouring to a tint.
+//
+//   <BrandMark brand="github" />                  mark + "GitHub"
+//   <BrandMark brand="rust" label="Written in Rust" />
+//   <BrandMark brand="fabric" />                  "Fabric" as text
+import { brand, type BrandId } from './brands.ts';
+import GitHub from './GitHub.astro';
+import Rust from './Rust.astro';
+import WebAssembly from './WebAssembly.astro';
+
+const MARKS = { GitHub, Rust, WebAssembly };
+
+interface Props {
+  brand: BrandId;
+  /** Mark size in px: 14 to 20, as the thirty rules allow (rule 22). */
+  size?: number;
+  /** Text to show instead of the bare name. It must contain the brand's name. */
+  label?: string;
+  class?: string;
+}
+
+const { brand: id, size = 16, label, class: className } = Astro.props;
+const entry = brand(id);
+const text = label ?? entry.name;
+
+if (!text.includes(entry.name)) {
+  throw new Error(`BrandMark "${id}": the label "${text}" must contain the brand's name "${entry.name}".`);
+}
+if (!Number.isInteger(size) || size < 14 || size > 20) {
+  throw new Error(`BrandMark "${id}": size ${size} is outside 14 to 20 px.`);
+}
+
+let Mark: (typeof MARKS)[keyof typeof MARKS] | undefined;
+if (entry.shownAs === 'logo') {
+  const component = entry.mark?.component;
+  Mark = component && component in MARKS ? MARKS[component as keyof typeof MARKS] : undefined;
+  if (!Mark) {
+    throw new Error(`BrandMark "${id}" is a logo brand but src/brands/ has no component "${component}".`);
+  }
+}
+---
+
+<span class:list={['brand-mark', className]} data-brand={id}>{Mark && <Mark size={size} />}<span class="brand-mark-name">{text}</span></span>
+
+<style>
+  .brand-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .brand-mark > :global(svg) {
+    flex: none;
+  }
+</style>

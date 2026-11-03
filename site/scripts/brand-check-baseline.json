@@ -1,0 +1,20 @@
+{
+  "$comment": "Known brand-check offenders in files the brands pull request could not edit: PR #16 owns src/data/team.json, src/pages/index.astro and src/pages/roadmap.astro, and wave B rewrites the other components. Each entry is allowed up to its count; anything else fails. Lower or remove an entry when its file is fixed. index.astro allows 2 ArrowRight because PR #16's version has two. See site/BRAND-SOURCES.md.",
+  "allowed": [
+    { "file": "public/favicon.svg", "rule": "svg-without-source", "subject": "svg", "count": 1 },
+    { "file": "src/components/GitHubMark.astro", "rule": "simple-icons", "subject": "simple-icons", "count": 1 },
+    { "file": "src/components/GitHubMark.astro", "rule": "svg-without-source", "subject": "svg", "count": 1 },
+    { "file": "src/components/NotBuilt.astro", "rule": "lucide-unmarked", "subject": "Construction", "count": 1 },
+    { "file": "src/components/PlannedPage.astro", "rule": "lucide-unmarked", "subject": "CalendarClock", "count": 1 },
+    { "file": "src/components/TeamGrid.astro", "rule": "lucide-unmarked", "subject": "ExternalLink", "count": 1 },
+    { "file": "src/components/TeamGrid.astro", "rule": "lucide-unmarked", "subject": "Key", "count": 1 },
+    { "file": "src/components/ThemeToggle.astro", "rule": "lucide-unmarked", "subject": "Moon", "count": 1 },
+    { "file": "src/components/ThemeToggle.astro", "rule": "lucide-unmarked", "subject": "Sun", "count": 1 },
+    { "file": "src/data/team.json", "rule": "emoji-near-brand", "subject": "⚙️ near GitHub", "count": 1 },
+    { "file": "src/pages/index.astro", "rule": "lucide-unmarked", "subject": "ArrowRight", "count": 2 },
+    { "file": "src/pages/index.astro", "rule": "lucide-unmarked", "subject": "BookOpen", "count": 1 },
+    { "file": "src/pages/index.astro", "rule": "lucide-unmarked", "subject": "MapIcon", "count": 1 },
+    { "file": "src/pages/roadmap.astro", "rule": "icon-near-brand", "subject": "ExternalLink near GitHub", "count": 1 },
+    { "file": "src/pages/roadmap.astro", "rule": "lucide-unmarked", "subject": "ExternalLink", "count": 1 }
+  ]
+}
