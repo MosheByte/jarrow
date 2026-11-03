@@ -137,6 +137,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "jarrow-jar"
+version = "0.1.0"
+dependencies = [
+ "miniz_oxide",
+ "proptest",
+]
+
+[[package]]
 name = "jarrow-report"
 version = "0.1.0"
 dependencies = [
