@@ -10,7 +10,7 @@ The list is never edited by hand. This script writes four outputs from one set o
                               markers, one sub-heading per group, the role line under each
                               name. Only the text between the markers changes.
     docs/team.md              the same three groups as a page, with roles and commit counts
-    site/src/data/team.json   the same data for the site's /about page
+    site/src/data/team.json   the same data for the site's /contributors and /about pages
 
 Usage:
     python tools/contributors.py              write every output
@@ -1318,7 +1318,8 @@ def render_team_md(team: Team) -> str:
         "",
         "The people, agents, and bots and automation that work on this repository, and what "
         "each one does. The same list is in the [README](../README.md#who-works-on-jarrow) "
-        "and on the site's [About page](https://jarrow.pages.dev/about/).",
+        "and on the site's [Contributors](https://jarrow.pages.dev/contributors/) and "
+        "[About](https://jarrow.pages.dev/about/) pages.",
         "",
         "Commit counts come from `git log` on `main`, up to the newest counted commit "
         f"({team.generated_at}). The refresh commits that update this list are not counted. "
