@@ -35,9 +35,13 @@ To be attempted through the API in M4. If GitHub refuses, the error will be past
 
 ## M5 — Public
 
+### OpenSSF Best Practices badge — done
+
+The owner signed in at bestpractices.dev, and the agent created project 16297 (https://www.bestpractices.dev/en/projects/16297) and answered the basics with repository evidence.
+
 These items are attempted through every route when M5 starts. They move here with the pasted error only if all routes fail:
 
-- the crates.io and npm first publish (the names were free on 2026-11-03; the `claim-names.yml` workflow is ready)
+- the crates.io and npm first publish (the names were free on 2026-11-03; the publish workflow is written in M5)
 - the org `jarrow-dev` and repository transfer (needed for the merge queue)
 - Sponsors enrolment
 - the Discord webhook

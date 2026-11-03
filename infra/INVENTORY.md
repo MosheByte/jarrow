@@ -68,6 +68,7 @@ Status columns:
 | Discussion categories | Nightly results, rule proposals, ports | GraphQL `createDiscussionCategory` does not exist; REST returned 404. Created through the GitHub web UI in an authenticated maintainer browser session | Connected | "Nightly results", "Rule proposals" and "Show your port" exist (D-011). |
 | Renovate | Dependency PRs | Needs the Renovate GitHub App installed | Needs the owner (optional) | Fallback: Dependabot for Cargo, npm, Actions and pip (D-014). |
 | Codecov | Coverage reporting | No token | Needs the owner (optional) | Fallback: CI measures coverage with `cargo llvm-cov` and enforces the 80% floor itself. |
+| OpenSSF Best Practices badge | Scorecard CII-Best-Practices, trust | Project 16297 created on 2026-11-03 through the maintainer's signed-in session; basics answered with repository evidence (25%) | Connected | https://www.bestpractices.dev/en/projects/16297. The remaining criteria are answered as milestones prove them. |
 | Sigstore, SLSA provenance | Release signing | Keyless through GitHub OIDC | Self-configurable | Wired in `release.yml` (M5). |
 | Homebrew tap, Scoop bucket | CLI distribution | Tap and bucket repos can be created under MosheByte | Self-configurable | Pushing from CI needs a token (`HOMEBREW_TAP_TOKEN`), which is an owner item. |
 | winget, AUR | CLI distribution | winget needs PRs to microsoft/winget-pkgs with a token; AUR needs an account and SSH key | Needs the owner | M5. |
