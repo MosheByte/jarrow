@@ -1,0 +1,4 @@
+tiny	2	0	left	right
+	escaped-names
+c	odd\\name	odd\tname
+	f	I	f\\1	f\n1
