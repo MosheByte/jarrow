@@ -32,7 +32,7 @@ Checked on 2026-11-03 with `gh api` and the Cloudflare inventory ([infra/INVENTO
 
 | Access | Who | Notes |
 | --- | --- | --- |
-| GitHub organization `jarrow-dev`, owner role | MosheByte | The only member and the only owner. The organization does not require 2FA yet ([#25](https://github.com/jarrow-dev/jarrow/issues/25)); the owner's account has 2FA on |
+| GitHub organization `jarrow-dev`, owner role | MosheByte | The only member and the only owner. The organization requires 2FA (`two_factor_requirement_enabled` is `true`, checked 2026-11-03), and the owner's second factor is TOTP or a passkey, not SMS |
 | Repository `jarrow-dev/jarrow`, admin | MosheByte | No other collaborator |
 | `main` ruleset | Nobody can bypass it | Pull request required, linear history, squash only, `ci-ok` required, merge queue |
 | Actions secrets (`CLOUDFLARE_API_TOKEN`, `BOT_DEPLOY_KEY`, `MINECRAFT_EULA_ACCEPTED`, and the planned ones in the inventory) | Set by the owner (the deploy key by the agent, on the owner's account) | Values are never in the repository or a log. Names only in [infra/INVENTORY.md](infra/INVENTORY.md) |
@@ -45,19 +45,20 @@ Checked on 2026-11-03 with `gh api` and the Cloudflare inventory ([infra/INVENTO
 
 ## Access continuity and bus factor
 
-**Today both are not met.** The bus factor is 1. One person, the owner, holds every admin right: the GitHub organization, the repository, the Cloudflare account, every secret and the badge entry. The AI agent does not change that: it has no account of its own, works only through the owner's account and tools, and cannot accept terms or create accounts. If the owner could not continue, nobody else could merge a pull request, rotate a secret, deploy the site or publish a release, so the OpenSSF criteria `access_continuity` (silver) and `bus_factor` (silver and gold) are not met, and neither is gold `contributors_unassociated`.
+The bus factor is 1. One person, the owner, holds every admin right: the GitHub organization, the repository, the Cloudflare account, every secret and the badge entry. The AI agent does not change that: it has no account of its own, works only through the owner's account and tools, and stops if the owner's access goes. The project never counts the agent, a bot or a second account of the owner as another person.
 
-The public parts would survive: the code is MIT, the rule tables are CC0, and the repository is mirrored to GitLab once the mirror token exists ([.github/workflows/mirror.yml](.github/workflows/mirror.yml)). Anyone could fork and continue under another name. That is not continuity of this project.
+**Access continuity** (OpenSSF silver `access_continuity`) follows the route the criterion gives a project run by one person: keys in a lockbox and a will that grants the legal rights. The lockbox holds, by name, what someone needs to create and close issues, accept pull requests and publish a release within a week:
 
-What would meet them:
+1. the owner role of the GitHub organization `jarrow-dev`, with its 2FA recovery codes;
+2. the Cloudflare account that holds the Pages project `jarrow`, D1, KV and R2;
+3. the crates.io and npm accounts that own the package names, once claimed;
+4. the OpenSSF Best Practices entry and the GitLab mirror.
 
-1. **A second human maintainer, not associated with the owner,** who has made significant contributions and whom the owner trusts.
-2. **Admin on GitHub:** the second maintainer becomes an owner of the `jarrow-dev` organization (with 2FA, which the organization should then require, [#25](https://github.com/jarrow-dev/jarrow/issues/25)), and so an admin of the repository and of its private vulnerability reports.
-3. **Admin on Cloudflare:** the second maintainer becomes a Super Administrator member of the Cloudflare account that holds the Pages project, D1, KV and R2, so they can deploy, rotate `CLOUDFLARE_API_TOKEN` and restore the site.
-4. **Everything else follows from those two:** with organization ownership they can replace every Actions secret and the deploy key, and with Cloudflare membership every Cloudflare resource. Package registry names, once claimed, get the second maintainer as an owner too, and so does the badge entry.
-5. With that in place, either maintainer alone can create and close issues, accept pull requests and publish a release within a week of losing the other, which is what `access_continuity` asks. The bus factor becomes 2.
+Secrets in GitHub Actions need no copy: an organization owner can replace every one of them. Everything else is rebuildable from the repository itself. The lockbox and the will are the owner's to set up ([infra/TODO-OWNER.md](infra/TODO-OWNER.md)). Until the owner confirms both exist, the badge entry marks `access_continuity` as not met.
 
-Until then this is an open owner item. This file changes when it does.
+**Bus factor** (silver SHOULD, gold MUST), gold **`contributors_unassociated`** and gold **`two_person_review`** stay not met until people from outside the project contribute and review. The way in for them is the `good-first-rule` issues and the path in [CONTRIBUTING.md](CONTRIBUTING.md). When a contributor has made significant contributions and the owner trusts them, they become a maintainer with organization and Cloudflare admin, and this section changes.
+
+The public parts survive regardless: the code is MIT, the rule tables are CC0, and the repository is mirrored to GitLab ([.github/workflows/mirror.yml](.github/workflows/mirror.yml)). Anyone may fork and continue.
 
 ## Changing this document
 
