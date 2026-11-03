@@ -1,0 +1,6 @@
+# Outputs of the checks, the screenshots and Lighthouse CI.
+out/
+shots/
+.lighthouseci/
+serve.log
+serve.pid
