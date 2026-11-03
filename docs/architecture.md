@@ -10,9 +10,9 @@ Every package is named `jarrow-<crate>` (library `jarrow_<crate>`), except the C
 
 | Crate | Owns | Notes | Status |
 | --- | --- | --- | --- |
-| `crates/jar` | Reading and writing JARs and manifests; signatures stripped; deterministic output | Pure Rust zip; byte-stable output so two runs give identical hashes | Planned (M1) |
+| `crates/jar` | Reading and writing JARs and manifests; signatures stripped; deterministic output | Pure Rust zip; byte-stable output so two runs give identical hashes | Exists (M1: read with zip64 and zip-bomb limits, deterministic write, manifests, signature stripping, nested jars; [jar.md](jar.md)) |
 | `crates/classfile` | Java class-file parser and writer: constant pool, attributes, stack maps | Bytecode only, no decompilation. Round-trip tests on the JDK class library and the board set | Planned (M1) |
-| `crates/mappings` | Intermediary, Mojang official, Yarn, Parchment; tiny v2 and ProGuard formats; composition and inversion | Mojang mappings are fetched from the version manifest at runtime, never vendored | Planned (M1) |
+| `crates/mappings` | Intermediary, Mojang official, Yarn, Parchment; tiny v2 and ProGuard formats; composition and inversion | Mojang mappings are fetched from the version manifest at runtime, never vendored | Exists (M1: tiny v1 and v2, ProGuard, TSRG and TSRG2 read and write; compose, invert, chain; see [mappings.md](mappings.md). Parchment not built yet) |
 | `crates/remap` | Class, member and descriptor remapping over `classfile`, including string constants that name classes (reflection, mixin targets) | Differential-tested against tiny-remapper output | Planned (M2) |
 | `crates/manifest` | `fabric.mod.json` to `neoforge.mods.toml`, mixin configs, access wideners to access transformers, `pack.mcmeta` | Lossless where possible; the report lists every field it could not translate | Planned (M1) |
 | `crates/rules` | Rule-table loader and matcher: call rewrites, class substitutions, event bridges, entrypoint adapters | Data-driven; tables are TOML under `rules/fabric-neoforge/<game-version>/` ([rules.md](rules.md)) | Planned (M2) |
@@ -23,7 +23,7 @@ Every package is named `jarrow-<crate>` (library `jarrow_<crate>`), except the C
 | `crates/wasm` | `wasm-bindgen` surface for the browser: `classify`, `convert`, streaming progress | Budget: 4 MB gzipped | Planned (M3) |
 | `crates/cli` | The `jarrow` binary: `convert`, `check`, `report`, `board-run` | Released with cargo-dist | Exists (M0 skeleton: `--version` and `tokens` only; `check` in M1, `convert` in M2) |
 | `crates/harness` | Starts headless Fabric and NeoForge servers, dumps registries, recipes, tags, loot and worldgen, diffs and scores | Needs a JDK; runs in Actions and locally ([harness.md](harness.md)) | Exists (M1: dump schema and validation, hash-verified Fabric and NeoForge provisioning, EULA-gated runner, baseline noise, diff and score; Forge and Quilt not built yet) |
-| `crates/board` | Fetches the top-1,000 list from Modrinth, runs classify, convert and harness, writes results | Nightly job | Planned (M1) |
+| `crates/board` | Fetches the top-1,000 list from Modrinth, runs classify, convert and harness, writes results | Nightly job | Exists (M1 wave 1: `list`, `shard`, `merge` and `board.yml`; classify, convert and the harness are not wired yet, so every mod is red with "no converter yet"; [board-pipeline.md](board-pipeline.md)) |
 
 ### Dependency direction
 

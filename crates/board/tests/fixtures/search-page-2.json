@@ -1,0 +1,21 @@
+{
+  "hits": [
+    {
+      "project_id": "DDDDDDD4",
+      "project_type": "mod",
+      "slug": "delta",
+      "title": "Delta",
+      "description": "A hand-written fixture project; not a real mod.",
+      "categories": ["fabric"],
+      "versions": ["1.21.1", "1.21.11"],
+      "downloads": 2000,
+      "icon_url": "https://cdn.modrinth.com/data/DDDDDDD4/icon.webp",
+      "license": "MPL-2.0",
+      "client_side": "optional",
+      "server_side": "optional"
+    }
+  ],
+  "offset": 3,
+  "limit": 100,
+  "total_hits": 4
+}

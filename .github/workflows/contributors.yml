@@ -1,11 +1,13 @@
 # Refreshes "Who works on Jarrow" every night: the README section between the all-contributors
 # markers, .all-contributorsrc, docs/team.md and site/src/data/team.json. tools/contributors.py
-# writes all four; nobody edits them by hand.
-# The workflow token stays read-only. When an output changed, the job commits as jarrow-bot and
-# pushes with the BOT_DEPLOY_KEY deploy key. The key goes to a 0600 file under RUNNER_TEMP,
-# reaches git only through GIT_SSH_COMMAND, is never echoed, and is deleted when the step ends.
-# The commit carries the trailer "Jarrow-Generated: contributors", which tools/contributors.py
-# leaves out of every count, so a refresh never causes another refresh.
+# writes all four; nobody edits them by hand. The same job writes the contributor numbers for
+# LEDGER.md (tools/contributors.py --ledger, then tools/ledger.py).
+# Every change goes through a pull request, the bot's included. tools/bot_pr.sh commits the
+# outputs as jarrow-bot on a bot/contributors-<date> branch, pushes it with the BOT_DEPLOY_KEY
+# deploy key (so ci.yml runs on the push and the head commit gets ci-ok), opens the pull request
+# with the workflow token and turns on auto-merge. Nothing is pushed to main. The commit carries
+# the trailer "Jarrow-Generated: contributors", which tools/contributors.py leaves out of every
+# count, so a refresh never causes another refresh. See docs/community-automation.md.
 name: contributors
 
 on:
@@ -23,14 +25,16 @@ concurrency:
 jobs:
   refresh:
     name: refresh
-    # Only main's copy of this workflow may push with the deploy key.
+    # Only main's copy of this workflow may use the deploy key.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
-      contents: read
+      # Enabling auto-merge needs write access to contents. The token never pushes: the branch
+      # goes up with the deploy key, and the main ruleset accepts changes only through a PR.
+      contents: write
       checks: read # the GitHub Apps behind check suites and check runs on main
-      pull-requests: read # bot pull request authors
+      pull-requests: write # open the bot pull request; read bot and merged PR authors
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,70 +44,26 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
-      - name: Regenerate the list
+      - name: Regenerate the list and the contributor numbers
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python tools/contributors.py
-      - name: Look for changes
-        id: changes
         run: |
           set -euo pipefail
-          if [ -n "$(git status --porcelain -- README.md .all-contributorsrc docs/team.md site/src/data/team.json)" ]; then
-            git status --short -- README.md .all-contributorsrc docs/team.md site/src/data/team.json
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "The list is up to date."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Commit as jarrow-bot and push
-        if: steps.changes.outputs.changed == 'true'
+          python tools/contributors.py
+          python tools/contributors.py --ledger
+          python tools/ledger.py
+      - name: Open the refresh pull request
         env:
           GH_TOKEN: ${{ github.token }}
           BOT_DEPLOY_KEY: ${{ secrets.BOT_DEPLOY_KEY }}
-          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          outputs=(README.md .all-contributorsrc docs/team.md site/src/data/team.json)
-          key="$RUNNER_TEMP/jarrow-bot-key"
-          hosts="$RUNNER_TEMP/github-known-hosts"
-          msg="$RUNNER_TEMP/commit-message.txt"
-          trap 'rm -f "$key"' EXIT
-          if [ -z "$BOT_DEPLOY_KEY" ]; then
-            echo "::error::BOT_DEPLOY_KEY is missing, so the refreshed list cannot be pushed"
-            exit 1
-          fi
-          (umask 077 && printf '%s\n' "$BOT_DEPLOY_KEY" > "$key")
-          chmod 600 "$key"
-          unset BOT_DEPLOY_KEY
-          # GitHub's SSH host keys, read over HTTPS from the API rather than trusted on first use.
-          gh api meta --jq '.ssh_keys[] | "github.com " + .' > "$hosts"
-          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
-          remote="git@github.com:${REPO}.git"
-          git config user.name "jarrow-bot"
-          git config user.email "jarrow-bot@noreply.invalid"
-          cat > "$msg" <<'EOF'
-          chore(team): refresh the contributors list
+          body="$RUNNER_TEMP/contributors-pr.md"
+          cat > "$body" <<'EOF'
+          Nightly refresh of "Who works on Jarrow" and the contributor numbers in LEDGER.md.
 
-          Regenerated by tools/contributors.py in the nightly contributors workflow.
-
-          Jarrow-Generated: contributors
-          Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+          Regenerated by `tools/contributors.py`, `tools/contributors.py --ledger` and `tools/ledger.py` in the nightly contributors workflow. Nobody edits these files by hand.
           EOF
-          for attempt in 1 2 3; do
-            if [ -z "$(git status --porcelain -- "${outputs[@]}")" ]; then
-              echo "The list is up to date."
-              exit 0
-            fi
-            git add -- "${outputs[@]}"
-            git commit -q -F "$msg"
-            if git push -q "$remote" HEAD:main; then
-              echo "Pushed $(git rev-parse --short HEAD) to main as jarrow-bot."
-              exit 0
-            fi
-            echo "Push attempt $attempt failed; fetching main and regenerating on top of it."
-            git fetch -q "$remote" main
-            git reset -q --hard FETCH_HEAD
-            python tools/contributors.py
-          done
-          echo "::error::Could not push the refreshed list after 3 attempts"
-          exit 1
+          bash tools/bot_pr.sh contributors "chore(team): refresh the contributors list" "$body" -- \
+            README.md .all-contributorsrc docs/team.md site/src/data/team.json \
+            ledger/inputs/contributors.json LEDGER.md

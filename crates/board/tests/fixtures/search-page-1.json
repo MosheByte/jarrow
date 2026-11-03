@@ -1,0 +1,59 @@
+{
+  "hits": [
+    {
+      "project_id": "AAAAAAA1",
+      "project_type": "mod",
+      "slug": "alpha-lib",
+      "author": "example-author",
+      "title": "Alpha Lib",
+      "description": "A hand-written fixture project; not a real mod.",
+      "categories": ["fabric", "library", "neoforge"],
+      "display_categories": ["fabric", "library", "neoforge"],
+      "versions": ["1.20.1", "1.21.1", "1.21.11"],
+      "downloads": 5000,
+      "follows": 10,
+      "icon_url": "https://cdn.modrinth.com/data/AAAAAAA1/icon.png",
+      "date_created": "2025-01-01T00:00:00.000000Z",
+      "date_modified": "2026-10-01T00:00:00.000000Z",
+      "latest_version": "AV000003",
+      "license": "MIT",
+      "client_side": "optional",
+      "server_side": "required",
+      "gallery": [],
+      "color": 1234
+    },
+    {
+      "project_id": "BBBBBBB2",
+      "project_type": "mod",
+      "slug": "beta-tweaks",
+      "author": "example-author",
+      "title": "Beta Tweaks",
+      "description": "A hand-written fixture project; not a real mod.",
+      "categories": ["fabric", "quilt", "utility"],
+      "display_categories": ["fabric", "quilt", "utility"],
+      "versions": ["1.21.11"],
+      "downloads": 4000,
+      "icon_url": null,
+      "license": "LicenseRef-All-Rights-Reserved",
+      "client_side": "required",
+      "server_side": "unsupported"
+    },
+    {
+      "project_id": "CCCCCCC3",
+      "project_type": "mod",
+      "slug": "forge-only-thing",
+      "author": "example-author",
+      "title": "Forge Only Thing",
+      "description": "Matches the version facet but ships no Fabric file for a pinned version.",
+      "categories": ["fabric", "forge"],
+      "versions": ["1.19.2", "1.21.1"],
+      "downloads": 3000,
+      "license": "Apache-2.0",
+      "client_side": "unknown",
+      "server_side": "unknown"
+    }
+  ],
+  "offset": 0,
+  "limit": 100,
+  "total_hits": 4
+}

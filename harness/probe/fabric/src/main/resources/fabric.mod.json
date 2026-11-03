@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "jarrow_probe",
+  "version": "${version}",
+  "name": "Jarrow Probe",
+  "description": "Jarrow's harness probe for test servers. On server start it writes jarrow-dump.json (registries, tags, recipes, loot tables, advancements and a worldgen sample) into the server directory, then stops the server.",
+  "authors": ["Jarrow contributors"],
+  "contributors": ["Jarrow (https://github.com/MosheByte/jarrow)"],
+  "contact": {
+    "homepage": "https://jarrow.pages.dev",
+    "sources": "https://github.com/MosheByte/jarrow",
+    "issues": "https://github.com/MosheByte/jarrow/issues"
+  },
+  "license": "MIT",
+  "environment": "server",
+  "entrypoints": {
+    "main": ["io.github.moshebyte.jarrow.probe.fabric.JarrowProbeFabric"]
+  },
+  "depends": {
+    "fabricloader": ">=${loaderVersion}",
+    "fabric-lifecycle-events-v1": "*",
+    "minecraft": "${gameVersion}",
+    "java": ">=${javaRelease}"
+  }
+}

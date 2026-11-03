@@ -68,6 +68,20 @@ ledger/inputs/perf.json  (CLI timings in the nightly from M2, browser timings fr
       ]                                       "surface" is "cli" or "wasm"
     }
 
+ledger/inputs/contributors.json  (tools/contributors.py --ledger, nightly contributors workflow)
+    {
+      "schema": 1,
+      "as_of": "2026-11-03",                  last day of the window (UTC)
+      "window_days": 30,
+      "sources": ["git", "github-pulls"],     "github-pulls": merged PR authors were read
+      "contributors_30d": {                   bots are never counted
+        "people": {"count": 1, "logins": ["MosheByte"]},
+        "agents": {"count": 1, "names": ["Claude Opus 5.5"]}
+      },
+      "first_time_contributors_30d": {"count": 0, "logins": []}
+    }                                         null when the merged-PR lookup was unavailable;
+                                              every count equals the length of its list
+
 An area is listed under "What works" only when the harness measured it and at least 95%
 of the measured mods are green (WORKS_THRESHOLD). Anything measured below that, or not
 measured at all, is "Partial"; areas with an "unsupported" reason are "Unsupported".
@@ -88,7 +102,9 @@ OUTPUT = "LEDGER.md"
 SCHEMA = 1
 WORKS_THRESHOLD = Fraction(95, 100)
 MAX_RED_REASONS = 50
+MAX_NAMES = 30
 NO_NIGHTLY = "No nightly has run yet."
+NO_DATA = "No data yet"
 
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -174,6 +190,10 @@ class _Reader:
 
     def child(self, key: str) -> _Reader:
         return _Reader(self.source, self._get(key), f"{self.where}.{key}")
+
+    def optional_child(self, key: str) -> _Reader | None:
+        value = self._get(key)
+        return None if value is None else _Reader(self.source, value, f"{self.where}.{key}")
 
     def schema(self) -> None:
         value = self._get("schema")
@@ -311,6 +331,37 @@ def _perf(r: _Reader) -> dict[str, Any]:
     return perf
 
 
+def _named(r: _Reader, key: str) -> list[str]:
+    """{"count": n, key: [...]}: n distinct names."""
+    count = r.count("count")
+    names = r.texts(key)
+    r.done()
+    if len(set(names)) != len(names):
+        raise r.error("repeats a name", key)
+    if count != len(names):
+        raise r.error(f"count is {count}, but {key} has {len(names)}")
+    return names
+
+
+def _contributors(r: _Reader) -> dict[str, Any]:
+    data: dict[str, Any] = {
+        "as_of": r.text("as_of", _DATE),
+        "window_days": r.count("window_days"),
+        "sources": r.texts("sources"),
+    }
+    unknown = sorted(set(data["sources"]) - {"git", "github-pulls"})
+    if unknown:
+        raise r.error("names unknown sources: " + ", ".join(unknown), "sources")
+    c = r.child("contributors_30d")
+    data["people"] = _named(c.child("people"), "logins")
+    data["agents"] = _named(c.child("agents"), "names")
+    c.done()
+    first = r.optional_child("first_time_contributors_30d")
+    data["first_time"] = None if first is None else _named(first, "logins")
+    r.done()
+    return data
+
+
 def load_inputs(root: Path) -> dict[str, dict[str, Any] | None]:
     """Reads and validates every input under ROOT/ledger/inputs/. Missing files are None."""
     loaders = {
@@ -318,6 +369,7 @@ def load_inputs(root: Path) -> dict[str, dict[str, Any] | None]:
         "coverage": ("coverage.json", _coverage),
         "wasm": ("wasm.json", _wasm),
         "perf": ("perf.json", _perf),
+        "contributors": ("contributors.json", _contributors),
     }
     inputs: dict[str, dict[str, Any] | None] = {}
     for key, (name, parse) in loaders.items():
@@ -503,7 +555,7 @@ def render(root: Path) -> str:
     out.append("")
 
     out += ["## Numbers from the last nightly", ""]
-    if all(v is None for v in inputs.values()):
+    if all(inputs[k] is None for k in ("board", "coverage", "wasm", "perf")):
         out.append(f"{NO_NIGHTLY} Each number below names the milestone that first produces it.")
         out.append("")
     out += _table(["Number", "Value", "Source"], _numbers(inputs))
@@ -536,7 +588,59 @@ def render(root: Path) -> str:
         if out[-1] == "":
             out.pop()
     out.append("")
+
+    out += _contributors_section(inputs["contributors"])
     return "\n".join(out)
+
+
+def _names(names: list[str]) -> str:
+    shown = ", ".join(_md(n) for n in names[:MAX_NAMES])
+    hidden = len(names) - MAX_NAMES
+    return f"{shown} and {hidden:,} more" if hidden > 0 else shown
+
+
+def _counted(n: int, one: str, many: str, names: list[str]) -> str:
+    text = f"{n:,} {one if n == 1 else many}"
+    return f"{text} ({_names(names)})" if names else text
+
+
+def _contributors_section(data: dict[str, Any] | None) -> list[str]:
+    out = ["## Contributors", ""]
+    if data is None:
+        out.append(
+            f"{NO_DATA}. `tools/contributors.py --ledger` writes these numbers in the nightly "
+            "contributors workflow."
+        )
+        out.append("")
+        out += _table(
+            ["Number", "Value"],
+            [["Contributors (30 days)", NO_DATA], ["First-time contributors (30 days)", NO_DATA]],
+        )
+        out.append("")
+        return out
+    window = f"the {data['window_days']} days to {data['as_of']} (UTC)"
+    if "github-pulls" in data["sources"]:
+        source = "merged pull requests (GitHub) and commit authors and co-authors (git)"
+    else:
+        source = "commit authors and co-authors (git) only; merged pull requests could not be read"
+    out.append(f"Who landed work in {window}, from {source}. Bots are not counted.")
+    out.append("")
+    people, agents = data["people"], data["agents"]
+    contributors = (
+        f"{_counted(len(people), 'person', 'people', people)}; "
+        f"{_counted(len(agents), 'agent', 'agents', agents)}"
+    )
+    first = data["first_time"]
+    if first is None:
+        first_text = "not measured: the merged pull request lookup was unavailable"
+    else:
+        first_text = _counted(len(first), "person", "people", first)
+    out += _table(
+        ["Number", "Value"],
+        [["Contributors (30 days)", contributors], ["First-time contributors (30 days)", first_text]],
+    )
+    out.append("")
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:

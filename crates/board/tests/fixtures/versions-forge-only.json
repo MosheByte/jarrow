@@ -1,0 +1,42 @@
+[
+  {
+    "id": "CV000001",
+    "project_id": "CCCCCCC3",
+    "version_number": "0.9.0-forge",
+    "version_type": "release",
+    "date_published": "2026-03-01T00:00:00Z",
+    "game_versions": ["1.21.1"],
+    "loaders": ["forge"],
+    "files": [
+      {
+        "hashes": {
+          "sha512": "485d4d17037cddf4ad54c9af1388df47600e61be6179736e65104182315603adaa88012551d04d0b8c915391e913b320f1b1ba907bea4a68bb7d4bbd35304c5d"
+        },
+        "url": "https://cdn.modrinth.com/data/CCCCCCC3/versions/CV000001/thing-forge.jar",
+        "filename": "thing-forge.jar",
+        "primary": true,
+        "size": 3001
+      }
+    ]
+  },
+  {
+    "id": "CV000002",
+    "project_id": "CCCCCCC3",
+    "version_number": "0.8.0-fabric-alpha",
+    "version_type": "alpha",
+    "date_published": "2026-02-01T00:00:00Z",
+    "game_versions": ["1.21.1"],
+    "loaders": ["fabric"],
+    "files": [
+      {
+        "hashes": {
+          "sha512": "485d4d17037cddf4ad54c9af1388df47600e61be6179736e65104182315603adaa88012551d04d0b8c915391e913b320f1b1ba907bea4a68bb7d4bbd35304c5d"
+        },
+        "url": "https://cdn.modrinth.com/data/CCCCCCC3/versions/CV000002/thing-fabric.jar",
+        "filename": "thing-fabric.jar",
+        "primary": true,
+        "size": 3002
+      }
+    ]
+  }
+]

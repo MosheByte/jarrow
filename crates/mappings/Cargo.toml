@@ -1,0 +1,27 @@
+[package]
+name = "jarrow-mappings"
+description = "Mapping formats and composition for Jarrow: tiny v1 and v2, ProGuard, TSRG and TSRG2, with compose, invert and namespace chains."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+name = "jarrow_mappings"
+
+# No runtime dependencies: the crate builds for wasm32-unknown-unknown and does no I/O.
+[dependencies]
+
+[dev-dependencies]
+# Property tests for compose and invert (std only: no fork, no timeout, no file persistence).
+proptest = { version = "1.12.0", default-features = false, features = ["std"] }
+# The ignored live test only: research-lock.json, sha1 checks and the intermediary jar entry.
+serde_json.workspace = true
+sha1 = "0.10.6"
+miniz_oxide = "0.9.1"
+
+[lints]
+workspace = true

@@ -1,0 +1,51 @@
+[
+  {
+    "id": "BV000003",
+    "project_id": "BBBBBBB2",
+    "version_number": "1.5.0",
+    "version_type": "release",
+    "date_published": "2026-07-01T00:00:00Z",
+    "game_versions": ["1.21.11"],
+    "loaders": ["fabric"],
+    "files": [
+      {
+        "hashes": {
+          "sha512": "b6fd539243c0fd84ad9d566b5fa4741f630826e7e2ce7af5b0350d986d788ea7de96f0baeb8fc36966a7512b69538e260c36a485cb05effb54768d70e8510812"
+        },
+        "url": "https://example.invalid/beta-tweaks-1.5.0.jar",
+        "filename": "beta-tweaks-1.5.0.jar",
+        "primary": true,
+        "size": 2003
+      }
+    ]
+  },
+  {
+    "id": "BV000002",
+    "project_id": "BBBBBBB2",
+    "version_number": "1.4.2",
+    "version_type": "release",
+    "date_published": "2026-06-01T00:00:00Z",
+    "game_versions": ["1.21.11"],
+    "loaders": ["fabric", "quilt"],
+    "files": [
+      {
+        "hashes": {
+          "sha512": "35e2a9c5d2856f492be25fdd035b3b6602bee7a6ff5f4b3bef072ce5bed6b43398e70a87c45fcf377a3af0feb3ea8343692a73d79b9851ada86a378cd52ea273"
+        },
+        "url": "https://cdn.modrinth.com/data/BBBBBBB2/versions/BV000002/beta-tweaks-1.4.2-sources.jar",
+        "filename": "beta-tweaks-1.4.2-sources.jar",
+        "primary": false,
+        "size": 2001
+      },
+      {
+        "hashes": {
+          "sha512": "9126d6fddbe0e5b043fc65d5852d1b6cabc46461c609f0d25178de78e43caba3e9a5e2034c2c048676202d6a467bd5cee9c0d78c7b17695f7b2994c1dd6e5d4c"
+        },
+        "url": "https://cdn.modrinth.com/data/BBBBBBB2/versions/BV000002/beta-tweaks-1.4.2.jar",
+        "filename": "beta-tweaks-1.4.2.jar",
+        "primary": true,
+        "size": 2002
+      }
+    ]
+  }
+]

@@ -1,0 +1,132 @@
+{
+ "github.com": [
+  "artists",
+  "benchmarks",
+  "docs",
+  "docs-faq",
+  "docs-how-horizon-is-built",
+  "docs-install",
+  "docs-performance",
+  "docs-settings",
+  "docs-troubleshooting",
+  "home",
+  "hub",
+  "mods",
+  "players",
+  "privacy",
+  "releases",
+  "stats"
+ ],
+ "discord.gg": [
+  "artists",
+  "docs",
+  "docs-faq",
+  "docs-how-horizon-is-built",
+  "docs-install",
+  "docs-performance",
+  "docs-settings",
+  "docs-troubleshooting",
+  "home",
+  "hub"
+ ],
+ "lu4ovic.com": [
+  "artists",
+  "benchmarks",
+  "docs",
+  "docs-faq",
+  "docs-how-horizon-is-built",
+  "docs-install",
+  "docs-performance",
+  "docs-settings",
+  "docs-troubleshooting",
+  "home",
+  "hub",
+  "mods",
+  "players",
+  "privacy",
+  "releases",
+  "stats"
+ ],
+ "dezerx.com": [
+  "artists",
+  "benchmarks",
+  "docs",
+  "docs-faq",
+  "docs-how-horizon-is-built",
+  "docs-install",
+  "docs-performance",
+  "docs-settings",
+  "docs-troubleshooting",
+  "home",
+  "hub",
+  "mods",
+  "players",
+  "privacy",
+  "releases",
+  "stats"
+ ],
+ "openfontlicense.org": [
+  "artists",
+  "benchmarks",
+  "docs",
+  "docs-faq",
+  "docs-how-horizon-is-built",
+  "docs-install",
+  "docs-performance",
+  "docs-settings",
+  "docs-troubleshooting",
+  "home",
+  "hub",
+  "mods",
+  "players",
+  "privacy",
+  "releases",
+  "stats"
+ ],
+ "docs.github.com": [
+  "artists",
+  "benchmarks",
+  "docs",
+  "docs-faq",
+  "docs-how-horizon-is-built",
+  "docs-install",
+  "docs-performance",
+  "docs-settings",
+  "docs-troubleshooting",
+  "home",
+  "hub",
+  "mods",
+  "players",
+  "privacy",
+  "releases",
+  "stats"
+ ],
+ "playhorizon.dev": [
+  "docs-faq",
+  "docs-how-horizon-is-built",
+  "docs-performance",
+  "docs-troubleshooting",
+  "hub",
+  "privacy",
+  "releases",
+  "stats"
+ ],
+ "www.ebay.com": [
+  "benchmarks"
+ ],
+ "psref.lenovo.com": [
+  "benchmarks"
+ ],
+ "commons.wikimedia.org": [
+  "benchmarks"
+ ],
+ "en.wikipedia.org": [
+  "home"
+ ],
+ "my.sculkhosting.com": [
+  "home"
+ ],
+ "adoptium.net": [
+  "docs-install"
+ ]
+}
