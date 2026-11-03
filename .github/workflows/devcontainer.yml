@@ -1,0 +1,165 @@
+# Builds the development container (.devcontainer/Dockerfile) and publishes it as
+# ghcr.io/moshebyte/jarrow-devcontainer:latest and :<commit sha>, with a signed build
+# provenance attestation. devcontainer.json opens :latest, so a Codespace starts ready.
+# Check an image with:
+#   gh attestation verify oci://ghcr.io/moshebyte/jarrow-devcontainer:latest --repo MosheByte/jarrow
+#
+# Pull requests that touch .devcontainer/ build and test the image and never push it. Pushes to
+# main that change the image's inputs, the weekly rebuild and manual runs on main publish it.
+# Both jobs run devcontainer.json's postCreateCommand inside the image first
+# (.devcontainer/test-image.sh). Only the publish job may write packages; it pushes with
+# GITHUB_TOKEN. When the repository moves to an organisation (amendment A-1), change IMAGE
+# here and "image" in devcontainer.json together.
+name: devcontainer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".devcontainer/**"
+      - "rust-toolchain.toml"
+      - "tools/requirements-dev.txt"
+      - ".github/workflows/devcontainer.yml"
+  pull_request:
+    paths:
+      - ".devcontainer/**"
+      - ".github/workflows/devcontainer.yml"
+  schedule:
+    - cron: "37 5 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: devcontainer-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: ghcr.io/moshebyte/jarrow-devcontainer
+
+jobs:
+  build:
+    name: build (no push)
+    if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: .devcontainer/Dockerfile
+          load: true
+          push: false
+          provenance: false
+          sbom: false
+          tags: jarrow-devcontainer:ci
+      - name: Run the postCreateCommand in the image
+        run: bash .devcontainer/test-image.sh jarrow-devcontainer:ci
+      - name: Summary
+        run: |
+          {
+            echo "### Devcontainer image"
+            echo ""
+            echo "Built and tested; not pushed (this run is not on main)."
+            echo ""
+            echo "- Size: $(docker image inspect --format '{{.Size}}' jarrow-devcontainer:ci) bytes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: publish
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'MosheByte/jarrow'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write # push the image and its attestation to ghcr.io
+      id-token: write # the Sigstore certificate that signs the attestation
+      attestations: write # store the attestation with the repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: .devcontainer/Dockerfile
+          load: true
+          push: false
+          provenance: false
+          sbom: false
+          # The weekly run rebuilds every layer, so Ubuntu security fixes reach the image.
+          no-cache: ${{ github.event_name == 'schedule' }}
+          tags: jarrow-devcontainer:ci
+      - name: Run the postCreateCommand in the image
+        run: bash .devcontainer/test-image.sh jarrow-devcontainer:ci
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Same builder, same inputs: every layer comes from the build tested above.
+      - name: Push :latest and :<commit sha>
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: .devcontainer/Dockerfile
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+      - name: Attest build provenance
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+          # Storage records exist only for organisation-owned repositories.
+          create-storage-record: false
+      # Codespaces of other people can only pull a public package. A new GHCR package may start
+      # private; only the owner can change that, in the package settings.
+      - name: Check that the image can be pulled without credentials
+        id: public
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          repo="${IMAGE#ghcr.io/}"
+          token=$(curl -fsS "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r '.token // empty' || true)
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${token:-none}" \
+            -H "Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json" \
+            "https://ghcr.io/v2/${repo}/manifests/${DIGEST}")
+          if [ "$status" = "200" ]; then
+            echo "public=yes" >> "$GITHUB_OUTPUT"
+            echo "Anonymous pull of ${IMAGE}@${DIGEST}: allowed"
+          else
+            echo "public=no" >> "$GITHUB_OUTPUT"
+            echo "::warning::${IMAGE} cannot be pulled without credentials (HTTP ${status}). Codespaces of other people cannot open it until the owner makes the package public."
+          fi
+      - name: Summary
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+          SHA: ${{ github.sha }}
+          ATTESTATION: ${{ steps.attest.outputs.attestation-url }}
+          PUBLIC: ${{ steps.public.outputs.public }}
+        run: |
+          {
+            echo "### Devcontainer image"
+            echo ""
+            echo "- Tags: \`$IMAGE:latest\`, \`$IMAGE:$SHA\`"
+            echo "- Digest: \`$DIGEST\`"
+            echo "- Provenance attestation: $ATTESTATION"
+            echo "- Pullable without credentials: $PUBLIC"
+          } >> "$GITHUB_STEP_SUMMARY"

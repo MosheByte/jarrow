@@ -1,0 +1,5 @@
+# Build context filter for .devcontainer/Dockerfile (BuildKit reads <Dockerfile>.dockerignore).
+# The context is the repository root; the image reads only these two files.
+*
+!rust-toolchain.toml
+!tools/requirements-dev.txt
