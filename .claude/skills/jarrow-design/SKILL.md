@@ -18,7 +18,7 @@ This file is the entry point. The values live in `site/tokens.css`; the rules th
 
 ## How to use this skill
 
-- Claude Code loads it from `.claude/skills/jarrow-design/` by itself. Other tools (Codex, Cursor, Copilot, any agent that takes rules files): add this directory as context or rules. It is plain Markdown.
+- Claude Code loads it from `.claude/skills/jarrow-design/` by itself. Other tools (Codex, Cursor, Copilot, any agent that takes rules files): add this directory as context or rules. It is plain Markdown, laid out the way TypeUI design skills are (https://www.typeui.sh/design-skills): foundations (colour, type, spacing), components with their states, accessibility, principles and anti-patterns, tone. Its content is Jarrow's own.
 - Before you write: open the component file, use only the tokens it names, and keep its states (default, hover, focus-visible, active, disabled, loading, error, empty).
 - Values come from tokens. Write `var(--jw-white-60)`, not `rgb(255 255 255 / 0.6)` and never a new hex. A value the tokens lack goes into `crates/report/src/tokens.rs` first, with the report section it comes from, then `JARROW_BLESS=1 cargo test -p jarrow-report --test tokens_current`.
 - After you write: `cd site && npm test && npm run check && npm run build`. The build ends with `scripts/check-colors.mjs`, which fails on any colour in `dist/` that is not a token or a declared alpha step.
