@@ -67,7 +67,7 @@ Status columns:
 | Merge queue | Merging | Rulesets on user-owned repos do not support `merge_queue` | Needs the owner (org transfer) | Fallback: required check `ci-ok` plus auto-merge (D-010). |
 | Discussion categories | Nightly results, rule proposals, ports | GraphQL `createDiscussionCategory` does not exist; REST returned 404. Created through the GitHub web UI in an authenticated maintainer browser session | Connected | "Nightly results", "Rule proposals" and "Show your port" exist (D-011). |
 | Renovate | Dependency PRs | Needs the Renovate GitHub App installed | Needs the owner (optional) | Fallback: Dependabot for Cargo, npm, Actions and pip (D-014). |
-| Codecov | Coverage reporting | No token | Needs the owner (optional) | Fallback: CI measures coverage with `cargo llvm-cov` and enforces the 80% floor itself. |
+| Codecov | Coverage reporting | The owner set the secret `CODECOV_TOKEN` on 2026-11-03 (`gh secret list`) | Connected | The `coverage` job in `ci.yml` uploads `cargo llvm-cov` line coverage from `main` and pull requests: https://app.codecov.io/gh/jarrow-dev/jarrow. Informational until the 80% floor on `crates/` is enforced (docs/releases.md, Test coverage). |
 | OpenSSF Best Practices badge | Scorecard CII-Best-Practices, trust | Project 16297 created on 2026-11-03 through the maintainer's signed-in session; basics answered with repository evidence (25%) | Connected | https://www.bestpractices.dev/en/projects/16297. The remaining criteria are answered as milestones prove them. |
 | Sigstore, SLSA provenance | Release signing | Keyless through GitHub OIDC | Self-configurable | Wired in `release.yml` (M5). |
 | Homebrew tap, Scoop bucket | CLI distribution | Tap and bucket repos can be created under MosheByte | Self-configurable | Pushing from CI needs a token (`HOMEBREW_TAP_TOKEN`), which is an owner item. |
@@ -90,3 +90,4 @@ Status columns:
 | `BOT_DEPLOY_KEY` | Actions secret (SSH deploy key, write) | MosheByte/jarrow | agent (generated 2026-11-03; rotate by replacing the deploy key) | board.yml pushes `board-data` and bot commits of LEDGER.md; contributors.yml pushes the nightly refresh of the "Who works on Jarrow" list |
 | `HOMEBREW_TAP_TOKEN` | Actions secret | MosheByte/jarrow | owner | release.yml |
 | `PROJECT_TOKEN` | Actions secret | MosheByte/jarrow | owner (optional) | roadmap project sync |
+| `CODECOV_TOKEN` | Actions secret | jarrow-dev/jarrow | owner (set 2026-11-03) | ci.yml (`coverage` job, the Codecov upload step only; skipped for forks and Dependabot) |

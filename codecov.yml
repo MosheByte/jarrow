@@ -1,0 +1,21 @@
+# Codecov: https://app.codecov.io/gh/jarrow-dev/jarrow
+# The coverage job in .github/workflows/ci.yml uploads the line coverage of the Rust workspace
+# tests (cargo llvm-cov, lcov). For now every status is informational: it reports the number
+# and never fails. The 80% floor on crates/ is enforced once the numbers settle
+# (docs/releases.md#test-coverage).
+coverage:
+  precision: 2
+  round: down
+  status:
+    project:
+      default:
+        target: 80%
+        paths:
+          - crates/
+        informational: true
+    patch:
+      default:
+        informational: true
+
+# The numbers are in the coverage job's summary and on Codecov; no comment on every pull request.
+comment: false
