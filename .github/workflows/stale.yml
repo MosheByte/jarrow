@@ -1,0 +1,50 @@
+# Marks long-quiet issues and pull requests stale, then closes them if nobody replies.
+# Timers are generous on purpose; roadmap items and anything waiting for proof never go stale.
+name: stale
+
+on:
+  schedule:
+    - cron: "41 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stale
+  cancel-in-progress: false
+
+jobs:
+  stale:
+    name: stale
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write # the action keeps its progress in the Actions cache
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          days-before-issue-stale: 120
+          days-before-issue-close: 30
+          days-before-pr-stale: 60
+          days-before-pr-close: 30
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: roadmap,needs-proof
+          exempt-pr-labels: roadmap,needs-proof
+          exempt-all-milestones: true
+          exempt-draft-pr: true
+          remove-stale-when-updated: true
+          operations-per-run: 60
+          stale-issue-message: >
+            This issue has had no activity for 120 days, so it is marked stale.
+            Comment or update it to keep it open; otherwise it closes in 30 days.
+          close-issue-message: >
+            Closed after 30 more quiet days. Reopen it, or open a new issue, if it still matters.
+          stale-pr-message: >
+            This pull request has had no activity for 60 days, so it is marked stale.
+            Push a commit or comment to keep it open; otherwise it closes in 30 days.
+          close-pr-message: >
+            Closed after 30 more quiet days. Reopen it when you pick it up again.

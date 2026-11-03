@@ -1,0 +1,54 @@
+/*
+ * Shared by every page: the docs (Starlight customCss) and the site pages (via site.css).
+ *
+ * Colours come only from the --jw-* design tokens in tokens.css, which crates/report
+ * generates. Tailwind's default palette is removed so no other colour can sneak in.
+ * --jw-accent is for actions (buttons, links, focus). --jw-result-* is for harness
+ * results only and is never decorative. --jw-tier-* marks tiers.
+ */
+
+@layer base, starlight, theme, components, utilities;
+
+@import './tokens.css';
+@import '@astrojs/starlight-tailwind';
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --font-sans: 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Atkinson Hyperlegible Next Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@theme inline {
+  --color-bg: var(--jw-bg);
+  --color-surface: var(--jw-surface);
+  --color-surface-2: var(--jw-surface-2);
+  --color-line: var(--jw-border);
+  --color-text: var(--jw-text);
+  --color-muted: var(--jw-muted);
+  --color-accent: var(--jw-accent);
+  --color-accent-strong: var(--jw-accent-strong);
+  --color-on-accent: var(--jw-on-accent);
+  --color-tier-a: var(--jw-tier-a);
+  --color-tier-b: var(--jw-tier-b);
+  --color-tier-unsupported: var(--jw-tier-unsupported);
+  --color-result-green: var(--jw-result-green);
+  --color-result-yellow: var(--jw-result-yellow);
+  --color-result-red: var(--jw-result-red);
+  --color-result-none: var(--jw-result-none);
+}
+
+/* Nothing moves on its own; hover and focus feedback is instant for people who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

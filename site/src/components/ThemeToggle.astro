@@ -1,0 +1,77 @@
+---
+// Switches between the dark and light themes. Shares Starlight's storage key, so the
+// docs and the rest of the site keep the same choice. Hidden without JavaScript: the
+// page then follows the system preference (set before paint in Base.astro).
+import Moon from '@lucide/astro/icons/moon';
+import Sun from '@lucide/astro/icons/sun';
+---
+
+<button type="button" class="jw-theme-toggle" data-theme-toggle hidden aria-label="Switch to light theme">
+  <Sun class="jw-icon-sun" size={20} aria-hidden="true" />
+  <Moon class="jw-icon-moon" size={20} aria-hidden="true" />
+</button>
+
+<script>
+  const KEY = 'starlight-theme';
+  const button = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+
+  function current(): 'dark' | 'light' {
+    return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+  }
+
+  function label(): void {
+    if (!button) return;
+    const next = current() === 'dark' ? 'light' : 'dark';
+    button.setAttribute('aria-label', `Switch to ${next} theme`);
+  }
+
+  if (button) {
+    button.hidden = false;
+    label();
+    button.addEventListener('click', () => {
+      const next = current() === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      try {
+        localStorage.setItem(KEY, next);
+      } catch {
+        // Storage can be unavailable (private mode); the choice then lasts for this page only.
+      }
+      label();
+    });
+  }
+</script>
+
+<style>
+  .jw-theme-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--jw-border);
+    background: transparent;
+    color: var(--jw-text);
+    cursor: pointer;
+  }
+
+  .jw-theme-toggle[hidden] {
+    display: none;
+  }
+
+  .jw-theme-toggle:hover {
+    border-color: var(--jw-accent);
+  }
+
+  /* Show the icon of the theme you would switch to. */
+  .jw-theme-toggle :global(.jw-icon-moon) {
+    display: none;
+  }
+
+  :global([data-theme='light']) .jw-theme-toggle :global(.jw-icon-sun) {
+    display: none;
+  }
+
+  :global([data-theme='light']) .jw-theme-toggle :global(.jw-icon-moon) {
+    display: block;
+  }
+</style>

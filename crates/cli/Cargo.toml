@@ -1,0 +1,21 @@
+[package]
+name = "jarrow"
+description = "Jarrow CLI: Fabric to NeoForge mod JAR conversion with a parity report (in development)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "jarrow"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+jarrow-report.workspace = true
+
+[lints]
+workspace = true

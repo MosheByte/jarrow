@@ -1,0 +1,38 @@
+[workspace]
+resolver = "3"
+# Every directory under crates/ is a member, so parallel branches never conflict here (see docs/architecture.md).
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/MosheByte/jarrow"
+homepage = "https://jarrow.pages.dev"
+# MSRV = the toolchain pinned in rust-toolchain.toml (1.99.1). Bump both together.
+rust-version = "1.99"
+# Nothing is published from the workspace until the release workflow exists (milestone M5).
+publish = false
+
+[workspace.dependencies]
+jarrow-report = { path = "crates/report", version = "0.1.0" }
+clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "usage", "error-context"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+# Library crates must not panic on bad input; tests may unwrap (see clippy.toml).
+unwrap_used = "deny"
+expect_used = "deny"
+# A missing feature shows as missing, never as a stub.
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

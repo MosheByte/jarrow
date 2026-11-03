@@ -161,3 +161,43 @@ Every default the build agent takes is logged here (BUILD-BOOK.md section 13). T
 **Why:** Token creation was refused on every route: wrangler OAuth REST (403, code 9109), the Cloudflare API MCP (403, it needs `account-api-tokens.write`) and Composio (400, code 6003). The agent does not move a personal OAuth refresh token into CI.
 **Reversal cost:** Low. One `gh secret set`, after which Actions deploys on the next push.
 **Links:** infra/TODO-OWNER.md M0
+
+## D-021 — Cloudflare is fully connected through the owner's account token
+
+**Date:** 2026-11-03
+**Decision:** CI uses the owner's `CLOUDFLARE_API_TOKEN` secret for everything Cloudflare does in section 9. That covers Pages deploys (`deploy-site.yml`), D1 migrations and the rest of `infra/` (`infra.yml`), the Turnstile widget, Browser Rendering for OG images, R2 lifecycle rules, the nightly D1 export and cron Workers. The agent creates these itself as each milestone needs them. Every workflow that uses the token first runs `wrangler whoami` and prints only whether the account id matched, never the token or the account e-mail. The token reaches only Cloudflare's API, and GitHub masks it in logs. Site deploys run only from Actions; the maintainer machine no longer deploys.
+**Why:** The owner added a broad account token on purpose and asked that Cloudflare be treated as fully connected, without narrowing the token. This supersedes the fallback in D-003 and D-020. The board can now be written to D1, KV and R2 directly from the nightly.
+**Reversal cost:** Low. Rotating the token is one `gh secret set`.
+**Links:** .github/workflows/deploy-site.yml, .github/workflows/infra.yml, infra/TODO-OWNER.md
+
+## D-022 — Loader, API and toolchain pins in research-lock.json
+
+**Date:** 2026-11-03
+**Decision:** Fabric Loader 0.20.1 for both versions. Fabric API 0.116.17+1.21.1 and 0.141.6+1.21.11. NeoForge 21.1.265 and 21.11.48 (newest stable, no beta). Parchment 2024.11.17 and 2025.12.20. Vineflower 1.12.0. JDK 21. Every hash comes from the publisher (Mojang manifest, Fabric and NeoForge maven sidecars, Modrinth). `tools/research_lock.py --verify` re-checks 83 pins against live sources, and CI runs the offline `--check`.
+**Why:** These are the newest stable releases for the pinned game versions on 2026-11-03, which matches the section 13 default of using the most-downloaded minors with their current stable loaders.
+**Reversal cost:** Medium. Changing a pin means re-verifying rules and re-running the harness for that version.
+**Links:** research-lock.json, tools/research_lock.py, docs/research/fabric-neoforge-notes.md
+
+## D-023 — Fabric `main` initializers run inside NeoForge's registration window
+
+**Date:** 2026-11-03
+**Decision:** The generated `@Mod` class runs each Fabric `main` initializer during the first `RegisterEvent`, with `Registry.register` redirected to the registration bridge (section 5.4). Client and server initializers run at `FMLClientSetupEvent` and `FMLDedicatedServerSetupEvent`. Work that needs a later stage is reported, never guessed.
+**Why:** Section 5.3 says to run `ModInitializer` at `FMLCommonSetupEvent`, but NeoForge freezes registries before common setup. Section 5.4 needs the `register` calls captured during the original init and replayed into `RegisterEvent`. Both sections can only hold if init runs inside the registration window. The harness's registry dump decides whether this works (M2).
+**Reversal cost:** Medium; confined to the entrypoint adapter.
+**Links:** docs/book-amendments.md A-10, docs/research/fabric-neoforge-notes.md
+
+## D-024 — Board vocabulary and the score-to-outcome mapping
+
+**Date:** 2026-11-03
+**Decision:** Tiers serialise as `a`, `b`, `unsupported`, and outcomes as `green`, `yellow`, `red`, `not-run` (`crates/report` is the source). Harness score 1.0 (identical) and 0.75 (only ordering or noise differences) are green, 0.5 is yellow, and 0.25 and 0 are red. A mod that was not measured is never green. On the board it counts as red with a classified reason (`no_converter`, `harness_not_run`, `client_only_not_measured` is yellow), so `green + yellow + red = mods` always holds.
+**Why:** The book defines scores (6.1) and requires every red to carry a reason (section 1), but leaves colours open. Score 0.75 means the dumps differ only in order or noise, so the mod behaves the same.
+**Reversal cost:** Medium after the first nightly, because it changes the headline number.
+**Links:** docs/board.md, docs/harness.md, crates/report
+
+## D-025 — Site: Astro 7, Starlight, Tailwind 4, Workers adapter output assembled for Pages
+
+**Date:** 2026-11-03
+**Decision:** The site uses Astro 7.4, Starlight 0.42, Tailwind 4.3 and `@astrojs/cloudflare` 14.4. Since v13 the adapter targets Workers only, so `scripts/pages-assemble.mjs` turns its output into a Pages advanced-mode directory (`dist/` plus `dist/_worker.js/` and `_routes.json`). `site/wrangler.toml` is the single source of bindings, and the adapter gets a config derived from it. Fonts come from Fontsource (Bricolage Grotesque, Atkinson Hyperlegible Next, JetBrains Mono) and icons from Lucide. CI runs `npm test`, `astro check` and the build on all three OS.
+**Why:** The book asks for Astro, Starlight and Tailwind on Cloudflare Pages (D-004 keeps `*.pages.dev`), and the current adapter no longer emits Pages output by itself.
+**Reversal cost:** Low. Moving to Workers static assets removes the assembly step.
+**Links:** site/scripts/pages-assemble.mjs, docs/book-amendments.md A-11

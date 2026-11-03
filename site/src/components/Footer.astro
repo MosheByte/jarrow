@@ -1,0 +1,96 @@
+---
+import { REPO_URL, ROADMAP_PROJECT_URL } from '../lib/site.ts';
+import SiteNotice from './SiteNotice.astro';
+
+const groups = [
+  {
+    title: 'Jarrow',
+    links: [
+      { href: '/convert/', label: 'Convert' },
+      { href: '/board/', label: 'Board' },
+      { href: '/authors/', label: 'Authors' },
+      { href: '/blog/', label: 'Blog' },
+      { href: '/status/', label: 'Status' },
+    ],
+  },
+  {
+    title: 'Project',
+    links: [
+      { href: '/docs/', label: 'Docs' },
+      { href: '/roadmap/', label: 'Roadmap' },
+      { href: ROADMAP_PROJECT_URL, label: 'Roadmap project' },
+      { href: REPO_URL, label: 'GitHub repository' },
+      { href: '/docs/telemetry/', label: 'Telemetry' },
+    ],
+  },
+  {
+    title: 'Planned, not in v1',
+    links: [
+      { href: '/translate/', label: 'Version translate' },
+      { href: '/compat/', label: 'Compat check' },
+      { href: '/deps/', label: 'Dependency updater' },
+      { href: '/profiler/', label: 'Profiler' },
+    ],
+  },
+];
+---
+
+<footer class="jw-footer">
+  <div class="wrap">
+    <nav class="jw-footer-nav" aria-label="Footer">
+      {
+        groups.map((group) => (
+          <div>
+            <h2>{group.title}</h2>
+            <ul>
+              {group.links.map((link) => (
+                <li>
+                  <a href={link.href}>{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </nav>
+    <SiteNotice />
+  </div>
+</footer>
+
+<style>
+  .jw-footer {
+    margin-top: auto;
+    border-top: 1px solid var(--jw-border);
+    background: var(--jw-surface);
+    padding-block: 2.5rem 3rem;
+  }
+
+  .jw-footer-nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  h2 {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--jw-muted);
+    margin-bottom: 0.5rem;
+  }
+
+  li a {
+    display: inline-block;
+    padding-block: 0.3rem;
+    color: var(--jw-text);
+    text-decoration: none;
+  }
+
+  li a:hover {
+    color: var(--jw-accent);
+    text-decoration: underline;
+  }
+</style>

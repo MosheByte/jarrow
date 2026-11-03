@@ -1,0 +1,93 @@
+/*
+ * Maps Starlight's colour and font variables to the --jw-* tokens. Unlayered on purpose:
+ * unlayered rules win over Starlight's layered defaults, in both themes, because the
+ * tokens themselves switch under [data-theme='light'].
+ */
+
+:root {
+  --sl-font: var(--font-sans);
+  --sl-font-mono: var(--font-mono);
+
+  /* Starlight's grey ramp runs from "white" (strongest text) to "black" (page background). */
+  --sl-color-white: var(--jw-text);
+  --sl-color-gray-1: var(--jw-text);
+  --sl-color-gray-2: var(--jw-text);
+  --sl-color-gray-3: var(--jw-muted);
+  --sl-color-gray-4: var(--jw-muted);
+  --sl-color-gray-5: var(--jw-border);
+  --sl-color-gray-6: var(--jw-surface);
+  --sl-color-gray-7: var(--jw-surface-2);
+  --sl-color-black: var(--jw-bg);
+
+  /* The accent is for actions: links, the current page in the sidebar, focus. */
+  --sl-color-accent-low: var(--jw-surface);
+  --sl-color-accent: var(--jw-accent-strong);
+  --sl-color-accent-high: var(--jw-accent);
+  --sl-color-text: var(--jw-text);
+  --sl-color-text-accent: var(--jw-accent);
+  --sl-color-text-invert: var(--jw-on-accent);
+  --sl-color-bg: var(--jw-bg);
+  --sl-color-bg-nav: var(--jw-surface);
+  --sl-color-bg-sidebar: var(--jw-bg);
+  --sl-color-bg-inline-code: var(--jw-surface-2);
+  --sl-color-bg-accent: var(--jw-accent);
+  --sl-color-hairline-light: var(--jw-border);
+  --sl-color-hairline: var(--jw-border);
+  --sl-color-hairline-shade: var(--jw-border);
+
+  /*
+   * Starlight colours asides and badges with orange, green, blue, purple and red. Green,
+   * amber and red are reserved for harness results, so every aside and badge is neutral.
+   */
+  --sl-color-orange-low: var(--jw-surface);
+  --sl-color-orange: var(--jw-border);
+  --sl-color-orange-high: var(--jw-text);
+  --sl-color-green-low: var(--jw-surface);
+  --sl-color-green: var(--jw-border);
+  --sl-color-green-high: var(--jw-text);
+  --sl-color-blue-low: var(--jw-surface);
+  --sl-color-blue: var(--jw-border);
+  --sl-color-blue-high: var(--jw-text);
+  --sl-color-purple-low: var(--jw-surface);
+  --sl-color-purple: var(--jw-border);
+  --sl-color-purple-high: var(--jw-text);
+  --sl-color-red-low: var(--jw-surface);
+  --sl-color-red: var(--jw-border);
+  --sl-color-red-high: var(--jw-text);
+
+  --sl-text-h1: 2.5rem;
+  --sl-line-height-headings: 1.12;
+}
+
+@media (min-width: 50em) {
+  :root {
+    --sl-text-h1: 3.25rem;
+  }
+}
+
+/* Display face for headings and the site title. */
+.site-title,
+.sl-markdown-content :is(h1, h2, h3, h4),
+h1#_top {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+.site-title {
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: var(--jw-text);
+}
+
+h1#_top {
+  font-weight: 800;
+}
+
+.sl-markdown-content :is(h2, h3) {
+  font-weight: 750;
+}
+
+:focus-visible {
+  outline: 3px solid var(--jw-accent);
+  outline-offset: 2px;
+}

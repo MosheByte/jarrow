@@ -1,0 +1,23 @@
+---
+import PageIntro from '../components/PageIntro.astro';
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Page not found" noindex canonicalPath="/404/">
+  <div class="wrap">
+    <PageIntro title="Page not found" lead="Nothing lives at this address. It may be a page that is not built yet." />
+    <p class="links">
+      <a class="btn btn-primary" href="/">Home</a>
+      <a class="btn btn-ghost" href="/docs/">Docs</a>
+      <a class="btn btn-ghost" href="/roadmap/">Roadmap</a>
+    </p>
+  </div>
+</Base>
+
+<style>
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+</style>

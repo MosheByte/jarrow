@@ -1,0 +1,351 @@
+{
+  "schema_version": 1,
+  "locked_at": "2026-11-03",
+  "user_agent": "MosheByte/jarrow-research/0.1 (github.com/MosheByte/jarrow)",
+  "decided_by": "D-002 (game versions, from docs/research/game-versions.json); this file pins everything else",
+  "jdk": {
+    "major": 21,
+    "why": "Mojang version JSON javaVersion.majorVersion is 21 for both pinned versions; Fabric API requires java >=21; NeoForge 21.x targets Java 21"
+  },
+  "sources": {
+    "mojang_version_manifest": "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json",
+    "fabric_meta_loader": "https://meta.fabricmc.net/v2/versions/loader",
+    "fabric_meta_installer": "https://meta.fabricmc.net/v2/versions/installer",
+    "fabric_meta_intermediary": "https://meta.fabricmc.net/v2/versions/intermediary/{game_version}",
+    "fabric_maven": "https://maven.fabricmc.net/",
+    "modrinth_api": "https://api.modrinth.com/v2",
+    "neoforge_versions": "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge",
+    "neoforge_maven": "https://maven.neoforged.net/releases/",
+    "parchment_maven": "https://maven.parchmentmc.org/",
+    "maven_central": "https://repo1.maven.org/maven2/"
+  },
+  "global": {
+    "vineflower": {
+      "version": "1.12.0",
+      "maven": "org.vineflower:vineflower:1.12.0",
+      "metadata_url": "https://repo1.maven.org/maven2/org/vineflower/vineflower/maven-metadata.xml",
+      "license": "Apache-2.0",
+      "use": "Tier B decompiler only (section 13 default); never runs in Tier A",
+      "url": "https://repo1.maven.org/maven2/org/vineflower/vineflower/1.12.0/vineflower-1.12.0.jar",
+      "size": 1633863,
+      "hash_source": "maven-sidecar",
+      "sha1": "85570609a0a5941a7d2918b6260b209de810f66f",
+      "sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "sha512": "3db896559bc7d62ec325ea2c97297d8d9efbd7f913955e63d52c7d71c9cdfc028eb006b088760628354cb6436b5749b60ea728eeb2155ceff2ec7bc93621a2ec"
+    }
+  },
+  "game_versions": {
+    "1.21.1": {
+      "mojang": {
+        "manifest_entry": {
+          "url": "https://piston-meta.mojang.com/v1/packages/018296bcb207bea6fd25b05f08eee3942dcec406/1.21.1.json",
+          "sha1": "018296bcb207bea6fd25b05f08eee3942dcec406",
+          "type": "release",
+          "release_time": "2024-08-08T12:24:45+00:00",
+          "manifest_time_at_lock": "2026-10-27T06:43:48+00:00",
+          "hash_source": "mojang-manifest"
+        },
+        "java_major": 21,
+        "server_jar": {
+          "url": "https://piston-data.mojang.com/v1/objects/59353fb40c36d304f2035d51e7d6e6baa98dc05c/server.jar",
+          "sha1": "59353fb40c36d304f2035d51e7d6e6baa98dc05c",
+          "size": 51627615,
+          "hash_source": "mojang-version-json"
+        },
+        "server_mappings": {
+          "url": "https://piston-data.mojang.com/v1/objects/03f8985492bda0afc0898465341eb0acef35f570/server.txt",
+          "sha1": "03f8985492bda0afc0898465341eb0acef35f570",
+          "size": 7456063,
+          "hash_source": "mojang-version-json",
+          "format": "proguard",
+          "license": "Mojang mappings header: development use only, no redistribution of the complete unmodified file; fetched at runtime, never vendored or committed"
+        },
+        "client_mappings": {
+          "url": "https://piston-data.mojang.com/v1/objects/2244b6f072256667bcd9a73df124d6c58de77992/client.txt",
+          "sha1": "2244b6f072256667bcd9a73df124d6c58de77992",
+          "size": 9598610,
+          "hash_source": "mojang-version-json",
+          "format": "proguard",
+          "license": "same header as server_mappings",
+          "why": "the client mapping set covers client-only classes that mods reference; the remapper needs it even though the harness runs servers"
+        }
+      },
+      "fabric": {
+        "loader": {
+          "version": "0.20.1",
+          "maven": "net.fabricmc:fabric-loader:0.20.1",
+          "stable": true,
+          "license": "Apache-2.0",
+          "bundles": "net.fabricmc:sponge-mixin:0.17.5+mixin.0.8.7 and MixinExtras (from fabric-loader-0.20.1.json)",
+          "url": "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.20.1/fabric-loader-0.20.1.jar",
+          "size": 1988880,
+          "hash_source": "maven-sidecar",
+          "sha1": "7c7f9831e9f27b303d5d08decb5f4258a9f03296",
+          "sha256": "d0c5a082e07410aaff9de7ab196aa6b4236002870f9ba3ad5c1260fcce5110ad",
+          "sha512": "3a9ac4c7ff484c0cd962d54f685dd5384f4120b5acb9c377b92d20c08242ad0480a1fa7ddfa7d2a1ba2b4c2d297465e954a900bee8ace57caadc55a17a5657e0"
+        },
+        "intermediary": {
+          "version": "1.21.1",
+          "maven": "net.fabricmc:intermediary:1.21.1:v2",
+          "format": "tiny-v2, namespaces official -> intermediary (official = Mojang's obfuscated names)",
+          "license": "CC0-1.0",
+          "url": "https://maven.fabricmc.net/net/fabricmc/intermediary/1.21.1/intermediary-1.21.1-v2.jar",
+          "size": 582921,
+          "hash_source": "maven-sidecar",
+          "sha1": "9ce486577f40c5ed70b243b4a513bdf5dcf2cc7f",
+          "sha256": "e8bd6a4c39e235ee2dc73063558610775c72a2572fa0c6b32915b149074012a6",
+          "sha512": "7ce2b671338a4b055e27680e8f7f8d46b0a44885308e56fe97f0b5a74ed9239d16aac2d6d4bd8c418f47cd4c4513da931e50fdb5932d95744fbcbf902701518b"
+        },
+        "api": {
+          "version": "0.116.17+1.21.1",
+          "license": "Apache-2.0",
+          "modrinth_project_id": "P7dR8mSH",
+          "modrinth_version_id": "Mys3P7lK",
+          "date_published": "2026-09-01T16:40:04.373428Z",
+          "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/Mys3P7lK/fabric-api-0.116.17%2B1.21.1.jar",
+          "filename": "fabric-api-0.116.17+1.21.1.jar",
+          "size": 2452735,
+          "sha1": "810b2b0195371a012906241d8b85a32a1d6de53c",
+          "sha512": "98c478217da19181f0e4df3ea6c2da6bdbda271c7544a4aea048513a49b444f1ff5b71dc0df6303017c48e8ff69b7bb6af6179bdf0d0e09ab3c1ee08411857a8",
+          "hash_source": "modrinth-api",
+          "maven": "net.fabricmc.fabric-api:fabric-api:0.116.17+1.21.1",
+          "maven_url": "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.116.17%2B1.21.1/fabric-api-0.116.17%2B1.21.1.jar",
+          "maven_sha1": "810b2b0195371a012906241d8b85a32a1d6de53c"
+        },
+        "installer": {
+          "version": "1.1.2",
+          "maven": "net.fabricmc:fabric-installer:1.1.2",
+          "license": "Apache-2.0",
+          "url": "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.2/fabric-installer-1.1.2.jar",
+          "size": 212123,
+          "hash_source": "maven-sidecar",
+          "sha1": "74685b5a0178c4dabd4be741a276d35c59b5ec96",
+          "sha256": "61e035bf7bf70153e127440ce34de47c9036f0a2d0c65d1529454bd35ceefe4f",
+          "sha512": "3cbe7b69498c44d814fc95e71cd9ce9c12c45a9e1dcf01085cb3e9aaf6fe63134b701065167be1fa6e4c2df19dfa5400bc5b6b1b7fb5e99e334d24dcdca55c20"
+        },
+        "server_launcher": {
+          "url_pattern": "https://meta.fabricmc.net/v2/versions/loader/{game_version}/{loader_version}/{installer_version}/server/jar",
+          "url": "https://meta.fabricmc.net/v2/versions/loader/1.21.1/0.20.1/1.1.2/server/jar",
+          "size": 181840,
+          "observed_sha256": "7638dc69ef2cecb27d1cff1a1b0a6e2c3ced7ece0000d584039a3f4e1386123c",
+          "hash_source": "observed",
+          "note": "generated on request by meta.fabricmc.net (the installer jar plus an install.properties naming the game and loader version); the publisher gives no hash file, so the hash is what two identical fetches returned on 2026-11-03"
+        },
+        "harness": {
+          "method": "server-launcher",
+          "steps": [
+            "download server_launcher.url and check observed_sha256; on mismatch fall back to the hash-pinned installer: java -jar fabric-installer-1.1.2.jar server -mcversion <game> -loader 0.20.1 -downloadMinecraft",
+            "place the Mojang server jar (mojang.server_jar, sha1-checked) and pass -Dfabric.installer.server.gameJar=<path> so the launcher does not download it again",
+            "put fabric.api and the mod under test in mods/, then java -jar <launcher> nogui"
+          ]
+        }
+      },
+      "neoforge": {
+        "version": "21.1.265",
+        "channel": "release",
+        "beta": false,
+        "license": "LGPL-2.1",
+        "maven": "net.neoforged:neoforge:21.1.265:installer",
+        "installer": {
+          "url": "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.265/neoforge-21.1.265-installer.jar",
+          "size": 6992412,
+          "hash_source": "maven-sidecar",
+          "sha1": "25ce1d35d619ccfd3080076fa5758c18e11a9778",
+          "sha256": "a547ccc30a80a675d1c61d04b55d10c45c39a86971e09731482c50a24399d1a2",
+          "sha512": "12ea54ad844d64f56a53f414e495ba971c2cb6263a382557243f7fe31d028d49c9ea804f1219b6d5dbda72a7bb4f7e5a043a3eefdcd41923e6c8e8630200c2c3"
+        },
+        "fml_version": "4.0.45",
+        "mixin": "net.fabricmc:sponge-mixin:0.16.4+mixin.0.8.7",
+        "runtime_names": "mojang-official",
+        "install_command": "java -jar neoforge-21.1.265-installer.jar --installServer",
+        "start": "run.sh / run.bat written by --installServer; installer version.json main class cpw.mods.bootstraplauncher.BootstrapLauncher",
+        "mods_toml": {
+          "modLoader": "javafml",
+          "modLoader_mandatory": true,
+          "loaderVersion": "[1,)",
+          "loaderVersion_mandatory": true,
+          "loaderVersion_meaning": "Maven version range over the javafml language loader version (currently 1), not the NeoForge or FML version",
+          "neoforge_dependency_range": "[21.1.265,)",
+          "minecraft_dependency_range": "[1.21.1]",
+          "range_syntax": "Maven version ranges (https://maven.apache.org/enforcer/enforcer-rules/versionRanges.html)"
+        }
+      },
+      "parchment": {
+        "version": "2024.11.17",
+        "maven": "org.parchmentmc.data:parchment-1.21.1:2024.11.17@zip",
+        "metadata_url": "https://maven.parchmentmc.org/org/parchmentmc/data/parchment-1.21.1/maven-metadata.xml",
+        "license": "CC0-1.0",
+        "use": "parameter names for Tier B decompiled sources only (section 13 mapping chain)",
+        "url": "https://maven.parchmentmc.org/org/parchmentmc/data/parchment-1.21.1/2024.11.17/parchment-1.21.1-2024.11.17.zip",
+        "size": 889204,
+        "hash_source": "maven-sidecar",
+        "sha1": "2a561d23e368c371b4c578caa21ae0cf9c597392",
+        "sha256": "7c240a37ab432213033b1113d75cb80dc22bffa631d979818b2da1585fa24a08",
+        "sha512": "3c2cda72d7e1c87ba66936d819a197f90d654a7dacb0484e02b3999c1d28157cae408fbe56f5b83609b3498b122764eb3d81b9e3e23ba0e4d466576fed513a2e"
+      }
+    },
+    "1.21.11": {
+      "mojang": {
+        "manifest_entry": {
+          "url": "https://piston-meta.mojang.com/v1/packages/96403ac4a56447675325d2b1b5e320d76a5b5625/1.21.11.json",
+          "sha1": "96403ac4a56447675325d2b1b5e320d76a5b5625",
+          "type": "release",
+          "release_time": "2025-12-09T12:23:30+00:00",
+          "manifest_time_at_lock": "2026-10-27T06:53:06+00:00",
+          "hash_source": "mojang-manifest"
+        },
+        "java_major": 21,
+        "server_jar": {
+          "url": "https://piston-data.mojang.com/v1/objects/64bb6d763bed0a9f1d632ec347938594144943ed/server.jar",
+          "sha1": "64bb6d763bed0a9f1d632ec347938594144943ed",
+          "size": 56327581,
+          "hash_source": "mojang-version-json"
+        },
+        "server_mappings": {
+          "url": "https://piston-data.mojang.com/v1/objects/5621e9253f05fd57872bbe7f8ddf5f9a7d525955/server.txt",
+          "sha1": "5621e9253f05fd57872bbe7f8ddf5f9a7d525955",
+          "size": 8678606,
+          "hash_source": "mojang-version-json",
+          "format": "proguard",
+          "license": "Mojang mappings header: development use only, no redistribution of the complete unmodified file; fetched at runtime, never vendored or committed"
+        },
+        "client_mappings": {
+          "url": "https://piston-data.mojang.com/v1/objects/031a68bebf55d824f66d6573d8c752f0e1bf232a/client.txt",
+          "sha1": "031a68bebf55d824f66d6573d8c752f0e1bf232a",
+          "size": 11779287,
+          "hash_source": "mojang-version-json",
+          "format": "proguard",
+          "license": "same header as server_mappings",
+          "why": "the client mapping set covers client-only classes that mods reference; the remapper needs it even though the harness runs servers"
+        }
+      },
+      "fabric": {
+        "loader": {
+          "version": "0.20.1",
+          "maven": "net.fabricmc:fabric-loader:0.20.1",
+          "stable": true,
+          "license": "Apache-2.0",
+          "bundles": "net.fabricmc:sponge-mixin:0.17.5+mixin.0.8.7 and MixinExtras (from fabric-loader-0.20.1.json)",
+          "url": "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.20.1/fabric-loader-0.20.1.jar",
+          "size": 1988880,
+          "hash_source": "maven-sidecar",
+          "sha1": "7c7f9831e9f27b303d5d08decb5f4258a9f03296",
+          "sha256": "d0c5a082e07410aaff9de7ab196aa6b4236002870f9ba3ad5c1260fcce5110ad",
+          "sha512": "3a9ac4c7ff484c0cd962d54f685dd5384f4120b5acb9c377b92d20c08242ad0480a1fa7ddfa7d2a1ba2b4c2d297465e954a900bee8ace57caadc55a17a5657e0"
+        },
+        "intermediary": {
+          "version": "1.21.11",
+          "maven": "net.fabricmc:intermediary:1.21.11:v2",
+          "format": "tiny-v2, namespaces official -> intermediary (official = Mojang's obfuscated names)",
+          "license": "CC0-1.0",
+          "url": "https://maven.fabricmc.net/net/fabricmc/intermediary/1.21.11/intermediary-1.21.11-v2.jar",
+          "size": 707972,
+          "hash_source": "maven-sidecar",
+          "sha1": "016a84fabebbbfaf4950abe072f6d3653090430a",
+          "sha256": "f45b9530d0becae596fd48743e3ee1733cc2cdc69128cdb7d8d3571de163ab87",
+          "sha512": "59d95c9a186d83fa9e5675380b7a4d95d7b6069a67fa3dbfab563b5c9efcb1d3401dde2724faac27b044f6a2b0b3bc21f3f26af4c684977b86637e754dcea8e2"
+        },
+        "api": {
+          "version": "0.141.6+1.21.11",
+          "license": "Apache-2.0",
+          "modrinth_project_id": "P7dR8mSH",
+          "modrinth_version_id": "6qAuTtLR",
+          "date_published": "2026-07-28T08:48:35.091772Z",
+          "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/6qAuTtLR/fabric-api-0.141.6%2B1.21.11.jar",
+          "filename": "fabric-api-0.141.6+1.21.11.jar",
+          "size": 2426039,
+          "sha1": "c98467cbbaf4d197377266795ae015f4130d65b6",
+          "sha512": "852d3682c4f353fd0ca86546af8578513e8bcf628377fa9d49c556bc59c5024c69ab56c92fc6dfba11fed19e4316a3f5636e7e07fd3d96f7043b531aef59b637",
+          "hash_source": "modrinth-api",
+          "maven": "net.fabricmc.fabric-api:fabric-api:0.141.6+1.21.11",
+          "maven_url": "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.141.6%2B1.21.11/fabric-api-0.141.6%2B1.21.11.jar",
+          "maven_sha1": "c98467cbbaf4d197377266795ae015f4130d65b6"
+        },
+        "installer": {
+          "version": "1.1.2",
+          "maven": "net.fabricmc:fabric-installer:1.1.2",
+          "license": "Apache-2.0",
+          "url": "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.2/fabric-installer-1.1.2.jar",
+          "size": 212123,
+          "hash_source": "maven-sidecar",
+          "sha1": "74685b5a0178c4dabd4be741a276d35c59b5ec96",
+          "sha256": "61e035bf7bf70153e127440ce34de47c9036f0a2d0c65d1529454bd35ceefe4f",
+          "sha512": "3cbe7b69498c44d814fc95e71cd9ce9c12c45a9e1dcf01085cb3e9aaf6fe63134b701065167be1fa6e4c2df19dfa5400bc5b6b1b7fb5e99e334d24dcdca55c20"
+        },
+        "server_launcher": {
+          "url_pattern": "https://meta.fabricmc.net/v2/versions/loader/{game_version}/{loader_version}/{installer_version}/server/jar",
+          "url": "https://meta.fabricmc.net/v2/versions/loader/1.21.11/0.20.1/1.1.2/server/jar",
+          "size": 181841,
+          "observed_sha256": "2b06e5e0719199ba100659a283626d9b055e5fded1cb87fa1cdf4df571c0754d",
+          "hash_source": "observed",
+          "note": "generated on request by meta.fabricmc.net (the installer jar plus an install.properties naming the game and loader version); the publisher gives no hash file, so the hash is what two identical fetches returned on 2026-11-03"
+        },
+        "harness": {
+          "method": "server-launcher",
+          "steps": [
+            "download server_launcher.url and check observed_sha256; on mismatch fall back to the hash-pinned installer: java -jar fabric-installer-1.1.2.jar server -mcversion <game> -loader 0.20.1 -downloadMinecraft",
+            "place the Mojang server jar (mojang.server_jar, sha1-checked) and pass -Dfabric.installer.server.gameJar=<path> so the launcher does not download it again",
+            "put fabric.api and the mod under test in mods/, then java -jar <launcher> nogui"
+          ]
+        }
+      },
+      "neoforge": {
+        "version": "21.11.48",
+        "channel": "release",
+        "beta": false,
+        "license": "LGPL-2.1",
+        "maven": "net.neoforged:neoforge:21.11.48:installer",
+        "installer": {
+          "url": "https://maven.neoforged.net/releases/net/neoforged/neoforge/21.11.48/neoforge-21.11.48-installer.jar",
+          "size": 4236966,
+          "hash_source": "maven-sidecar",
+          "sha1": "cbee85d1bfd39bec102e8ce181a9d1b27319eb54",
+          "sha256": "1f14a4bac4aa885a497550fa5a8374451b7014cec27e1bb69ab16742fb689db0",
+          "sha512": "02a96f6df0c4d266e77a2395f11a6564911dc2df51b73ec5bdb87d19b95f86eb320d69d7332a10a65f70a918bd45cb6a3074f26efa1a76a806f1e21f2338b8d5"
+        },
+        "fml_version": "10.0.36",
+        "mixin": "net.fabricmc:sponge-mixin:0.16.5+mixin.0.8.7",
+        "runtime_names": "mojang-official",
+        "install_command": "java -jar neoforge-21.11.48-installer.jar --installServer",
+        "start": "run.sh / run.bat written by --installServer; installer version.json main class net.neoforged.fml.startup.Client (no BootstrapLauncher)",
+        "mods_toml": {
+          "modLoader": "javafml",
+          "modLoader_mandatory": false,
+          "loaderVersion": "[1,)",
+          "loaderVersion_mandatory": false,
+          "loaderVersion_meaning": "Maven version range over the javafml language loader version (currently 1), not the NeoForge or FML version",
+          "neoforge_dependency_range": "[21.11.48,)",
+          "minecraft_dependency_range": "[1.21.11]",
+          "range_syntax": "Maven version ranges (https://maven.apache.org/enforcer/enforcer-rules/versionRanges.html)",
+          "note": "since FML 10 (NeoForge 21.11) modLoader defaults to javafml and loaderVersion to any; both keys are still accepted"
+        }
+      },
+      "parchment": {
+        "version": "2025.12.20",
+        "maven": "org.parchmentmc.data:parchment-1.21.11:2025.12.20@zip",
+        "metadata_url": "https://maven.parchmentmc.org/org/parchmentmc/data/parchment-1.21.11/maven-metadata.xml",
+        "license": "CC0-1.0",
+        "use": "parameter names for Tier B decompiled sources only (section 13 mapping chain)",
+        "url": "https://maven.parchmentmc.org/org/parchmentmc/data/parchment-1.21.11/2025.12.20/parchment-1.21.11-2025.12.20.zip",
+        "size": 879642,
+        "hash_source": "maven-sidecar",
+        "sha1": "b361d93d4688e0c0dc2194ff0ff0a96f6f753421",
+        "sha256": "fd4f985d59bbb0104080a27ecfdd7f3067fbdfa8488fc16413c4a060f1964af6",
+        "sha512": "b49b73964bd529d5c27289d7c20ddefe0c16b43a32a102aad36bbdfde9dbf42154bce7cc087ef58e4d63bc53d972b26bffac39a69a87cb6592be5eb8d93a9c72"
+      }
+    }
+  },
+  "notes": [
+    "Game versions 1.21.1 and 1.21.11 come from docs/research/game-versions.json (tools/research_versions.py): the two most-downloaded 1.21 minors for Fabric on Modrinth.",
+    "Mojang's latest release on 2026-11-03 is 26.3 (unobfuscated since 26.1). Both pinned versions are still obfuscated: Fabric mods ship intermediary names, NeoForge runs on Mojang official names. 1.21.11 is the last version intermediary covers.",
+    "Mojang re-publishes version JSON files from time to time (both entries show manifest time 2026-10-27). The URLs are content-addressed by sha1, so a re-publish shows up as a new manifest sha1; research_lock.py --verify reports it as drift and still checks the pinned URL and the downloads inside it.",
+    "Fabric Loader 0.20.1 is the newest stable loader for both versions; Fabric API 0.116.17+1.21.1 requires loader >=0.15.11 and 0.141.6+1.21.11 requires >=0.17.3, so one loader serves both harness servers.",
+    "Fabric API hashes are taken from the Modrinth API (sha1, sha512) and cross-checked against the Fabric maven .sha1 sidecar; both agreed on 2026-11-03.",
+    "The Fabric server launcher jar has no publisher hash (generated by meta.fabricmc.net). Its sha256 is recorded as observed; the Fabric installer jar it is built from is hash-pinned as the fallback.",
+    "NeoForge 21.11.x was beta up to 21.11.41-beta; 21.11.42 is the first stable and 21.11.48 the newest stable on 2026-11-03, so no beta fallback was needed. 21.1.265 is the newest 21.1.x and 21.1.x has no beta builds.",
+    "Both NeoForge installers were opened in a temp directory (deleted afterwards) to read install_profile.json and version.json: they remap the vanilla server with Mojang's server mappings (Mojang names at runtime) and ship net.fabricmc:sponge-mixin 0.16.4 (21.1.265) and 0.16.5 (21.11.48); FML is 4.0.45 and 10.0.36.",
+    "Parchment versions match the official NeoForge MDKs (NeoForgeMDKs/MDK-1.21.1-ModDevGradle and MDK-1.21.11-ModDevGradle gradle.properties).",
+    "Pack formats for reference (misode/mcmeta summary, not a publisher hash): 1.21.1 data 48 / resource 34; 1.21.11 data 94.1 / resource 75. Conversion stays within one game version, so pack.mcmeta numbers never change.",
+    "No mod JAR, game JAR, installer or mapping file is stored in the repository. Everything here is a URL plus the publisher's hash; tools/research_lock.py --verify re-checks them without downloading the large files."
+  ]
+}

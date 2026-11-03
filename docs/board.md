@@ -1,6 +1,6 @@
 # Board data contract
 
-The nightly board (BUILD-BOOK.md section 6.2) produces three artefacts. The engine (`crates/board`), the site (`site/src/lib/board.ts`), the ingest Worker (`infra/workers/ingest`), `tools/board_summary.py` and `tools/ledger.py` all read them, so this file is the single definition. Change it only together with every reader.
+The nightly board (BUILD-BOOK.md section 6.2) produces three artefacts. The engine (`crates/board`), the site (`site/src/lib/board.ts`), `tools/board_summary.py` and `tools/ledger.py` all read them, so this file is the single definition. Change it only together with every reader.
 
 ## Mod list: `board-list.json`
 
@@ -56,7 +56,7 @@ Fetched weekly from the Modrinth API. It holds the top 1,000 projects with `proj
       "icon_url": "https://cdn.modrinth.com/...",
       "license": "LicenseRef-Polyform-Shield-1.0.0",
       "primary_game_version": "1.21.11",
-      "tier": "B",
+      "tier": "b",
       "outcome": "red",
       "reason_kind": "no_converter",
       "reason": "No converter yet (milestone M2)",
@@ -69,7 +69,7 @@ Fetched weekly from the Modrinth API. It holds the top 1,000 projects with `proj
           "file_sha512": "...",
           "mod_id": "sodium",
           "mod_version": "0.6.0",
-          "tier": "B",
+          "tier": "b",
           "tier_reasons": ["..."],
           "outcome": "red",
           "score": null,
@@ -89,18 +89,23 @@ Rules:
 
 - A mod's board `outcome` is the outcome on its primary game version, which is the newest pinned version it ships a Fabric file for. Every other version stays visible in `results`.
 - `totals.mods == green + yellow + red`. "Not run" is not an outcome on the board: a mod the harness could not measure is red or yellow with the reason, never green.
-- `outcome = green` requires a harness score of `1.0` or `0.75` (section 6.1). Yellow is `0.5` or "loads but not measured" (for example client-only content). Red covers everything else, including "harness not run" and "no converter yet".
+- `outcome = green` requires a harness score of `1.0` or `0.75` (section 6.1, D-024). Yellow is `0.5`, or `client_only_not_measured` when the mod loads but its content is client-only. Red covers everything else, including "harness not run" and "no converter yet".
+- Tier values are `a`, `b`, `unsupported`, and outcome values are `green`, `yellow`, `red`, `not-run`, as serialised by `crates/report` (D-024). `site/src/lib/board.ts` and the D1 schema must use the same strings.
 - `reason_kind` is a closed vocabulary defined in `crates/report` (`no_converter`, `unsupported_native`, `unsupported_transformer`, `unsupported_language_adapter`, `unsupported_obfuscated`, `license_personal_use`, `tier_b_required`, `harness_not_run_eula`, `harness_load_failure`, `class_not_found`, `mixin_failure`, `registry_conflict`, `crash`, `entries_differ`, `client_only_not_measured`, `download_failed`, `opt_out`). The board aggregates "top reasons" on it.
 - Mods whose author opted out ("do not port") are removed from `rows` and counted in no total.
 - The board links to the mod's own page (`page_url`) and never to a converted JAR.
 
 ## Reports
 
-One JSON report per mod and game version, in the `crates/report` model, stored at `report_key`. The nightly also publishes all reports as the `reports.tar.zst` release asset. `report_hash` is the SHA-256 of the canonical report JSON; issue forms ask for it.
+One JSON report per mod and game version, in the `crates/report` model, stored at `report_key`. The nightly also publishes all reports as the `reports.tar.gz` release asset. `report_hash` is the SHA-256 of the canonical report JSON; issue forms ask for it.
 
 ## Publication
 
-1. `board.yml` (nightly, 02:00 UTC) shards the list 10 ways. Each shard writes `shard-<n>.json` plus its reports as artifacts.
-2. The merge job builds `board.json`, `board-summary.json` and `reports.tar.zst`, uploads them to the GitHub release `board-latest` (replacing its assets), and updates `ledger/inputs/board-summary.json` and `LEDGER.md` through a bot commit.
-3. `tools/board_summary.py` posts the Discussion "Nightly YYYY-MM-DD: G green, Y yellow, R red; top reasons…".
-4. The ingest Worker (cron) fetches the `board-latest` assets, checks `run_id`, and writes KV `board.json`, D1 `board_runs` and `board_rows`, and R2 reports (D-003).
+1. `board.yml` (nightly, 02:00 UTC) splits the list into 10 shards. Each shard writes `shard-<n>.json` and its reports as workflow artifacts.
+2. The merge job builds `board.json`, `board-summary.json` and `reports.tar.gz`, then writes them to Cloudflare directly with wrangler and the `CLOUDFLARE_API_TOKEN` secret (D-021):
+   - KV `board.json` and the compact `board:rows` used for server rendering;
+   - D1 `board_runs` and `board_rows`;
+   - R2 reports at `report_key`.
+3. The same files are uploaded to the GitHub release `board-latest` as a public, rebuildable mirror. A dated `board-YYYYMMDD` release keeps `board.json` as history.
+4. `ledger/inputs/board-summary.json` and `LEDGER.md` are committed by the bot, which uses the `BOT_DEPLOY_KEY` deploy key that the `main` ruleset allows to bypass.
+5. `tools/board_summary.py` posts the Discussion "Nightly YYYY-MM-DD: G green, Y yellow, R red; top reasons…" in the "Nightly results" category.

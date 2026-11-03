@@ -1,0 +1,19 @@
+---
+// Starlight's footer (edit link, pagination) followed by the notices every page carries.
+import Default from '@astrojs/starlight/components/Footer.astro';
+
+import SiteNotice from '../SiteNotice.astro';
+---
+
+<Default><slot /></Default>
+<div class="jw-docs-notice">
+  <SiteNotice />
+</div>
+
+<style>
+  .jw-docs-notice {
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--jw-border);
+  }
+</style>

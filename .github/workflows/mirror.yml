@@ -1,0 +1,65 @@
+# Mirrors main and the tags to GitLab (book sections 7 and 9).
+# Needs the secret GITLAB_MIRROR_TOKEN (a GitLab token with write_repository) and the
+# variable GITLAB_MIRROR_PATH ("group/project"). Without them the job prints a notice and
+# succeeds. The token is only ever passed through the environment and is never echoed.
+name: mirror
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror
+  cancel-in-progress: false
+
+jobs:
+  gitlab:
+    name: gitlab
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check the mirror is configured
+        id: gate
+        env:
+          HAS_TOKEN: ${{ secrets.GITLAB_MIRROR_TOKEN != '' }}
+          MIRROR_PATH: ${{ vars.GITLAB_MIRROR_PATH }}
+        run: |
+          if [ "$HAS_TOKEN" != "true" ]; then
+            echo "::notice::GITLAB_MIRROR_TOKEN not set; the GitLab mirror is off; see infra/TODO-OWNER.md"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$MIRROR_PATH" ]; then
+            echo "::notice::GITLAB_MIRROR_PATH variable not set; the GitLab mirror is off; see infra/TODO-OWNER.md"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Push main and tags to GitLab
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          GITLAB_MIRROR_TOKEN: ${{ secrets.GITLAB_MIRROR_TOKEN }}
+          MIRROR_PATH: ${{ vars.GITLAB_MIRROR_PATH }}
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          set -euo pipefail
+          case "$MIRROR_PATH" in
+            ""|/*|*/|*..*|*[!A-Za-z0-9._/-]*)
+              echo "::error::GITLAB_MIRROR_PATH must look like group/project"
+              exit 1
+              ;;
+          esac
+          remote="https://oauth2:${GITLAB_MIRROR_TOKEN}@gitlab.com/${MIRROR_PATH}.git"
+          # git prints the remote without its credentials; Actions masks the secret as well.
+          git -c credential.helper= push --force --prune "$remote" \
+            "refs/remotes/origin/main:refs/heads/main" \
+            "refs/tags/*:refs/tags/*"
+          echo "Mirrored main and tags to gitlab.com/${MIRROR_PATH}"

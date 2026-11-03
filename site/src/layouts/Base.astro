@@ -1,0 +1,94 @@
+---
+import '@fontsource-variable/atkinson-hyperlegible-next';
+import '@fontsource-variable/bricolage-grotesque';
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/site.css';
+
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { DESCRIPTION, PRODUCT_NAME, absolute } from '../lib/site.ts';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Path for the canonical URL, defaults to the current path. */
+  canonicalPath?: string;
+  noindex?: boolean;
+}
+
+const { title, description = DESCRIPTION, canonicalPath = Astro.url.pathname, noindex = false } = Astro.props;
+const fullTitle = title === PRODUCT_NAME ? title : `${title} · ${PRODUCT_NAME}`;
+const canonical = absolute(canonicalPath);
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={PRODUCT_NAME} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="theme-color" content="#0b0d12" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <script is:inline>
+      // Before paint: the stored choice (shared with the docs), else the system preference.
+      (() => {
+        let stored = null;
+        try {
+          stored = localStorage.getItem('starlight-theme');
+        } catch {}
+        const theme =
+          stored === 'light' || stored === 'dark'
+            ? stored
+            : matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light'
+              : 'dark';
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="jw-skip" href="#main">Skip to content</a>
+    <Header />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>
+
+<style>
+  .jw-skip {
+    position: absolute;
+    left: 1rem;
+    top: -4rem;
+    z-index: 10;
+    padding: 0.6rem 1rem;
+    border-radius: 0.6rem;
+    background: var(--jw-accent);
+    color: var(--jw-on-accent);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .jw-skip:focus {
+    top: 1rem;
+  }
+
+  main {
+    flex: 1 0 auto;
+    padding-block: 2.5rem 4rem;
+  }
+
+  main:focus {
+    outline: none;
+  }
+</style>

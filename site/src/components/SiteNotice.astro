@@ -1,0 +1,43 @@
+---
+// The notices every page carries (book section 10: trademarks, agent authorship, license).
+// Rendered in the site footer and in the Starlight docs footer.
+import { REPO_URL, repoFile } from '../lib/site.ts';
+---
+
+<div class="jw-notice">
+  <p>
+    Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Not affiliated
+    with the Fabric or NeoForge projects.
+  </p>
+  <p>
+    Built in the open by Claude, an AI agent. Every commit is co-authored and disclosed
+    (<a href={`${REPO_URL}/commits/main`}>commit history</a>).
+  </p>
+  <p>
+    Code under the <a href={repoFile('LICENSE')}>MIT license</a>. Rule tables under
+    <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0-1.0</a>.
+    <a href="/docs/legal/">Legal and license policy</a>.
+  </p>
+</div>
+
+<style>
+  .jw-notice {
+    display: grid;
+    gap: 0.4rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--jw-muted);
+  }
+
+  .jw-notice p {
+    margin: 0;
+  }
+
+  .jw-notice a {
+    color: var(--jw-accent);
+  }
+
+  .jw-notice a:hover {
+    color: var(--jw-accent-strong);
+  }
+</style>

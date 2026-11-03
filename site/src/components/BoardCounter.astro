@@ -1,0 +1,106 @@
+---
+// The live board counter, rendered on the server from board.json in KV.
+import { type BoardLoad, hasRun } from '../lib/board.ts';
+import { formatCount, formatUtc } from '../lib/format.ts';
+
+interface Props {
+  load: BoardLoad;
+  /** Heading level for the counter's title. */
+  headingLevel?: 2 | 3;
+}
+
+const { load, headingLevel = 2 } = Astro.props;
+const { totals, generated_at } = load.board;
+const ran = hasRun(load);
+const unreadable = load.status === 'invalid' || load.status === 'error';
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+const results = [
+  { key: 'green', label: 'green', count: totals.green },
+  { key: 'yellow', label: 'yellow', count: totals.yellow },
+  { key: 'red', label: 'red', count: totals.red },
+] as const;
+---
+
+<section class="jw-counter card" aria-labelledby="board-counter-title">
+  <Heading id="board-counter-title" class="eyebrow">Nightly board</Heading>
+  {
+    unreadable ? (
+      <p class="jw-counter-note">
+        The board data could not be read right now, so no number is shown. Try again later, or see the raw
+        data at <a href="/api/board.json">/api/board.json</a>.
+      </p>
+    ) : (
+      <>
+        <p class="jw-counter-figure">
+          <span class="jw-counter-number">{formatCount(totals.mods)}</span>
+          <span class="jw-counter-unit">{totals.mods === 1 ? 'mod' : 'mods'} on the board</span>
+        </p>
+        {ran ? (
+          <>
+            <ul class="jw-counter-results" aria-label="Results">
+              {results.map((r) => (
+                <li>
+                  <span class={`result-dot result-${r.key}`} aria-hidden="true" />
+                  <strong>{formatCount(r.count)}</strong> {r.label}
+                </li>
+              ))}
+            </ul>
+            {generated_at && (
+              <p class="jw-counter-note">
+                Last nightly: <time datetime={generated_at}>{formatUtc(generated_at)}</time>
+              </p>
+            )}
+          </>
+        ) : (
+          <p class="jw-counter-note">The first nightly has not run yet.</p>
+        )}
+      </>
+    )
+  }
+  <slot />
+</section>
+
+<style>
+  .jw-counter {
+    padding: 1.5rem 1.6rem;
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .jw-counter-figure {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+  }
+
+  .jw-counter-number {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(3.5rem, 9vw, 5.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .jw-counter-unit {
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .jw-counter-results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.25rem;
+  }
+
+  .jw-counter-results li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .jw-counter-note {
+    color: var(--jw-muted);
+  }
+</style>

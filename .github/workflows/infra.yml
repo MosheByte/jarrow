@@ -1,0 +1,56 @@
+# Applies the Cloudflare configuration kept as code in infra/ (book section 9, "monitoring as code").
+# Today: verifies the token, then applies D1 migrations. Later milestones add R2 lifecycle
+# rules, Turnstile, cron Workers and monitors here, so the owner can rebuild every service
+# from the repository in one run.
+# The token comes only from the CLOUDFLARE_API_TOKEN secret, which GitHub masks; it is never
+# echoed, and only Cloudflare's API receives it (D-021).
+name: infra
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: infra-apply
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER: npx --yes wrangler@4.157.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Verify the Cloudflare token (wrangler whoami)
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1
+          fi
+          # whoami prints the account e-mail; keep its output out of the public log.
+          out="$RUNNER_TEMP/whoami.txt"
+          if $WRANGLER whoami > "$out" 2>&1 && grep -q "$CLOUDFLARE_ACCOUNT_ID" "$out"; then
+            echo "Cloudflare token verified: wrangler whoami lists account $CLOUDFLARE_ACCOUNT_ID"
+          else
+            echo "::error::wrangler whoami failed or does not list account $CLOUDFLARE_ACCOUNT_ID"
+            exit 1
+          fi
+          rm -f "$out"
+      - name: Apply D1 migrations
+        working-directory: infra
+        run: $WRANGLER d1 migrations apply jarrow --remote --config wrangler.toml

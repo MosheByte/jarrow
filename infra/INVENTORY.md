@@ -19,7 +19,7 @@ Status columns:
 | GitHub (`gh` 2.102.0) | Repository, CI, releases, Discussions, Projects, Pages | `gh auth status`: logged in as `MosheByte`, classic token with `repo`, `workflow`, `admin:org`, `project`, `write:discussion`; `gh api user` succeeded | Connected | Repo [MosheByte/jarrow](https://github.com/MosheByte/jarrow) created and pushed. The org `jarrow` cannot be used (the name is a GitHub user). `POST admin/organizations` returned 404 (GHES only), so github.com offers no API to create an org. See D-001. |
 | GitHub Pages | Rustdoc API reference | `POST repos/MosheByte/jarrow/pages build_type=workflow` returned `https://moshebyte.github.io/jarrow/` | Connected | Deployed by `pages.yml`. |
 | Cloudflare (wrangler 4.157.0, OAuth) | Pages site, Workers, D1, KV, R2, Turnstile, Browser Rendering | `wrangler whoami`: one standard account, scopes include pages, workers, d1, workers_kv, browser, challenge-widgets. `d1 list`, `kv namespace list`, `r2 bucket list`, `pages project list` succeeded | Connected | Account id `e9b8acf2e89a1de289a1ee4abb0f3f8d` (repo variable `CLOUDFLARE_ACCOUNT_ID`). The account also hosts the owner's other projects, so every Jarrow resource is prefixed `jarrow`. The agent never touches anything else. |
-| Cloudflare API token for CI | Deploys and board writes from GitHub Actions | Minting refused on every route: REST with the wrangler OAuth token (403, code 9109), Cloudflare API MCP `POST /accounts/{id}/tokens` (403, the connection needs `account-api-tokens.write`), Composio (400, code 6003). Exact errors in TODO-OWNER.md M0 | Needs the owner | Fallback: the agent deploys from the maintainer machine, and the nightly publishes `board.json` as a GitHub release asset that a scheduled Worker ingests (D-003, D-020). |
+| Cloudflare API token for CI | Deploys, infra apply and board writes from GitHub Actions | The owner set the secret `CLOUDFLARE_API_TOKEN` on 2026-11-03 (a broad account token). Every workflow verifies it with `wrangler whoami` before use | Connected | Used by deploy-site.yml and infra.yml, and later by board.yml (D-021). |
 | crates.io | Publish the `jarrow` crate | `~/.cargo/credentials.toml` absent. `GET crates.io/api/v1/crates/jarrow` returned "does not exist" (the name is free) | Needs the owner | Owner creates a token. The `claim-names.yml` workflow publishes once it is set (D-012). |
 | npm | Publish the `jarrow` WASM package | `npm whoami` returned `ENEEDAUTH`. `GET registry.npmjs.org/jarrow` returned "Not found" (the name is free) | Needs the owner | Same flow as crates.io (D-012). |
 | Rust 1.99.1, rustup 1.29.1 | Engine | `cargo --version`, `rustc --version` | Connected | Target `wasm32-unknown-unknown` comes from `rust-toolchain.toml`. |
@@ -81,7 +81,7 @@ Status columns:
 | --- | --- | --- | --- | --- |
 | `CLOUDFLARE_ACCOUNT_ID` | Actions variable | MosheByte/jarrow | agent | deploy-site.yml, board ingest |
 | `SITE_URL` | Actions variable | MosheByte/jarrow | agent | site build, board summary |
-| `CLOUDFLARE_API_TOKEN` | Actions secret | MosheByte/jarrow | owner | deploy-site.yml, board.yml (optional direct write) |
+| `CLOUDFLARE_API_TOKEN` | Actions secret | MosheByte/jarrow | owner (set 2026-11-03) | deploy-site.yml, infra.yml, board.yml |
 | `CARGO_REGISTRY_TOKEN` | Actions secret | MosheByte/jarrow | owner | claim-names.yml, release.yml |
 | `NPM_TOKEN` | Actions secret | MosheByte/jarrow | owner | claim-names.yml, release.yml |
 | `GITLAB_MIRROR_TOKEN` | Actions secret | MosheByte/jarrow | owner | mirror.yml |

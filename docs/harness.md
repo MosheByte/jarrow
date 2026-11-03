@@ -28,14 +28,14 @@ For one mod and one pinned game version (1.21.1 or 1.21.11):
 | Score | Meaning | Board colour |
 | --- | --- | --- |
 | `1.0` | Dumps are identical | Green |
-| `0.75` | Only ordering or log-noise differences | Yellow |
+| `0.75` | Only ordering or log-noise differences | Green |
 | `0.5` | Missing or extra entries, under 1% of entries | Yellow |
 | `0.25` | The mod loads but entries differ materially | Red |
 | `0` | The converted mod fails to load | Red |
 
-The exact mapping from score to board colour is settled in M1 when the board is built; this table is the starting point. Red results carry a reason taken from the log: class not found, mixin failure, registry conflict, crash, or another classified cause. The board aggregates those reasons into "top red reasons", which is the work queue for the rule tables.
+This mapping is decision D-024. Red results carry a reason taken from the log: class not found, mixin failure, registry conflict, crash, or another classified cause. The board aggregates those reasons into "top red reasons", which is the work queue for the rule tables.
 
-A mod that the harness has not run on has no result (shown in grey), not a red one.
+A report for a mod the harness has not run on says `not-run`, never green. On the board such a mod counts as red, with the reason why it was not run (for example `no_converter` or `harness_not_run`), so the totals always add up to the number of mods (D-024).
 
 ## What it cannot measure
 

@@ -1,0 +1,65 @@
+---
+import NotBuilt from '../components/NotBuilt.astro';
+import PageIntro from '../components/PageIntro.astro';
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Convert"
+  description="The Jarrow converter will turn a Fabric mod JAR into a NeoForge JAR in your browser. It is not built yet (milestone M3)."
+>
+  <div class="wrap">
+    <PageIntro
+      eyebrow="Fabric → NeoForge"
+      title="Convert"
+      lead="Drop a Fabric mod JAR, get a NeoForge JAR back with a report of everything that changed."
+    />
+
+    <NotBuilt milestone="M3" what="The converter">
+      <p>There is no drop zone here yet, because nothing would happen if you used it.</p>
+    </NotBuilt>
+
+    <div class="prose body">
+      <h2>What it will do</h2>
+      <ol>
+        <li>
+          You drop one or more <code>.jar</code> files. Within two seconds the page shows, for each one: mod id,
+          name, version, loader, game version, license (from <code>fabric.mod.json</code>), dependencies, and the
+          <a href="/docs/tiers/">tier</a> the classifier assigned, with the reason.
+        </li>
+        <li>You pick the target: NeoForge, for Minecraft 1.21.1 or 1.21.11.</li>
+        <li>
+          <span class="tier tier-a">Tier A</span> converts in your browser with a progress log. The JAR never
+          leaves your machine. The result is a download link that exists only in that tab, plus a report: what
+          was remapped, which rules fired, which API calls were rewritten, and what was left untouched and why.
+        </li>
+        <li>
+          <span class="tier tier-b">Tier B</span> offers "Queue a deep conversion" to signed-in users and shows
+          the queue position. The result and its report come back to the page, and optionally to a GitHub Gist
+          you own.
+        </li>
+        <li>
+          <span class="tier tier-unsupported">Unsupported</span> mods are refused, and the page names the reason.
+        </li>
+      </ol>
+
+      <h2>What it will never do</h2>
+      <ul>
+        <li>Store, cache, host or link to a converted JAR. Conversions are for your own game.</li>
+        <li>Convert a mod whose author asked for it not to be converted.</li>
+        <li>
+          Call a result green without a harness run. See the <a href="/docs/legal/">license policy</a> for how
+          licenses are handled.
+        </li>
+      </ul>
+      <p>The converter will need JavaScript, because it runs in your browser, and it will say so when it is off.</p>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .body {
+    max-width: 48rem;
+    margin-top: 2rem;
+  }
+</style>

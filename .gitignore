@@ -18,3 +18,6 @@ scratch/
 Thumbs.db
 .idea/
 .vscode/
+# Python caches
+__pycache__/
+.pytest_cache/

@@ -65,3 +65,16 @@ When [BUILD-BOOK.md](../BUILD-BOOK.md) and reality disagree, reality wins (book 
   - Step 6: "Needs the owner" is a proof of failure, not an estimate. An item goes there only after REST, GraphQL, the vendor CLI and the vendor API were tried with the credentials already held, and the exact command and error can be pasted.
   - Step 7: reporting never pauses work. The only owner-only item in M0 is the Minecraft EULA. Every other owner item goes under its milestone heading in `infra/TODO-OWNER.md`.
 - **Reverts when:** never. This is the owner's rule.
+
+## A-10 — Fabric `main` initializers run during `RegisterEvent`, not at common setup
+
+- **Book:** section 5.3 runs `ModInitializer` at `FMLCommonSetupEvent`. Section 5.4 captures the `Registry.register` calls made during init and replays them into `RegisterEvent`.
+- **Reality:** NeoForge fires `RegisterEvent` and freezes registries before `FMLCommonSetupEvent`, so registrations made at common setup are too late.
+- **What we do:** run `main` initializers inside the first `RegisterEvent` with registration redirected to the bridge (D-023). The registry dump in the harness verifies it.
+- **Reverts when:** never; this is how the two lifecycles line up.
+
+## A-11 — `site/src/styles/tokens.css` and the Pages assembly step
+
+- **Book:** section 8 names the tokens file `site/tokens.css`, and section 4 uses Astro on Pages directly.
+- **Reality:** the generated tokens file lives at `site/src/styles/tokens.css`, where Astro's CSS pipeline imports it. The Cloudflare adapter now emits Workers output, which `site/scripts/pages-assemble.mjs` rearranges for Pages (D-025).
+- **Reverts when:** the site moves to Workers static assets.

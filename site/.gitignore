@@ -1,0 +1,7 @@
+# Astro's generated types and caches
+.astro/
+# Generated from wrangler.toml by scripts/wrangler-config.mjs
+wrangler.adapter.jsonc
+# Build output and local Cloudflare state (also ignored at the repository root)
+dist/
+.wrangler/

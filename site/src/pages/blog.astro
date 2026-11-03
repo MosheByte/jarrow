@@ -1,0 +1,36 @@
+---
+import PageIntro from '../components/PageIntro.astro';
+import Base from '../layouts/Base.astro';
+import { DISCUSSIONS_URL } from '../lib/site.ts';
+---
+
+<Base title="Blog" description="Nightly board summaries and release notes. No posts yet; nightly summaries start in milestone M1.">
+  <div class="wrap">
+    <PageIntro title="Blog" lead="Nightly board summaries and release notes, generated from real runs." />
+    <div class="card empty">
+      <p class="title">No posts yet. Nightly summaries start in M1.</p>
+      <p>
+        Each nightly will also post its summary to the project's <a href={DISCUSSIONS_URL}>GitHub Discussions</a>.
+      </p>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .empty {
+    max-width: 48rem;
+    padding: 1.5rem 1.6rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .title {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 750;
+  }
+
+  .empty p:not(.title) {
+    color: var(--jw-muted);
+  }
+</style>

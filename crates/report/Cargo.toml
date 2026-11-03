@@ -1,0 +1,22 @@
+[package]
+name = "jarrow-report"
+description = "Report model for Jarrow: tiers, results, structured report entries and design tokens."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+name = "jarrow_report"
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,139 @@
+---
+import { REPO_URL } from '../lib/site.ts';
+import GitHubMark from './GitHubMark.astro';
+import ThemeToggle from './ThemeToggle.astro';
+
+const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
+
+const links = [
+  { href: '/convert/', label: 'Convert', match: '/convert' },
+  { href: '/board/', label: 'Board', match: '/board' },
+  { href: '/docs/', label: 'Docs', match: '/docs' },
+  { href: '/authors/', label: 'Authors', match: '/authors' },
+  { href: '/roadmap/', label: 'Roadmap', match: '/roadmap' },
+];
+
+const isCurrent = (match: string) => path === match || path.startsWith(`${match}/`);
+---
+
+<header class="jw-header">
+  <div class="wrap jw-header-row">
+    <a class="jw-wordmark" href="/" aria-label="Jarrow, home">
+      Jarrow<span class="jw-wordmark-tag" aria-hidden="true">M0</span>
+    </a>
+    <nav aria-label="Main">
+      <ul class="jw-nav">
+        {
+          links.map(({ href, label, match }) => (
+            <li>
+              <a href={href} aria-current={isCurrent(match) ? 'page' : undefined}>
+                {label}
+              </a>
+            </li>
+          ))
+        }
+        <li>
+          <a href={REPO_URL} class="jw-nav-github">
+            <GitHubMark size={18} />
+            GitHub
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <ThemeToggle />
+  </div>
+</header>
+
+<style>
+  .jw-header {
+    border-bottom: 1px solid var(--jw-border);
+    background: var(--jw-bg);
+  }
+
+  .jw-header-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+    padding-block: 0.85rem;
+  }
+
+  .jw-wordmark {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.65rem;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--jw-text);
+    text-decoration: none;
+  }
+
+  .jw-wordmark:hover {
+    color: var(--jw-text);
+  }
+
+  .jw-wordmark-tag {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--jw-muted);
+    border: 1px solid var(--jw-border);
+    border-radius: 0.35rem;
+    padding: 0.1rem 0.3rem;
+  }
+
+  nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .jw-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.25rem;
+    margin-inline: -0.6rem;
+  }
+
+  .jw-nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.75rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.6rem;
+    color: var(--jw-text);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .jw-nav a:hover {
+    color: var(--jw-accent);
+  }
+
+  .jw-nav a[aria-current='page'] {
+    color: var(--jw-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 0.12em;
+    text-underline-offset: 0.35em;
+  }
+
+  .jw-header-row > :global(.jw-theme-toggle) {
+    margin-left: auto;
+  }
+
+  @media (min-width: 52rem) {
+    nav {
+      order: 0;
+      flex-basis: auto;
+      margin-left: auto;
+    }
+
+    .jw-header-row > :global(.jw-theme-toggle) {
+      margin-left: 0;
+    }
+  }
+</style>

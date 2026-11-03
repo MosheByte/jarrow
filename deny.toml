@@ -1,0 +1,56 @@
+# cargo-deny policy for the Jarrow workspace. CI runs `cargo deny check` on every PR.
+# Docs: https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+# Check every feature combination CI can build, on every target.
+all-features = true
+
+[output]
+feature-depth = 1
+
+[advisories]
+# RustSec advisories: vulnerabilities always fail. Unsound and unmaintained crates fail too,
+# anywhere in the graph; yanked versions fail. An ignore needs a DECISIONS.md entry.
+unmaintained = "all"
+unsound = "all"
+yanked = "deny"
+ignore = []
+
+[licenses]
+# Licenses compatible with shipping an MIT binary and an npm WASM package.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+    "CC0-1.0",
+    "MPL-2.0",
+]
+confidence-threshold = 0.93
+# The allow-list is policy, wider than today's graph; unused entries are fine.
+unused-allowed-license = "allow"
+exceptions = []
+
+[licenses.private]
+# Our own crates are checked like any other (they are MIT).
+ignore = false
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+# crates.io only: no git dependencies, no other registries.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
