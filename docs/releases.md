@@ -1,12 +1,14 @@
 # Releases
 
-From milestone M1 on, the `jarrow` CLI ships as a nightly prerelease built from `main`. Signed, versioned releases start with v0.1 in milestone M5. This page covers both channels and how to check what you downloaded.
+From milestone M1 on, the `jarrow` CLI ships as a nightly prerelease built from `main`. Pre-alpha versions `0.1.0-alpha.N` hold the name `jarrow` on crates.io and npm. Signed, versioned releases start with v0.1 in milestone M5. This page covers these channels and how to check what you downloaded.
 
 ## Channels
 
 | Channel | What you get | Where | Status |
 | --- | --- | --- | --- |
-| Nightly | A pre-alpha build of the CLI from `main`, once a day, for Linux, Windows and macOS | GitHub prereleases tagged `nightly-YYYYMMDD`: [all releases](https://github.com/MosheByte/jarrow/releases) | Running from M1 (`.github/workflows/nightly.yml`) |
+| Nightly | A pre-alpha build of the CLI from `main`, once a day, for Linux, Windows and macOS | GitHub prereleases tagged `nightly-YYYYMMDD`: [all releases](https://github.com/jarrow-dev/jarrow/releases) | Running from M1 (`.github/workflows/nightly.yml`) |
+| crates.io, pre-alpha | The CLI (`jarrow`) and the report model (`jarrow-report`) as source crates, version `0.1.0-alpha.1`. The CLI has `--version` and `tokens` only | [crates.io/crates/jarrow](https://crates.io/crates/jarrow), [crates.io/crates/jarrow-report](https://crates.io/crates/jarrow-report) | Published by hand with `.github/workflows/publish.yml` (D-012) |
+| npm, pre-alpha | The package `jarrow`, version `0.1.0-alpha.1`, under the dist-tag `alpha`: the design tokens (`tokens.css`, `tokens.json`), with npm provenance. No JavaScript and no engine yet; the WASM engine arrives in M3 | [npmjs.com/package/jarrow](https://www.npmjs.com/package/jarrow) | Published by hand with `.github/workflows/publish.yml` (D-012) |
 | v0.1 and later | Versioned releases built with cargo-dist, signed on every channel | GitHub Releases, Homebrew, Scoop, winget, AUR, crates.io, and npm for the WASM package | Planned (M5) |
 
 A nightly is not a release. It can break from one day to the next, and it can only do what its own help text says. Each nightly's notes include the output of `jarrow --help` and of every subcommand's `--help` for that exact commit, so the notes always match the binary. Anything the help lists as not built yet is not in that build.
@@ -71,11 +73,41 @@ The workflow's default token permission is `contents: read`. No repository secre
 
 The publish job never runs code that was just built: the help text comes from the build job as a file.
 
+## crates.io and npm (pre-alpha)
+
+The first releases on both registries hold the name `jarrow` and ship real, working code from this repository, never an empty placeholder (D-012). They are pre-releases: the workspace version is `0.1.0-alpha.1`, and `0.1.0` stays reserved for the signed M5 release.
+
+| Registry | Package | Contents today | Install |
+| --- | --- | --- | --- |
+| crates.io | `jarrow` | The CLI: `jarrow --version`, `jarrow tokens` (CSS) and `jarrow tokens --json`. `check` (M1) and `convert` (M2) are not built yet | `cargo install jarrow --version 0.1.0-alpha.1 --locked` (Cargo skips pre-releases unless the version is named; Rust 1.99 or newer) |
+| crates.io | `jarrow-report` | Tiers, outcomes, report entries and the design tokens | `jarrow-report = "=0.1.0-alpha.1"` |
+| npm | `jarrow` | `tokens.css` and `tokens.json`, written by `jarrow tokens` and `jarrow tokens --json` at publish time and never committed. The WASM engine arrives in M3 | `npm install jarrow@alpha` |
+
+Only `crates/report` and `crates/cli` set `publish = true`; every other crate inherits `publish = false` from the workspace. Nothing is published from a maintainer machine.
+
+### How a version is published
+
+`.github/workflows/publish.yml` runs only by hand, only from `main`, with an input `what` (`crates`, `npm` or `both`):
+
+```sh
+gh workflow run publish.yml --repo jarrow-dev/jarrow --ref main -f what=both
+```
+
+| Job | Runs | Token permissions | Secret |
+| --- | --- | --- | --- |
+| `crates` | Packages and builds both crates (`cargo package -p jarrow-report -p jarrow`), publishes `jarrow-report`, polls the crates.io API and the sparse index until it is served, then publishes `jarrow` and waits for it the same way | `contents: read` | `CARGO_REGISTRY_TOKEN`, in the publishing step only |
+| `npm tokens` | Builds the CLI and writes `packages/npm/tokens.css` and `tokens.json`; checks the CSS equals `site/src/styles/tokens.css` | `contents: read` | none |
+| `npm` | Publishes `packages/npm` with `npm publish --provenance --access public --tag alpha` (npm refuses a pre-release without `--tag`). It runs no code built in this run | `contents: read`, `id-token: write` | `NPM_TOKEN` as `NODE_AUTH_TOKEN`, in the publishing step only |
+
+A version that a registry already has is skipped, so a run that failed halfway can be run again. Versions are never deleted; a broken one is yanked (`cargo yank`) or deprecated (`npm deprecate`), and the next one is `0.1.0-alpha.2`. To publish a new pre-release, bump `version` in the root `Cargo.toml` (and `jarrow-report` in `[workspace.dependencies]`) and in `packages/npm/package.json` together; `tools/tests/test_publish.py` fails when they differ.
+
+Check the npm package's provenance with `npm audit signatures` in a project that installed it, or on its npmjs.com page, which links the workflow run that built it.
+
 ## v0.1 and later (M5)
 
 v0.1 is the first versioned release, planned for milestone M5 (see [ROADMAP.md](../ROADMAP.md)). It will be built with cargo-dist from a `v*` tag and published with signed artefacts on every channel: GitHub Releases with installers, a Homebrew tap, a Scoop bucket, winget, AUR, crates.io for the CLI and `jarrow-report` (D-012), and npm for the WASM package. The registry and distribution tokens those channels need are listed in `infra/INVENTORY.md`. The nightly keeps running beside it as the pre-release channel.
 
-None of this exists yet. Until it does, the nightly is the only way to get a built CLI. To build the same code from source instead, use Rust 1.99 or newer: `cargo install --git https://github.com/MosheByte/jarrow --locked jarrow`.
+None of this exists yet. Until it does, the nightly is the only way to get a prebuilt CLI. To build it from source, use Rust 1.99 or newer: `cargo install jarrow --version 0.1.0-alpha.1 --locked` for the pre-alpha on crates.io, or `cargo install --git https://github.com/jarrow-dev/jarrow --locked jarrow` for `main`.
 
 ## First nightly
 

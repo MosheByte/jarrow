@@ -1,0 +1,26 @@
+{
+  "name": "jarrow",
+  "version": "0.1.0-alpha.1",
+  "description": "Pre-alpha: the design tokens of Jarrow, a Minecraft mod-loader converter, as CSS and JSON. The WASM engine arrives in milestone M3.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jarrow-dev/jarrow.git",
+    "directory": "packages/npm"
+  },
+  "homepage": "https://jarrow.pages.dev",
+  "bugs": "https://github.com/jarrow-dev/jarrow/issues",
+  "keywords": [
+    "minecraft",
+    "fabric",
+    "neoforge",
+    "design-tokens",
+    "css"
+  ],
+  "files": [
+    "tokens.css",
+    "tokens.json",
+    "README.md",
+    "LICENSE"
+  ]
+}

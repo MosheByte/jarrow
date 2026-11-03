@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-03T18:09:27Z",
+  "generated_at": "2026-11-03T18:12:00Z",
   "groups": [
     {
       "id": "people",
@@ -16,7 +16,7 @@
             "ideas",
             "projectManagement"
           ],
-          "commits": 22,
+          "commits": 25,
           "icon": null
         }
       ]
@@ -39,7 +39,7 @@
             "test",
             "infra"
           ],
-          "commits": 22,
+          "commits": 25,
           "icon": null
         }
       ]
@@ -80,7 +80,7 @@
           "name": "GitHub Actions",
           "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
           "profile_url": "https://github.com/apps/github-actions",
-          "role": "Runs the workflows in .github/workflows: nightly board, cflite-batch, cflite-pr, CI, CodeQL, this list, site deploy, devcontainer, harness, infra apply, PR labels, GitLab mirror, nightly, API docs, rule proposal issues, red mod intake, Scorecard, stale sweep and first pull request comments.",
+          "role": "Runs the workflows in .github/workflows: nightly board, cflite-batch, cflite-pr, CI, CodeQL, this list, site deploy, devcontainer, harness, infra apply, PR labels, GitLab mirror, nightly, API docs, rule proposal issues, publish, red mod intake, Scorecard, stale sweep and first pull request comments.",
           "contributions": [
             "ci",
             "infra"

@@ -68,7 +68,7 @@ Both halves are needed: a round trip is only run for a pair whose two tables exi
 | Score | Meaning | Board colour |
 | --- | --- | --- |
 | `1.0` | Dumps are identical once the loader noise is subtracted | Green |
-| `0.75` | Only ordering or log-noise differences | Green |
+| `0.75` | Only ordering or noise differences (registry order, worldgen drift, new warnings) | Green |
 | `0.5` | Missing or extra entries, under 1% of entries | Yellow |
 | `0.25` | The mod loads but entries differ materially | Red |
 | `0` | The converted mod fails to load | Red |
@@ -82,14 +82,15 @@ How `crates/harness` (`score.rs`) decides the band, after canonicalisation and n
 | Band | Exactly when |
 | --- | --- |
 | `0` | The candidate run failed (no valid dump), or a mod under test that loaded on the reference loader is missing from the candidate's mod list. Mod ids match after lower-casing and turning `-` into `_`, because NeoForge ids cannot contain `-`. |
-| `0.25` | Any entry changed (a recipe, loot table or advancement with different content, a worldgen count that differs), or missing plus extra entries are 1% or more of the mod's entries, or a new candidate error line is classified as `mixin_failure`, `class_not_found` or `registry_conflict`. |
+| `0.25` | Any entry changed (a recipe, loot table or advancement with different content, a worldgen count that moved beyond drift), or missing plus extra entries are 1% or more of the mod's entries, or a new candidate error line is classified as `mixin_failure`, `class_not_found` or `registry_conflict`. |
 | `0.5` | Missing or extra entries under 1% of the mod's entries, or new candidate error lines or probe errors with no classified cause. |
-| `0.75` | Only registries whose shared entries are in a different order, or new warnings. |
+| `0.75` | Only registries whose shared entries are in a different order, worldgen drift, or new warnings. |
 | `1.0` | Nothing left. |
 
 - **Entries** are registry entries, tag members (an empty tag counts once), recipes, loot tables, advancements and worldgen block states.
 - **The mod's entries** are the reference dump's entries minus the reference baseline's. Measured against the whole dump, vanilla's tens of thousands of entries would hide a mod that lost most of its own content. Without a baseline, the whole reference dump is the denominator.
 - **Order** compares only the entries both registries hold, so entries a loader appends are not an order difference.
+- **Worldgen drift.** The worldgen sample is not exactly repeatable. Two runs of the same Fabric server, same seed and same probe (the two `harness.yml` baselines of PR #14 on 2026-11-03) gave histograms that differed in 4 block states on 1.21.1 and 15 on 1.21.11: at most 32 blocks (granite, 3,768 against 3,800 of 393,216 sampled) or 10 on a small count (clay, 33 against 23), with a handful of mushrooms present in one run only. Every other part of the dumps was identical. A block-state count that moves by no more than 16 blocks, or 2% of the larger count, is therefore `drift` (0.75 band), also when the state is absent on one side. Beyond that it is a missing, extra or changed entry. A mod's worldgen change smaller than the drift band is not measured.
 - **Log lines** are compared after normalisation (first line only, no log prefix, numbers and long hex ids replaced by `#`). Fewer lines in the candidate are never a difference.
 - When the **reference** run failed or did not start, nothing was measured: the report is `not-run` with no score (`harness_load_failure` for a failed reference, the reference's own reason otherwise). Many mods need a library mod the harness does not provide; that must not count against the converter.
 
@@ -144,7 +145,7 @@ Each run produces a structured result: the direction, the score, the per-categor
 | File | `record` | Written by | Holds |
 | --- | --- | --- | --- |
 | Run record (`<dump>.run.json`) | `jarrow-harness-run` | `run`, `baseline` | `status` (`completed`, `failed`, `not-run`), `reason_kind`, `reason`, the dump's path and SHA-256, every input's name and SHA-256 (probe, mods, loader mods), every pinned server download with its URL, SHA-256 and the hashes verified, the install method, the Java version, the exit code, the duration, the copied server log, classified findings, notes |
-| Noise file | `jarrow-harness-noise` | `baseline` | The game version, each side's loader, loader version, mod ids and entry count, every difference between the two baselines, and every normalised log line either produced |
+| Noise file (`schema` 2) | `jarrow-harness-noise` | `baseline` | The game version, each side's loader, loader version, mod ids and entry count, every difference between the two baselines, the differing JSON Pointers of every changed recipe, loot table and advancement, and every normalised log line either produced |
 | Report | `jarrow-harness-report` | `diff` | `score` (or `null`), `outcome` (`green`, `yellow`, `red`, `not-run`, from `crates/report`), `reason_kind`, `reason`, both sides' status and dump hashes, the baseline's SHA-256, the counts behind the score, per-category counts, mods that did not load, the remaining differences (first 1,000, sorted, with the rest counted) and the classified findings |
 
 The report types live in `crates/harness` (`HarnessReport`) and use `crates/report`'s `Outcome`; they move into the full report model when `crates/report` grows it.
@@ -319,3 +320,18 @@ An install is reused when its record matches the loader, loader version and game
 Two loaders differ even with no mod at all: NeoForge adds its own registries and attributes, Fabric API and NeoForge ship different conventional tags, and each loader logs its own warnings. A baseline pair (each loader with only the probe, same game version) shows those differences. `baseline` records them, with each side's mod list and entry count, in the noise file.
 
 `diff` recognises a difference as noise when the baseline pair had the same difference (same category, kind and path), and a log line as noise when either baseline logged it. Noise is subtracted before scoring and counted in the report (`noise_subtracted`). A noise file applies only to the loaders, loader versions and game version it was learned on; anything else is refused rather than misapplied.
+
+Changed recipes, loot tables and advancements are matched more finely. The first live baseline (PR #14, probe only) showed NeoForge encoding 1,138 of 1.21.1's vanilla loot tables and 302 of its recipes differently from Fabric: it names every loot pool (`"name": "main"`) and rewrites vanilla ingredients to conventional tags (`neoforge:difference` of `c:chests/wooden` and `c:chests/trapped`). Matching those entries by id alone would hide any change a mod makes to the same vanilla entries, for example a pool its converted version lost. So the noise file keeps, per changed entry, the JSON Pointers that differ, with array indices written `*` (`/pools/*/name`). A changed entry in a mod comparison is noise only when every pointer that differs in it is one of those. A pool on one side only adds `/pools#length` and is never noise.
+
+The first live numbers, from the same baseline (Fabric 0.20.1 against NeoForge 21.1.265 and 21.11.48, probe only):
+
+| | 1.21.1 | 1.21.11 |
+| --- | --- | --- |
+| Entries (Fabric / NeoForge) | 20,034 / 20,008 | 22,953 / 22,830 |
+| Loot tables encoded differently | 1,138 | 1,281 |
+| Recipes encoded differently | 302 | 487 |
+| Registry entries only on NeoForge | 60 | 72 |
+| Tag members only on Fabric / only on NeoForge | 153 / 67 | 264 / 68 |
+| Worldgen block states that differ (all within drift) | 13 | 0 |
+
+Without a baseline, the probe-only pair scores 0.25 on 1.21.1, so a cross-loader comparison is only meaningful with the noise subtracted.
