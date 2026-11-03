@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/MosheByte/jarrow/main/harness/dump-schema.json",
+  "title": "Jarrow probe dump, schema 1",
+  "description": "What the Jarrow probe mod writes to jarrow-dump.json once a headless server has started. The probe (one per loader) writes it; crates/harness validates, canonicalises, diffs and scores it. The prose contract, including what the schema cannot express (sorting, codecs, where the file goes), is in docs/harness.md, section 'The probe dump'.",
+  "type": "object",
+  "required": [
+    "schema",
+    "loader",
+    "loader_version",
+    "game_version",
+    "mods",
+    "registries",
+    "tags",
+    "recipes",
+    "loot_tables",
+    "advancements",
+    "worldgen",
+    "log",
+    "errors"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "description": "Version of this format. Bumped on any incompatible change; the harness refuses versions it does not know.",
+      "const": 1
+    },
+    "loader": {
+      "description": "The loader the server ran on.",
+      "enum": ["fabric", "neoforge", "forge", "quilt"]
+    },
+    "loader_version": {
+      "description": "The loader version as the loader reports it, for example 0.20.1 (Fabric Loader) or 21.1.265 (NeoForge).",
+      "type": "string",
+      "minLength": 1
+    },
+    "game_version": {
+      "description": "The Minecraft version the server ran, for example 1.21.1.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+    },
+    "mods": {
+      "description": "Every mod the loader loaded (including the loader itself, minecraft and java where the loader lists them), sorted by id.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/mod" }
+    },
+    "registries": {
+      "description": "Every static (built-in) and dynamic (data-pack) registry: registry id to its entry ids in iteration (raw id) order.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/resource_id" },
+      "additionalProperties": { "$ref": "#/$defs/id_list" }
+    },
+    "tags": {
+      "description": "Registry id to tag id to the resolved entry ids of that tag (no #references), sorted.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/resource_id" },
+      "additionalProperties": {
+        "type": "object",
+        "propertyNames": { "$ref": "#/$defs/resource_id" },
+        "additionalProperties": { "$ref": "#/$defs/id_list" }
+      }
+    },
+    "recipes": {
+      "description": "Recipe id to the recipe encoded with the game's own codec.",
+      "$ref": "#/$defs/json_by_id"
+    },
+    "loot_tables": {
+      "description": "Loot table id to the loot table encoded with the game's own codec.",
+      "$ref": "#/$defs/json_by_id"
+    },
+    "advancements": {
+      "description": "Advancement id to the advancement encoded with the game's own codec.",
+      "$ref": "#/$defs/json_by_id"
+    },
+    "worldgen": {
+      "description": "A worldgen sample of the overworld: the world seed, the chunks generated, and a histogram of the block states in them.",
+      "type": "object",
+      "required": ["seed", "chunks", "block_histogram"],
+      "additionalProperties": false,
+      "properties": {
+        "seed": {
+          "description": "The overworld seed (a Java long). The harness fixes it in server.properties.",
+          "type": "integer"
+        },
+        "chunks": {
+          "description": "Chunk coordinates [x, z] that were generated to full status and counted, in the order the probe visited them.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [{ "type": "integer" }, { "type": "integer" }],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        "block_histogram": {
+          "description": "Block state (namespace:path, then [property=value,...] when the block has properties) to the number of positions holding it across the sampled chunks.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/block_state" },
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "log": {
+      "description": "The server log, captured by the probe from startup until the dump was written. One string per log event.",
+      "type": "object",
+      "required": ["errors", "warnings"],
+      "additionalProperties": false,
+      "properties": {
+        "errors": {
+          "description": "Events at ERROR or FATAL level.",
+          "$ref": "#/$defs/messages"
+        },
+        "warnings": {
+          "description": "Events at WARN level.",
+          "$ref": "#/$defs/messages"
+        }
+      }
+    },
+    "errors": {
+      "description": "Problems the probe itself hit while dumping (for example an entry its codec could not encode). An empty list means the dump is complete.",
+      "$ref": "#/$defs/messages"
+    }
+  },
+  "$defs": {
+    "resource_id": {
+      "description": "A namespaced id as Minecraft writes it: namespace:path.",
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$"
+    },
+    "block_state": {
+      "description": "A block state: a block id, then its properties in brackets when it has any.",
+      "type": "string",
+      "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+(\\[[a-z0-9_]+=[a-z0-9_]+(,[a-z0-9_]+=[a-z0-9_]+)*\\])?$"
+    },
+    "id_list": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/resource_id" },
+      "uniqueItems": true
+    },
+    "json_by_id": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/resource_id" },
+      "additionalProperties": true
+    },
+    "mod": {
+      "type": "object",
+      "required": ["id", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
