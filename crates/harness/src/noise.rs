@@ -9,7 +9,7 @@
 //! The noise file also keeps each side's mod list and entry count, so the scorer can tell the
 //! mods under test from the loader's own mods and the mod's own entries from vanilla's.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -22,7 +22,7 @@ use crate::logs::normalize_message;
 pub const NOISE_RECORD: &str = "jarrow-harness-noise";
 
 /// The noise file format version.
-pub const NOISE_SCHEMA_VERSION: u32 = 1;
+pub const NOISE_SCHEMA_VERSION: u32 = 2;
 
 /// One side of a baseline pair.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -85,18 +85,32 @@ pub struct Noise {
     pub candidate: NoiseSide,
     /// Every content and order difference between the two baselines.
     pub differences: BTreeSet<NoiseItem>,
+    /// For every recipe, loot table and advancement the two baselines encode differently
+    /// (keyed `<category> <id>`): the JSON Pointers that differ, array indices as `*`. A mod
+    /// comparison's change to that entry is noise only when all its pointers are among these.
+    pub changed_pointers: BTreeMap<String, BTreeSet<String>>,
     /// Every normalised log message and probe error either baseline produced. A mod run that
     /// logs one of these is not blamed for it.
     pub log: BTreeSet<String>,
 }
 
+fn pointer_key(difference: &Difference) -> String {
+    format!("{} {}", difference.category, difference.path.join(" "))
+}
+
 impl Noise {
     /// Learns the noise from a baseline pair.
     pub fn learn(reference: &Dump, candidate: &Dump) -> Result<Self, CompareError> {
-        let differences = diff_dumps(reference, candidate)?
+        let all = diff_dumps(reference, candidate)?;
+        let differences = all
             .iter()
             .filter(|d| !matches!(d.category, Category::Log | Category::ProbeErrors))
             .map(NoiseItem::from)
+            .collect();
+        let changed_pointers = all
+            .iter()
+            .filter(|d| d.kind == DiffKind::Changed && !d.pointers.is_empty())
+            .map(|d| (pointer_key(d), d.pointers.iter().cloned().collect()))
             .collect();
         let log = [reference, candidate]
             .into_iter()
@@ -110,6 +124,7 @@ impl Noise {
             reference: NoiseSide::of(reference),
             candidate: NoiseSide::of(candidate),
             differences,
+            changed_pointers,
             log,
         })
     }
@@ -168,6 +183,12 @@ impl Noise {
                 .path
                 .last()
                 .is_some_and(|message| self.log.contains(message)),
+            // A changed entry is noise only where the loaders already differed: NeoForge
+            // naming every loot pool must not hide a pool the converted mod lost.
+            _ if difference.kind == DiffKind::Changed && !difference.pointers.is_empty() => self
+                .changed_pointers
+                .get(&pointer_key(difference))
+                .is_some_and(|known| difference.pointers.iter().all(|p| known.contains(p))),
             _ => self.differences.contains(&NoiseItem::from(difference)),
         }
     }
@@ -225,7 +246,10 @@ mod tests {
         assert_eq!(noise.to_json().unwrap(), text, "deterministic");
         let wrong = text.replace(NOISE_RECORD, "something-else");
         assert!(Noise::from_json(&wrong).unwrap_err().contains("record"));
-        let newer = text.replace("\"schema\": 1", "\"schema\": 9");
+        let newer = text.replace(
+            &format!("\"schema\": {NOISE_SCHEMA_VERSION}"),
+            "\"schema\": 9",
+        );
         assert!(Noise::from_json(&newer).unwrap_err().contains("schema 9"));
         assert!(Noise::from_json("[]").is_err());
     }
@@ -252,5 +276,63 @@ mod tests {
                 .check_applies(&a, &Dump::from_value(&other).unwrap())
                 .is_err()
         );
+    }
+
+    /// The shape the first live baseline showed: NeoForge names every vanilla loot pool.
+    #[test]
+    fn loader_changes_to_an_entry_do_not_hide_a_mods_change_to_it() {
+        use serde_json::Value;
+        let table = |pools: Value| json!({"type": "minecraft:block", "pools": pools});
+        let pool = |item: &str, named: bool| {
+            let mut p = json!({"rolls": 1, "entries": [{"type": "minecraft:item", "name": item}]});
+            if named {
+                p["name"] = json!("main");
+            }
+            p
+        };
+        let stone = "minecraft:blocks/stone";
+        let mut fabric = sample(Loader::Fabric);
+        let neoforge_base = {
+            let mut v = sample(Loader::NeoForge);
+            v["loot_tables"][stone] = table(json!([pool("minecraft:cobblestone", true)]));
+            v
+        };
+        fabric["loot_tables"][stone] = table(json!([pool("minecraft:cobblestone", false)]));
+        let noise = Noise::learn(
+            &Dump::from_value(&fabric).unwrap(),
+            &Dump::from_value(&neoforge_base).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            noise.changed_pointers["loot_tables minecraft:blocks/stone"],
+            BTreeSet::from(["/pools/*/name".to_owned()])
+        );
+
+        // A mod adds a pool to the vanilla table. When the converted mod adds it too, only the
+        // loaders' own pool naming differs; when it lost the pool, that is not noise.
+        fabric["loot_tables"][stone] = table(json!([
+            pool("minecraft:cobblestone", false),
+            pool("examplemod:pebble", false)
+        ]));
+        let changed = |candidate: Value| {
+            let mut b = neoforge_base.clone();
+            b["loot_tables"][stone] = candidate;
+            diff_dumps(
+                &Dump::from_value(&fabric).unwrap(),
+                &Dump::from_value(&b).unwrap(),
+            )
+            .unwrap()
+            .into_iter()
+            .find(|d| d.category == Category::LootTables)
+            .unwrap()
+        };
+        let converted = changed(table(json!([
+            pool("minecraft:cobblestone", true),
+            pool("examplemod:pebble", true)
+        ])));
+        assert!(noise.is_noise(&converted));
+        let lost = changed(table(json!([pool("minecraft:cobblestone", true)])));
+        assert_eq!(lost.pointers, ["/pools#length", "/pools/*/name"]);
+        assert!(!noise.is_noise(&lost), "a lost pool is never loader noise");
     }
 }

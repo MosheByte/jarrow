@@ -11,7 +11,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::canon::{canonical_eq, first_difference};
+use crate::canon::{canonical_eq, differing_pointers, first_difference};
 use crate::dump::Dump;
 use crate::logs::normalize_message;
 
@@ -101,6 +101,32 @@ pub enum DiffKind {
     Changed,
     /// The same entries in a different order.
     Order,
+    /// A worldgen block-state count that moved by no more than the sample's run-to-run
+    /// variation ([`within_worldgen_drift`]).
+    Drift,
+}
+
+/// Worldgen counts may differ by this many blocks between runs of the same server.
+pub const WORLDGEN_DRIFT_BLOCKS: u64 = 16;
+
+/// Worldgen counts may differ by this share of the larger count between runs of the same
+/// server.
+pub const WORLDGEN_DRIFT_SHARE: f64 = 0.02;
+
+/// Whether two counts of one block state differ by no more than the worldgen sample's
+/// run-to-run variation: [`WORLDGEN_DRIFT_BLOCKS`] blocks or [`WORLDGEN_DRIFT_SHARE`] of the
+/// larger count, whichever is more.
+///
+/// The same Fabric server with the same seed and probe, run twice in CI on 2026-11-03, gave
+/// histograms that differed in 4 (1.21.1) and 15 (1.21.11) block states, by at most 32 blocks
+/// (granite, 3768 against 3800) or 10 blocks on a small count (clay, 33 against 23), while
+/// every other part of the dumps was identical. Counts inside this band are not evidence of a
+/// conversion problem; counts outside it are.
+pub fn within_worldgen_drift(a: u64, b: u64) -> bool {
+    let larger = a.max(b);
+    let difference = a.abs_diff(b);
+    difference <= WORLDGEN_DRIFT_BLOCKS
+        || (difference as f64) <= WORLDGEN_DRIFT_SHARE * larger as f64
 }
 
 /// One difference.
@@ -120,6 +146,11 @@ pub struct Difference {
     /// identity used for noise matching.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
+    /// For a changed recipe, loot table or advancement: every JSON Pointer that differs, with
+    /// array indices written `*` ([`crate::canon::differing_pointers`]). Noise matching uses
+    /// it, so a loader that alters a vanilla entry does not hide a mod's own change to it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pointers: Vec<String>,
 }
 
 impl Difference {
@@ -129,6 +160,7 @@ impl Difference {
             kind,
             path,
             detail: None,
+            pointers: Vec::new(),
         }
     }
 
@@ -411,6 +443,7 @@ fn diff_json_maps(
                 if let Some(detail) = first_difference(va, vb) {
                     d = d.with_detail(detail);
                 }
+                d.pointers = differing_pointers(va, vb);
                 out.push(d);
             }
             Some(_) => {}
@@ -421,26 +454,29 @@ fn diff_json_maps(
     }
 }
 
+/// Block-state counts. A count that moved within the sample's run-to-run variation is
+/// [`DiffKind::Drift`], also when it is absent on one side (a handful of mushrooms); beyond it,
+/// a state on one side only is missing or extra and a different count is changed.
 fn diff_histogram(a: &BTreeMap<String, u64>, b: &BTreeMap<String, u64>, out: &mut Vec<Difference>) {
-    for (state, count) in a {
-        match b.get(state) {
-            None => out.push(
-                Difference::new(Category::Worldgen, DiffKind::Missing, vec![state.clone()])
-                    .with_detail(format!("{count} in the reference")),
-            ),
-            Some(other) if other != count => out.push(
-                Difference::new(Category::Worldgen, DiffKind::Changed, vec![state.clone()])
-                    .with_detail(format!(
-                        "{count} in the reference, {other} in the candidate"
-                    )),
-            ),
-            Some(_) => {}
+    let states: BTreeSet<&String> = a.keys().chain(b.keys()).collect();
+    for state in states {
+        let (ca, cb) = (a.get(state).copied(), b.get(state).copied());
+        let (x, y) = (ca.unwrap_or(0), cb.unwrap_or(0));
+        if ca == cb {
+            continue;
         }
-    }
-    for (state, count) in b.iter().filter(|(s, _)| !a.contains_key(*s)) {
+        let detail = format!("{x} in the reference, {y} in the candidate");
+        let kind = if within_worldgen_drift(x, y) {
+            DiffKind::Drift
+        } else if cb.is_none() {
+            DiffKind::Missing
+        } else if ca.is_none() {
+            DiffKind::Extra
+        } else {
+            DiffKind::Changed
+        };
         out.push(
-            Difference::new(Category::Worldgen, DiffKind::Extra, vec![state.clone()])
-                .with_detail(format!("{count} in the candidate")),
+            Difference::new(Category::Worldgen, kind, vec![state.clone()]).with_detail(detail),
         );
     }
 }
@@ -573,8 +609,9 @@ mod tests {
         b["recipes"]["minecraft:stick"]["result"]["count"] = json!(2);
         b["recipes"]["examplemod:widget"] = json!({"type": "minecraft:crafting_shapeless"});
         b["loot_tables"] = json!({});
-        b["worldgen"]["block_histogram"]["minecraft:stone"] = json!(49);
-        b["worldgen"]["block_histogram"]["examplemod:ore"] = json!(1);
+        b["worldgen"]["block_histogram"]["minecraft:stone"] = json!(20);
+        b["worldgen"]["block_histogram"]["minecraft:air"] = json!(110);
+        b["worldgen"]["block_histogram"]["examplemod:ore"] = json!(40);
         let diffs = diff_dumps(&dump(sample(Loader::Fabric)), &dump(b)).unwrap();
         assert_eq!(
             kinds(&diffs),
@@ -615,6 +652,7 @@ mod tests {
                     DiffKind::Changed,
                     vec!["minecraft:stone"]
                 ),
+                (Category::Worldgen, DiffKind::Drift, vec!["minecraft:air"]),
             ]
         );
         let changed = diffs
@@ -625,6 +663,19 @@ mod tests {
             changed.detail.as_deref(),
             Some("/result/count: 4 in the reference, 2 in the candidate")
         );
+        assert_eq!(changed.pointers, ["/result/count"]);
+    }
+
+    #[test]
+    fn worldgen_drift_follows_the_measured_run_to_run_variation() {
+        // Pairs seen between two runs of the same server (docs/harness.md).
+        for (a, b) in [(3768, 3800), (33, 23), (0, 6), (262_805, 262_825), (4, 3)] {
+            assert!(within_worldgen_drift(a, b), "{a} {b}");
+        }
+        // A mod's ore that is gone, or vanilla stone that halved, is not drift.
+        for (a, b) in [(40, 0), (0, 17), (50, 20), (10_000, 9_700)] {
+            assert!(!within_worldgen_drift(a, b), "{a} {b}");
+        }
     }
 
     #[test]
@@ -709,11 +760,11 @@ mod tests {
         b["worldgen"]["block_histogram"] = json!({});
         b["errors"] = json!(["worldgen: java.lang.RuntimeException: boom"]);
         let diffs = diff_dumps(&a, &dump(b)).unwrap();
-        let worldgen = diffs
+        let missing = diffs
             .iter()
             .filter(|d| d.category == Category::Worldgen && d.kind == DiffKind::Missing)
             .count();
-        assert_eq!(worldgen, 3);
+        assert_eq!(missing, 2, "air and stone; three oak logs are within drift");
         assert!(diffs.iter().any(|d| d.category == Category::ProbeErrors));
     }
 }

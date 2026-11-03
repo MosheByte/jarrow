@@ -3,7 +3,7 @@
 //! | Score | Meaning | Outcome |
 //! | --- | --- | --- |
 //! | 1.0 | Identical once loader noise is subtracted | green |
-//! | 0.75 | Only ordering or log-noise differences (registry order, new warnings) | green |
+//! | 0.75 | Only ordering or noise differences (registry order, worldgen counts within the sample's run-to-run variation, new warnings) | green |
 //! | 0.5 | Missing or extra entries under 1% of the mod's entries, or new error lines with no known cause | yellow |
 //! | 0.25 | Loads, but entries differ materially: a changed entry, missing or extra entries at 1% or more, or a classified mixin, missing-class or registry error | red |
 //! | 0 | Fails to load | red |
@@ -46,7 +46,7 @@ pub enum Score {
     Material,
     /// 0.5: missing or extra entries under 1%.
     MinorEntries,
-    /// 0.75: only ordering or log-noise differences.
+    /// 0.75: only ordering or noise differences.
     OrderOrNoise,
     /// 1.0: identical.
     Identical,
@@ -234,6 +234,9 @@ pub struct KindCounts {
     pub changed: usize,
     /// Order.
     pub order: usize,
+    /// Worldgen drift.
+    #[serde(default)]
+    pub drift: usize,
 }
 
 impl KindCounts {
@@ -243,6 +246,7 @@ impl KindCounts {
             DiffKind::Extra => self.extra += 1,
             DiffKind::Changed => self.changed += 1,
             DiffKind::Order => self.order += 1,
+            DiffKind::Drift => self.drift += 1,
         }
     }
 }
@@ -265,6 +269,9 @@ pub struct Counts {
     pub changed: usize,
     /// Registries whose shared entries are in a different order, after noise.
     pub order: usize,
+    /// Worldgen block states whose counts moved within the sample's run-to-run variation,
+    /// after noise.
+    pub worldgen_drift: usize,
     /// (missing + extra) / mod_units (a mod with no entries counts as one).
     pub entry_ratio: f64,
     /// New ERROR or FATAL log lines in the candidate, after noise.
@@ -528,6 +535,7 @@ fn score_dumps(
         extra: entries.extra,
         changed: entries.changed,
         order: entries.order,
+        worldgen_drift: entries.drift,
         entry_ratio,
         new_log_errors: new_errors,
         new_log_warnings: new_warnings,
@@ -617,12 +625,18 @@ fn score_dumps(
                 parts.join("; ")
             ),
         );
-    } else if entries.order > 0 || new_warnings > 0 {
+    } else if entries.order > 0 || entries.drift > 0 || new_warnings > 0 {
         let mut parts = Vec::new();
         if entries.order > 0 {
             parts.push(format!(
                 "{} in a different order",
                 plural(entries.order, "registry", "registries")
+            ));
+        }
+        if entries.drift > 0 {
+            parts.push(format!(
+                "{} within the worldgen sample's run-to-run variation",
+                plural(entries.drift, "block-state count", "block-state counts")
             ));
         }
         if new_warnings > 0 {
@@ -632,7 +646,7 @@ fn score_dumps(
             Score::OrderOrNoise,
             None,
             format!(
-                "Verified by the harness: only ordering or log-noise differences remain{subtracted} ({}).",
+                "Verified by the harness: only ordering or noise differences remain{subtracted} ({}).",
                 parts.join(", ")
             ),
         );
@@ -777,6 +791,32 @@ mod tests {
             report.counts.unwrap().new_log_warnings,
             1,
             "the baseline warning is noise"
+        );
+    }
+
+    #[test]
+    fn worldgen_drift_is_noise_but_a_lost_ore_is_not() {
+        let mut w = world(10);
+        // Two runs of one server differ like this (docs/harness.md, "Scoring").
+        w.reference["worldgen"]["block_histogram"]["minecraft:stone"] = json!(3768);
+        w.candidate["worldgen"]["block_histogram"]["minecraft:stone"] = json!(3800);
+        let report = score(&w);
+        assert_eq!(report.score, Some(0.75), "{}", report.reason);
+        assert_eq!(report.counts.as_ref().unwrap().worldgen_drift, 1);
+        assert!(
+            report.reason.contains("run-to-run variation"),
+            "{}",
+            report.reason
+        );
+
+        w.reference["worldgen"]["block_histogram"]["examplemod:tin_ore[lit=false]"] = json!(120);
+        let report = score(&w);
+        // One of the mod's 12 entries (10 items, a recipe, the ore) is gone: over 1%.
+        assert_eq!(
+            report.score,
+            Some(0.25),
+            "a lost ore is a missing entry: {}",
+            report.reason
         );
     }
 

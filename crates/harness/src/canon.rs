@@ -162,6 +162,83 @@ fn first_difference_at(a: &Value, b: &Value, path: &mut String) -> Option<String
     }
 }
 
+/// At most this many pointers are listed by [`differing_pointers`]; past it the list ends with
+/// [`TRUNCATED_POINTER`].
+pub const MAX_POINTERS: usize = 256;
+
+/// The last entry of a [`differing_pointers`] list that was cut short.
+pub const TRUNCATED_POINTER: &str = "/...";
+
+/// Every place two canonical values differ, as JSON Pointers with every array index written
+/// `*`, sorted and without repeats. A key on one side only is its own pointer; arrays of
+/// different lengths add `<array pointer>#length`.
+///
+/// Wildcarded indices make the list a shape of the difference: "NeoForge names every loot
+/// pool" is `/pools/*/name` however many pools a table has, so a mod that adds a pool on both
+/// loaders still matches the loader noise, while a pool missing on one side adds
+/// `/pools#length`, which the noise does not have.
+pub fn differing_pointers(a: &Value, b: &Value) -> Vec<String> {
+    let mut out = std::collections::BTreeSet::new();
+    pointers_at(
+        &canonicalize(a),
+        &canonicalize(b),
+        &mut String::new(),
+        &mut out,
+    );
+    let mut list: Vec<String> = out.into_iter().collect();
+    if list.len() > MAX_POINTERS {
+        list.truncate(MAX_POINTERS);
+        list.push(TRUNCATED_POINTER.to_owned());
+    }
+    list
+}
+
+fn pointers_at(
+    a: &Value,
+    b: &Value,
+    path: &mut String,
+    out: &mut std::collections::BTreeSet<String>,
+) {
+    if out.len() > MAX_POINTERS {
+        return;
+    }
+    match (a, b) {
+        (Value::Object(ma), Value::Object(mb)) => {
+            let mut keys: Vec<&String> = ma.keys().chain(mb.keys()).collect();
+            keys.sort();
+            keys.dedup();
+            for key in keys {
+                let len = path.len();
+                path.push('/');
+                path.push_str(&escape_pointer(key));
+                match (ma.get(key), mb.get(key)) {
+                    (Some(x), Some(y)) => pointers_at(x, y, path, out),
+                    (None, None) => {}
+                    _ => {
+                        out.insert(path.clone());
+                    }
+                }
+                path.truncate(len);
+            }
+        }
+        (Value::Array(xa), Value::Array(xb)) => {
+            let len = path.len();
+            path.push_str("/*");
+            for (x, y) in xa.iter().zip(xb.iter()) {
+                pointers_at(x, y, path, out);
+            }
+            path.truncate(len);
+            if xa.len() != xb.len() {
+                out.insert(format!("{path}#length"));
+            }
+        }
+        _ if a == b => {}
+        _ => {
+            out.insert(pointer_or_root(path).to_owned());
+        }
+    }
+}
+
 fn pointer_or_root(path: &str) -> &str {
     if path.is_empty() { "/" } else { path }
 }
@@ -255,5 +332,35 @@ mod tests {
             first_difference(&json!(1), &json!(2)).unwrap(),
             "/: 1 in the reference, 2 in the candidate"
         );
+    }
+
+    #[test]
+    fn differing_pointers_wildcard_array_indices() {
+        // The shape NeoForge gives vanilla loot tables: every pool gets a name.
+        let fabric = json!({"pools": [{"rolls": 1}, {"rolls": 2}]});
+        let neoforge =
+            json!({"pools": [{"rolls": 1, "name": "main"}, {"rolls": 2, "name": "pool1"}]});
+        assert_eq!(differing_pointers(&fabric, &neoforge), ["/pools/*/name"]);
+        let lost_pool = json!({"pools": [{"rolls": 1, "name": "main"}]});
+        assert_eq!(
+            differing_pointers(&fabric, &lost_pool),
+            ["/pools#length", "/pools/*/name"]
+        );
+        let recount = json!({"pools": [{"rolls": 3}, {"rolls": 2}]});
+        assert_eq!(differing_pointers(&fabric, &recount), ["/pools/*/rolls"]);
+        assert!(
+            differing_pointers(&fabric, &json!({"pools": [{"rolls": 1.0}, {"rolls": 2}]}))
+                .is_empty()
+        );
+        assert_eq!(differing_pointers(&json!(1), &json!("1")), ["/"]);
+    }
+
+    #[test]
+    fn differing_pointers_are_capped() {
+        let a = Value::Object((0..400).map(|i| (format!("k{i}"), json!(i))).collect());
+        let b = json!({});
+        let pointers = differing_pointers(&a, &b);
+        assert_eq!(pointers.len(), MAX_POINTERS + 1);
+        assert_eq!(pointers.last().map(String::as_str), Some(TRUNCATED_POINTER));
     }
 }
