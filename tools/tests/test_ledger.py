@@ -299,3 +299,97 @@ def test_main_reports_errors(tmp_path: Path, capsys: pytest.CaptureFixture[str])
     assert ledger.main(["--root", str(tmp_path)]) == 1
     assert "ledger: ledger/inputs/wasm.json" in capsys.readouterr().err
     assert not (tmp_path / "LEDGER.md").exists()
+
+
+# -------------------------------------------------------------------- contributors
+
+CONTRIBUTORS: dict[str, Any] = {
+    "schema": 1,
+    "as_of": "2026-11-03",
+    "window_days": 30,
+    "sources": ["git", "github-pulls"],
+    "contributors_30d": {
+        "people": {"count": 2, "logins": ["MosheByte", "newbie"]},
+        "agents": {"count": 1, "names": ["Claude Opus 5.5"]},
+    },
+    "first_time_contributors_30d": {"count": 1, "logins": ["newbie"]},
+}
+
+
+def rows(text: str, title: str) -> list[str]:
+    return [line for line in section(text, title).splitlines() if line.startswith("| ") and "---" not in line]
+
+
+def test_contributors_without_input_say_no_data_yet(tmp_path: Path) -> None:
+    text = ledger.render(tmp_path)
+    assert rows(text, "Contributors") == [
+        "| Number | Value |",
+        "| Contributors (30 days) | No data yet |",
+        "| First-time contributors (30 days) | No data yet |",
+    ]
+    assert "`tools/contributors.py --ledger`" in section(text, "Contributors")
+    assert text.endswith("\n") and not text.endswith("\n\n")
+
+
+def test_contributors_render_counts_and_logins(tmp_path: Path) -> None:
+    write_inputs(tmp_path, {"contributors.json": CONTRIBUTORS})
+    text = ledger.render(tmp_path)
+    contrib = section(text, "Contributors")
+    assert "the 30 days to 2026-11-03 (UTC)" in contrib
+    assert "merged pull requests (GitHub) and commit authors and co-authors (git)" in contrib
+    assert "Bots are not counted." in contrib
+    assert rows(text, "Contributors")[1:] == [
+        "| Contributors (30 days) | 2 people (MosheByte, newbie); 1 agent (Claude Opus 5.5) |",
+        "| First-time contributors (30 days) | 1 person (newbie) |",
+    ]
+    # Contributor numbers alone are not a nightly: the board sections still say none has run.
+    assert "No nightly has run yet. Each number below" in section(text, "Numbers from the last nightly")
+    assert "No nightly has run yet." in section(text, "What works")
+
+
+def test_contributors_zero_git_only_and_long_lists(tmp_path: Path) -> None:
+    data = copy.deepcopy(CONTRIBUTORS)
+    data["sources"] = ["git"]
+    data["first_time_contributors_30d"] = None
+    data["contributors_30d"]["people"] = {"count": 0, "logins": []}
+    write_inputs(tmp_path / "a", {"contributors.json": data})
+    text = ledger.render(tmp_path / "a")
+    assert "from commit authors and co-authors (git) only" in section(text, "Contributors")
+    assert rows(text, "Contributors")[1:] == [
+        "| Contributors (30 days) | 0 people; 1 agent (Claude Opus 5.5) |",
+        "| First-time contributors (30 days) | not measured: the merged pull request lookup was unavailable |",
+    ]
+    many = [f"user{i:02d}" for i in range(35)]
+    data["contributors_30d"]["people"] = {"count": 35, "logins": many}
+    write_inputs(tmp_path / "b", {"contributors.json": data})
+    line = rows(ledger.render(tmp_path / "b"), "Contributors")[1]
+    assert line.startswith("| Contributors (30 days) | 35 people (user00, user01,")
+    assert "user29 and 5 more); 1 agent" in line and "user30" not in line
+
+
+@pytest.mark.parametrize(
+    ("path", "value", "message"),
+    [
+        (["contributors_30d", "people", "count"], 3, "count is 3, but logins has 2"),
+        (["contributors_30d", "agents", "names"], ["a", "a"], "names repeats a name"),
+        (["first_time_contributors_30d", "logins"], ["newbie", ""], "must be a list of non-empty strings"),
+        (["sources"], ["git", "crystal-ball"], "names unknown sources: crystal-ball"),
+        (["as_of"], "2026-11-3", "as_of must match"),
+        (["first_time_contributors_30d"], KeyError, "first_time_contributors_30d is required"),
+        (["contributors_30d", "bots"], {"count": 0, "logins": []}, "has unknown keys: bots"),
+    ],
+)
+def test_invalid_contributors_are_rejected(tmp_path: Path, path: list[str], value: Any, message: str) -> None:
+    data = copy.deepcopy(CONTRIBUTORS)
+    target: Any = data
+    for key in path[:-1]:
+        target = target[key]
+    if value is KeyError:
+        del target[path[-1]]
+    else:
+        target[path[-1]] = value
+    write_inputs(tmp_path, {"contributors.json": data})
+    with pytest.raises(ledger.LedgerInputError) as err:
+        ledger.render(tmp_path)
+    assert str(err.value).startswith("ledger/inputs/contributors.json")
+    assert message in str(err.value)

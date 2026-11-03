@@ -34,3 +34,12 @@ No nightly has run yet. Each number below names the milestone that first produce
 ## Open red reasons
 
 No nightly has run yet. Red reasons are classified from harness logs (milestone M1) and become the work queue for the rule tables.
+
+## Contributors
+
+Who landed work in the 30 days to 2026-11-03 (UTC), from merged pull requests (GitHub) and commit authors and co-authors (git). Bots are not counted.
+
+| Number | Value |
+| --- | --- |
+| Contributors (30 days) | 1 person (MosheByte); 1 agent (Claude Opus 5.5) |
+| First-time contributors (30 days) | 1 person (MosheByte) |

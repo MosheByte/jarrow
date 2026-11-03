@@ -498,3 +498,151 @@ def test_a_failed_lookup_keeps_only_the_bots_it_could_confirm(small_repo: GitRep
     logins = bot_logins(contributors.generate(root, gh=nightly, log=lambda _: None))
     assert "socket-security" not in logins and "claude" not in logins
     assert "jarrow-bot" in logins
+
+
+def test_deploy_key_role_says_how_each_workflow_pushes(small_repo: GitRepo) -> None:
+    files = contributors.read_repo_files(small_repo.root)
+    files.workflows["contributors.yml"] += "      - run: bash tools/bot_pr.sh contributors t b -- x\n"
+    files.workflows["board.yml"] = "jobs:\n  x:\n    env:\n      K: ${{ secrets.BOT_DEPLOY_KEY }}\n"
+    role = contributors.role_deploy_key(files)
+    assert (
+        "as the branch of a bot pull request (tools/bot_pr.sh) for the nightly refresh of this "
+        "list (contributors.yml)"
+    ) in role
+    assert "directly for LEDGER and board-data commits (board.yml)" in role
+
+
+# ---------------------------------------------------------------- --ledger: contributor numbers
+
+
+class LedgerGh(FakeGh):
+    """FakeGh that also lists merged pull requests (None: the lookup fails)."""
+
+    def __init__(self, merged: list[dict] | None) -> None:
+        super().__init__({})
+        self.merged = merged
+
+    def merged_pulls(self, repo: str) -> list[dict]:
+        if self.merged is None:
+            raise contributors.GhError("gh: Resource not accessible by integration (HTTP 403)")
+        return self.merged
+
+
+def merged(number: int, login: str, when: str, is_bot: bool = False) -> dict:
+    return {"number": number, "author": {"login": login, "is_bot": is_bot}, "mergedAt": when}
+
+
+def numbers(root: Path, as_of: str, gh: object = None) -> dict:
+    return contributors.ledger_numbers(
+        root, gh=gh, as_of=contributors.date.fromisoformat(as_of), log=lambda _: None
+    )
+
+
+def test_ledger_offline_counts_people_and_agents_from_git(team_repo: GitRepo) -> None:
+    data = numbers(team_repo.root, "2026-01-10")
+    assert data["schema"] == 1 and data["as_of"] == "2026-01-10" and data["window_days"] == 30
+    assert data["sources"] == ["git"]
+    # Real Person has no login offline; dependabot and jarrow-bot are bots; the refresh commit
+    # is not counted. jarrow-bot's commit names Opus, but a bot-authored commit counts for no one.
+    assert data["contributors_30d"]["people"] == {"count": 2, "logins": ["janedoe", "MosheByte"]}
+    assert data["contributors_30d"]["agents"] == {
+        "count": 2,
+        "names": ["Claude Opus 5.5", "Claude Sonnet 4.6"],
+    }
+    assert data["first_time_contributors_30d"] is None
+
+
+def test_ledger_window_is_30_days_ending_on_as_of(team_repo: GitRepo) -> None:
+    # Commit 1 is 2026-01-01 08:00Z, commit 2 is 2026-01-02 08:00Z, commit 4 is 2026-01-04.
+    data = numbers(team_repo.root, "2026-01-02")
+    assert data["contributors_30d"]["people"]["logins"] == ["janedoe", "MosheByte"]
+    # 2026-01-30 is the last as-of day whose window (2026-01-01 to 2026-01-30) holds commit 1.
+    late = numbers(team_repo.root, "2026-01-30")
+    assert "MosheByte" in late["contributors_30d"]["people"]["logins"]
+    after = numbers(team_repo.root, "2026-01-31")
+    assert "MosheByte" not in after["contributors_30d"]["people"]["logins"]
+    gone = numbers(team_repo.root, "2026-02-04")
+    assert gone["contributors_30d"]["people"] == {"count": 0, "logins": []}
+    assert gone["contributors_30d"]["agents"] == {"count": 0, "names": []}
+
+
+def test_ledger_merged_pull_requests_and_first_timers(team_repo: GitRepo) -> None:
+    gh = LedgerGh(
+        [
+            merged(1, "MosheByte", "2025-11-20T10:00:00Z"),
+            merged(7, "MosheByte", "2026-01-06T10:00:00Z"),
+            merged(8, "newbie", "2026-01-05T23:30:00Z"),
+            merged(9, "Newbie", "2026-01-07T01:00:00Z"),
+            merged(10, "app/dependabot", "2026-01-05T00:00:00Z", is_bot=True),
+            merged(11, "renovate[bot]", "2026-01-05T00:00:00Z"),
+            merged(12, "oldtimer", "2025-10-01T00:00:00Z"),
+            merged(13, "nobody", "not a time"),
+        ]
+    )
+    data = numbers(team_repo.root, "2026-01-10", gh)
+    assert data["sources"] == ["git", "github-pulls"]
+    assert data["contributors_30d"]["people"]["logins"] == ["janedoe", "MosheByte", "newbie"]
+    # MosheByte's first merged PR is older than the window; newbie's falls in it.
+    assert data["first_time_contributors_30d"] == {"count": 1, "logins": ["newbie"]}
+
+
+def test_ledger_failed_pull_request_lookup_is_null_not_zero(team_repo: GitRepo) -> None:
+    logs: list[str] = []
+    data = contributors.ledger_numbers(
+        team_repo.root, gh=LedgerGh(None), as_of=contributors.date(2026, 1, 10), log=logs.append
+    )
+    assert data["sources"] == ["git"]
+    assert data["first_time_contributors_30d"] is None
+    assert any("first-time contributors are not counted" in line for line in logs)
+
+
+def test_ledger_input_keeps_as_of_until_a_number_changes(
+    team_repo: GitRepo, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = team_repo.root
+    path = root / contributors.LEDGER_INPUT_PATH
+    base = ["--ledger", "--offline", "--root", str(root)]
+    assert contributors.main([*base, "--as-of", "2026-01-10"]) == 0
+    first = path.read_bytes()
+    assert b"\r" not in first and json.loads(first)["as_of"] == "2026-01-10"
+    # The next night finds the same people: nothing to commit, so no bot pull request.
+    assert contributors.main([*base, "--as-of", "2026-01-11"]) == 0
+    assert path.read_bytes() == first
+    assert contributors.main([*base, "--check", "--as-of", "2026-01-11"]) == 0
+    # Later everyone has aged out of the window: the file changes and moves on.
+    assert contributors.main([*base, "--check", "--as-of", "2026-02-20"]) == 1
+    assert path.read_bytes() == first
+    assert contributors.main([*base, "--as-of", "2026-02-20"]) == 0
+    later = json.loads(path.read_bytes())
+    assert later["as_of"] == "2026-02-20"
+    assert later["contributors_30d"]["people"]["count"] == 0
+    # Only the ledger input is written in --ledger mode.
+    assert not (root / contributors.TEAM_JSON_PATH).exists()
+    capsys.readouterr()
+
+
+def test_ledger_input_renders_in_ledger_md(team_repo: GitRepo, capsys: pytest.CaptureFixture[str]) -> None:
+    import ledger
+
+    root = team_repo.root
+    assert contributors.main(["--ledger", "--offline", "--root", str(root), "--as-of", "2026-01-10"]) == 0
+    text = ledger.render(root)
+    assert (
+        "| Contributors (30 days) | 2 people (janedoe, MosheByte); "
+        "2 agents (Claude Opus 5.5, Claude Sonnet 4.6) |"
+    ) in text
+    assert "| First-time contributors (30 days) | not measured" in text
+    capsys.readouterr()
+
+
+def test_as_of_needs_ledger_and_a_date(team_repo: GitRepo, capsys: pytest.CaptureFixture[str]) -> None:
+    root = str(team_repo.root)
+    for argv in (
+        ["--offline", "--root", root, "--as-of", "2026-01-10"],
+        ["--ledger", "--offline", "--root", root, "--as-of", "10/01/2026"],
+        ["--ledger", "--offline", "--root", root, "--as-of", "2026-02-30"],
+    ):
+        with pytest.raises(SystemExit) as exit_info:
+            contributors.main(argv)
+        assert exit_info.value.code == 2
+    capsys.readouterr()

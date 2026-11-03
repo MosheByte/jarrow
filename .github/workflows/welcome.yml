@@ -1,0 +1,341 @@
+# First-time contributors get one comment on their pull request that says what the checks found
+# and which rule they could take next. It runs after the "ci" and "harness" workflows finish on
+# a pull_request event, and it never checks out or runs pull request code: everything it reads
+# comes from the GitHub API, and the job has no repository contents at all.
+# One comment per pull request, found again by its hidden marker. When another check finishes or
+# the contributor pushes again, the same comment is edited, so it never posts twice.
+# Text that a pull request controls (job names, the harness summary artifact) is treated as
+# data: mentions are defused, markers are stripped and the summary is capped.
+# See docs/community-automation.md.
+name: welcome
+
+on:
+  workflow_run:
+    workflows: [ci, harness]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: welcome-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    name: comment
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read # workflow runs, jobs and the harness summary artifact
+      issues: read # the next good-first-rule issue
+      pull-requests: write # the comment
+    steps:
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Post or update the first-PR comment
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+          PR_NUMBERS: ${{ join(github.event.workflow_run.pull_requests.*.number, ' ') }}
+        run: |
+          # jarrow:welcome (docs/community-automation.md)
+          import io
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import urllib.parse
+          import zipfile
+
+          MARKER = "<!-- jarrow:welcome -->"
+          WORKFLOWS = ("ci", "harness")
+          NEXT_LABELS = ("good-first-rule", "good first issue", "help wanted")
+          FIRST_TIME = frozenset({"FIRST_TIME_CONTRIBUTOR", "FIRST_TIMER"})
+          SUMMARY_ARTIFACT = "harness-summary"
+          SUMMARY_FILE = "summary.md"
+          BASELINE_ARTIFACT = "baseline"
+          STATUS_FILE = "baseline-status.json"
+          MAX_SUMMARY_CHARS = 6000
+          MAX_SUMMARY_BYTES = 256 * 1024
+          MAX_ARTIFACT_BYTES = 50 * 1024 * 1024
+          BOT_LOGIN = "github-actions[bot]"
+
+
+          class GhError(RuntimeError):
+              pass
+
+
+          def gh(*args, stdin=None):
+              proc = subprocess.run(["gh", *args], input=stdin, capture_output=True, check=False)
+              if proc.returncode != 0:
+                  lines = [ln for ln in proc.stderr.decode("utf-8", "replace").splitlines() if ln.strip()]
+                  raise GhError(lines[-1] if lines else f"gh exited with {proc.returncode}")
+              return proc.stdout
+
+
+          def api(path, method="GET", body=None):
+              args = ["api", "-H", "Accept: application/vnd.github+json", "-X", method, path]
+              stdin = None
+              if body is not None:
+                  args += ["--input", "-"]
+                  stdin = json.dumps(body).encode("utf-8")
+              out = gh(*args, stdin=stdin)
+              return json.loads(out) if out.strip() else None
+
+
+          def api_all(path):
+              out = gh("api", "-H", "Accept: application/vnd.github+json", "--paginate", "--slurp", path)
+              pages = json.loads(out) if out.strip() else []
+              return [item for page in pages for item in (page or [])]
+
+
+          def download(path):
+              return gh("api", path)
+
+
+          def q(text):
+              return urllib.parse.quote(text, safe="")
+
+
+          def defuse(text):
+              """Text a pull request controls: no mentions, no markers, one line where it matters."""
+              text = text.replace("<!--", "&lt;!--").replace("-->", "--&gt;")
+              return re.sub(r"@(?=[A-Za-z0-9_-])", "@\u200b", text)
+
+
+          def cell(text):
+              return defuse(text).replace("|", "\\|").replace("\r", " ").replace("\n", " ")
+
+
+          def find_pr(repo, numbers, owner, branch, sha):
+              """The open pull request whose head is sha, or None."""
+              candidates = []
+              for number in numbers:
+                  try:
+                      candidates.append(api(f"repos/{repo}/pulls/{int(number)}"))
+                  except (GhError, ValueError) as err:
+                      print(f"welcome: pull request {number}: {err}")
+              if not candidates and owner and branch:
+                  try:
+                      candidates += api(f"repos/{repo}/pulls?state=open&per_page=10&head={q(owner)}:{q(branch)}") or []
+                  except GhError as err:
+                      print(f"welcome: listing pull requests for the head branch failed: {err}")
+              if not candidates:
+                  try:
+                      candidates += api(f"repos/{repo}/commits/{sha}/pulls") or []
+                  except GhError as err:
+                      print(f"welcome: listing pull requests for {sha[:12]} failed: {err}")
+              for pr in candidates:
+                  if isinstance(pr, dict) and pr.get("state") == "open" and (pr.get("head") or {}).get("sha") == sha:
+                      return pr
+              return None
+
+
+          def first_time(repo, pr):
+              """FIRST_TIME_CONTRIBUTOR or FIRST_TIMER, or no merged pull request by the author."""
+              user = pr.get("user") or {}
+              login = user.get("login") or ""
+              if not login or user.get("type") == "Bot" or login.endswith("[bot]"):
+                  return False
+              if pr.get("author_association") in FIRST_TIME:
+                  return True
+              query = f"repo:{repo} is:pr is:merged author:{login}"
+              found = api(f"search/issues?per_page=1&q={q(query)}") or {}
+              return int(found.get("total_count") or 0) == 0
+
+
+          def latest_runs(repo, sha):
+              """The newest pull_request run of each watched workflow on sha: {name: run}."""
+              data = api(f"repos/{repo}/actions/runs?event=pull_request&per_page=100&head_sha={sha}") or {}
+              runs = {}
+              for run in data.get("workflow_runs") or []:
+                  name = run.get("name")
+                  if name in WORKFLOWS and (name not in runs or run.get("id", 0) > runs[name].get("id", 0)):
+                      runs[name] = run
+              return runs
+
+
+          def run_jobs(repo, run):
+              attempt = run.get("run_attempt") or 1
+              data = api(f"repos/{repo}/actions/runs/{run['id']}/attempts/{attempt}/jobs?per_page=100") or {}
+              return data.get("jobs") or []
+
+
+          def clip(text):
+              text = defuse(text.strip())
+              if len(text) > MAX_SUMMARY_CHARS:
+                  text = text[:MAX_SUMMARY_CHARS].rstrip() + "\n\n(Cut here; the full summary is in the harness run.)"
+              return text
+
+
+          def baseline_table(archive):
+              """One row per <game version>/baseline-status.json in the baseline artifact."""
+              rows = []
+              for info in archive.infolist():
+                  if info.filename.rsplit("/", 1)[-1] != STATUS_FILE or info.file_size > 64 * 1024:
+                      continue
+                  try:
+                      data = json.loads(archive.read(info).decode("utf-8"))
+                  except (ValueError, UnicodeDecodeError):
+                      continue
+                  if isinstance(data, dict):
+                      rows.append(tuple(str(data.get(k) or "") for k in ("game_version", "status", "reason", "detail")))
+              if not rows:
+                  return None
+              lines = ["Baseline per game version (`baseline` artifact):", "", "| Game version | Status | Reason | Detail |", "| --- | --- | --- | --- |"]
+              for version, status, reason, detail in sorted(rows):
+                  lines.append(f"| {cell(version)} | {cell(status)} | {cell(reason)} | {cell(detail[:300])} |")
+              return "\n".join(lines)
+
+
+          def open_artifact(repo, art):
+              if int(art.get("size_in_bytes") or 0) > MAX_ARTIFACT_BYTES:
+                  print(f"welcome: the {art.get('name')} artifact is too large to read")
+                  return None
+              return zipfile.ZipFile(io.BytesIO(download(f"repos/{repo}/actions/artifacts/{art['id']}/zip")))
+
+
+          def harness_summary(repo, run, jobs):
+              """What the harness run left: its harness-summary artifact's summary.md, else the
+              baseline-status.json files of its baseline artifact, else a job's check-run summary."""
+              try:
+                  data = api(f"repos/{repo}/actions/runs/{run['id']}/artifacts?per_page=100") or {}
+              except GhError as err:
+                  print(f"welcome: listing the harness artifacts failed: {err}")
+                  data = {}
+              artifacts = {a.get("name"): a for a in data.get("artifacts") or [] if not a.get("expired")}
+              if SUMMARY_ARTIFACT in artifacts:
+                  try:
+                      archive = open_artifact(repo, artifacts[SUMMARY_ARTIFACT])
+                      if archive is not None:
+                          with archive:
+                              info = archive.getinfo(SUMMARY_FILE)
+                              if info.file_size <= MAX_SUMMARY_BYTES:
+                                  return clip(archive.read(info).decode("utf-8", "replace"))
+                              print(f"welcome: {SUMMARY_FILE} is {info.file_size} bytes; not quoted")
+                  except (GhError, KeyError, zipfile.BadZipFile) as err:
+                      print(f"welcome: reading the {SUMMARY_ARTIFACT} artifact failed: {err}")
+              if BASELINE_ARTIFACT in artifacts:
+                  try:
+                      archive = open_artifact(repo, artifacts[BASELINE_ARTIFACT])
+                      if archive is not None:
+                          with archive:
+                              table = baseline_table(archive)
+                          if table:
+                              return table
+                  except (GhError, zipfile.BadZipFile) as err:
+                      print(f"welcome: reading the {BASELINE_ARTIFACT} artifact failed: {err}")
+              for job in jobs:
+                  try:
+                      check = api(f"repos/{repo}/check-runs/{job['id']}") or {}
+                  except GhError:
+                      continue
+                  summary = ((check.get("output") or {}).get("summary") or "").strip()
+                  if summary:
+                      return clip(summary)
+              return None
+
+
+          def next_issue(repo):
+              """(label, issue): the oldest open issue under the first label that has one."""
+              for label in NEXT_LABELS:
+                  items = api(f"repos/{repo}/issues?state=open&sort=created&direction=asc&per_page=50&labels={q(label)}") or []
+                  issues = [i for i in items if "pull_request" not in i]
+                  if issues:
+                      unassigned = [i for i in issues if not i.get("assignees")]
+                      return label, (unassigned or issues)[0]
+              return None
+
+
+          def result(item):
+              if item.get("status") != "completed":
+                  return str(item.get("status") or "queued").replace("_", " ")
+              return str(item.get("conclusion") or "no conclusion").replace("_", " ")
+
+
+          def render(pr, runs, jobs, summary, upcoming):
+              login = (pr.get("user") or {}).get("login", "")
+              sha = (pr.get("head") or {}).get("sha", "")
+              lines = [
+                  MARKER,
+                  f"@{login}, this is your first pull request here. What the checks found on `{sha[:7]}`:",
+                  "",
+              ]
+              for name in WORKFLOWS:
+                  run = runs.get(name)
+                  if run is None:
+                      if name == "harness":
+                          lines += ["**harness**: the harness did not run on this PR.", ""]
+                      else:
+                          lines += [f"**{name}**: did not run on this commit.", ""]
+                      continue
+                  lines.append(f"**{name}** ([run {run['id']}]({run.get('html_url', '')})): {result(run)}")
+                  if jobs.get(name):
+                      lines += ["", "| Job | Result |", "| --- | --- |"]
+                      for job in sorted(jobs[name], key=lambda j: j.get("name") or ""):
+                          lines.append(f"| [{cell(job.get('name') or 'job')}]({job.get('html_url', '')}) | {result(job)} |")
+                  if name == "harness":
+                      if run.get("status") != "completed":
+                          lines += ["", "The harness is still running; this comment changes when it finishes."]
+                      elif summary:
+                          lines += ["", "<details><summary>Harness summary</summary>", "", summary, "", "</details>"]
+                      else:
+                          lines += ["", "The harness run left no summary (no `harness-summary` or `baseline` artifact)."]
+                  lines.append("")
+              if upcoming is None:
+                  lines.append("Next rule you could take: no open good-first-rule issue right now.")
+              else:
+                  label, issue = upcoming
+                  title = cell(issue.get("title") or "")
+                  lines.append(f"Next rule you could take: [#{issue['number']} {title}]({issue['html_url']}) (`{label}`).")
+              return "\n".join(lines) + "\n"
+
+
+          def upsert(repo, number, body):
+              comments = api_all(f"repos/{repo}/issues/{number}/comments?per_page=100")
+              mine = [
+                  c for c in comments
+                  if MARKER in (c.get("body") or "") and (c.get("user") or {}).get("login") == BOT_LOGIN
+              ]
+              if mine:
+                  if mine[0].get("body") == body:
+                      print(f"welcome: comment on #{number} is up to date")
+                      return "unchanged"
+                  api(f"repos/{repo}/issues/comments/{mine[0]['id']}", "PATCH", {"body": body})
+                  print(f"welcome: updated the comment on #{number}")
+                  return "updated"
+              api(f"repos/{repo}/issues/{number}/comments", "POST", {"body": body})
+              print(f"welcome: commented on #{number}")
+              return "created"
+
+
+          def main(env):
+              repo, sha = env["REPO"], env["HEAD_SHA"]
+              pr = find_pr(repo, env.get("PR_NUMBERS", "").split(), env.get("HEAD_OWNER", ""), env.get("HEAD_BRANCH", ""), sha)
+              if pr is None:
+                  print(f"welcome: no open pull request has {sha[:12]} as its head; nothing to do")
+                  return 0
+              if not first_time(repo, pr):
+                  print(f"welcome: #{pr['number']} is not from a first-time contributor; nothing to do")
+                  return 0
+              runs = latest_runs(repo, sha)
+              jobs = {name: run_jobs(repo, run) for name, run in runs.items()}
+              summary = None
+              harness = runs.get("harness")
+              if harness is not None and harness.get("status") == "completed":
+                  summary = harness_summary(repo, harness, jobs.get("harness") or [])
+              body = render(pr, runs, jobs, summary, next_issue(repo))
+              upsert(repo, pr["number"], body)
+              return 0
+
+
+          if __name__ == "__main__":
+              sys.exit(main(os.environ))
