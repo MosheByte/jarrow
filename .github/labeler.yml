@@ -1,0 +1,24 @@
+# Path-based labels for pull requests (actions/labeler v5 syntax).
+# Only labels that exist in the repository are used here.
+
+rule:
+  - changed-files:
+      - any-glob-to-any-file: 'rules/**'
+
+harness:
+  - changed-files:
+      - any-glob-to-any-file: 'crates/harness/**'
+
+site:
+  - changed-files:
+      - any-glob-to-any-file: 'site/**'
+
+infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'infra/**'
+
+tier-b:
+  - changed-files:
+      - any-glob-to-any-file: 'tools/tierb/**'

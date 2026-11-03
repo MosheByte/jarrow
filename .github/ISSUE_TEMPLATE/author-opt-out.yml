@@ -1,0 +1,49 @@
+name: Author opt-out
+description: You are the author of a mod and want Jarrow to leave it alone, or to point to your official port.
+title: "[opt-out] "
+labels: ["author-opt-out"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Opt-out is absolute. If you choose "Do not port", the converter refuses your mod, the board hides it, and the refusal says why. This is honoured even if your license would allow conversion.
+
+        Signing in on the site to opt out in one click is not built yet (milestone M4), so this form is the way to opt out today. Opt-outs filed before the board exists are applied from its first run.
+
+        Issues are public. Do not put private information in your proof of ownership.
+  - type: input
+    id: mod-page
+    attributes:
+      label: Mod page URL
+      description: The mod's public page on Modrinth, CurseForge or your own site.
+      placeholder: https://modrinth.com/mod/<slug>
+    validations:
+      required: true
+  - type: textarea
+    id: ownership-proof
+    attributes:
+      label: Proof of ownership
+      description: |
+        Anything public that ties you to the mod. For example: a line on the mod page, in the mod's README or in a commit to its repository that links to this issue; or the mod page listing your GitHub account as an author.
+    validations:
+      required: true
+  - type: dropdown
+    id: choice
+    attributes:
+      label: What should Jarrow do?
+      options:
+        - Do not port
+        - Official port exists
+    validations:
+      required: true
+  - type: input
+    id: official-port
+    attributes:
+      label: Link to the official port
+      description: Required if you chose "Official port exists". The board will link here.
+      placeholder: https://modrinth.com/mod/<slug>
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Other mods of yours this applies to, or anything we should know.

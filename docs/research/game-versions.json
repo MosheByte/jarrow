@@ -1,0 +1,57 @@
+{
+  "method": "top 200 Fabric mods by downloads; per-file downloads split across listed 1.21 minors",
+  "ranking": [
+    {
+      "game_version": "1.21.1",
+      "weighted_downloads": 1059442095
+    },
+    {
+      "game_version": "1.21.11",
+      "weighted_downloads": 731846127
+    },
+    {
+      "game_version": "1.21",
+      "weighted_downloads": 619656145
+    },
+    {
+      "game_version": "1.21.4",
+      "weighted_downloads": 260991071
+    },
+    {
+      "game_version": "1.21.5",
+      "weighted_downloads": 187587148
+    },
+    {
+      "game_version": "1.21.10",
+      "weighted_downloads": 169401994
+    },
+    {
+      "game_version": "1.21.8",
+      "weighted_downloads": 133999659
+    },
+    {
+      "game_version": "1.21.9",
+      "weighted_downloads": 107772960
+    },
+    {
+      "game_version": "1.21.6",
+      "weighted_downloads": 93520105
+    },
+    {
+      "game_version": "1.21.7",
+      "weighted_downloads": 90289224
+    },
+    {
+      "game_version": "1.21.3",
+      "weighted_downloads": 77658793
+    },
+    {
+      "game_version": "1.21.2",
+      "weighted_downloads": 71403099
+    }
+  ],
+  "pinned": [
+    "1.21.1",
+    "1.21.11"
+  ]
+}

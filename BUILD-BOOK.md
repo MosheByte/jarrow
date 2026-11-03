@@ -86,6 +86,12 @@ The owner has connected a set of services through MCP connectors and the shell. 
 
 **Step 5 — secrets.** Secrets live in GitHub Actions secrets and Cloudflare bindings, never in the repository, never in `INVENTORY.md`. Record the secret's *name* and where it is used. If you created a key, say so, so the owner can rotate it.
 
+**Step 6 — "Needs the owner" is a proof of failure, not an estimate.** An item goes into `infra/TODO-OWNER.md` only after you tried REST, GraphQL, the vendor CLI and the vendor API with the credentials you already hold, and you can paste the exact command and error. A connector you can reach is yours to finish.
+
+**Step 7 — reporting never pauses work.** Commit and push what is done; keep working while you report. The only owner-only item in M0 is the Minecraft EULA. OAuth app, Sponsors, Discord, registry tokens and the org transfer belong under their milestone headings in `infra/TODO-OWNER.md`, not in a milestone report.
+
+*(Steps 6 and 7 recorded on 2026-11-03 from the owner's correction message; see docs/book-amendments.md A-9.)*
+
 **When you may stop (the only three cases)**
 
 1. A legal boundary: you would have to redistribute someone else's mod, assets or decompiled source, or violate a license you detected.

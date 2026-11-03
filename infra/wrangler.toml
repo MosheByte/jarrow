@@ -1,0 +1,21 @@
+# Shared Cloudflare config for Jarrow's non-Pages pieces.
+# The Pages site has its own config in site/wrangler.toml (wrangler reads it from the project directory).
+# Apply D1 migrations with:
+#   npx wrangler d1 migrations apply jarrow --remote --config infra/wrangler.toml
+name = "jarrow-ingest"
+account_id = "e9b8acf2e89a1de289a1ee4abb0f3f8d"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jarrow"
+database_id = "94b0f4c1-a071-4541-b2ec-f77abef9d445"
+migrations_dir = "d1/migrations"
+
+[[kv_namespaces]]
+binding = "BOARD"
+id = "c04b064aa29d46468c8573ea7072cdf8"
+
+[[r2_buckets]]
+binding = "REPORTS"
+bucket_name = "jarrow-reports"
