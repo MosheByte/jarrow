@@ -400,6 +400,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "jarrow-classfile"
+version = "0.1.0"
+dependencies = [
+ "miniz_oxide",
+ "proptest",
+]
+
+[[package]]
 name = "jarrow-harness"
 version = "0.1.0"
 dependencies = [
