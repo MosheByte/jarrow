@@ -29,6 +29,17 @@ Every archive holds one directory, `jarrow-<target>/`, with the binary (`jarrow`
 
 Each binary is built with `cargo build --release -p jarrow --locked --target <target>` from a clean checkout, with no build cache, and with the toolchain pinned in `rust-toolchain.toml`. Before packaging, each native binary runs with `--version` and `--help`. That smoke run is all the nightly checks. The tests run in `ci.yml` on every pull request and every push to `main`.
 
+### What the release notes say
+
+Each nightly's notes start with what the build is and the one check it had, then two lists written by `tools/release_notes.py` in the `changes` job:
+
+- **Changes since `<previous nightly tag>`:** every pull request merged into `main` after the previous nightly's commit, up to this build's commit, with its number, title and author's handle, then any commit in that range that no pull request holds (`main` took direct pushes during M0). The previous nightly is the newest `nightly-YYYYMMDD` tag older than this run's own tag, so a same-day rerun still compares with the nightly before it. With no older nightly, the list starts after the repository's first commit, and the heading says "Changes since the first commit".
+- **Contributors:** every handle that authored or co-authored those changes: the pull requests' authors, the commits' authors from `git log` (bots included, such as `dependabot[bot]`), and every `Co-Authored-By` trailer. People are listed by GitHub handle, bots by account name and agents by name (Claude Opus 5.5). A person GitHub has no account for is listed by the name in the commit; no e-mail address is printed.
+
+After them come the `--help` output, the downloads and how to verify a download.
+
+The pull requests come from `gh pr list --state merged --base main --search "merged:>=<day before the previous nightly's commit>"`, kept only when their merge commit is in the range. A commit in the range that none of them accounts for is looked up with `gh api repos/<repo>/commits/<sha>/pulls` before it is listed on its own, and handles behind commit addresses that are not GitHub no-reply addresses come from GitHub's record of the commit's authors (GraphQL). If git or any of those lookups fails, the `changes` job fails and nothing is published, so a nightly never ships a partial list; run it again. Dry runs write both lists too (for a pull request, up to its head commit) and show them in the `changes` job's summary.
+
 ### Verify a download
 
 Check the archive against `SHA256SUMS` from the same release:
@@ -67,6 +78,7 @@ The workflow's default token permission is `contents: read`. No repository secre
 | --- | --- | --- |
 | `meta` | Names the day, the tag and the short SHA from the run's creation time | `actions: read` |
 | `build` (4 legs) | Builds, smoke-tests and packages one target; the Linux leg also records the help text and the glibc floor from the packaged binary | `contents: read` |
+| `changes` | Writes the "Changes since" and "Contributors" sections with `tools/release_notes.py` from the full history and the `nightly-*` tags, and shows them in its summary | `contents: read`, `pull-requests: read` |
 | `publish` | Checks that exactly the four archives arrived, writes `SHA256SUMS` and the notes, attests and verifies every asset, creates or replaces the release, downloads it again to check the hashes and the tag, and prunes old nightlies | `contents: write`, `id-token: write`, `attestations: write` |
 
 The publish job never runs code that was just built: the help text comes from the build job as a file.
@@ -96,3 +108,11 @@ Checked from a maintainer machine after the runs:
 - `gh attestation verify <archive> --repo MosheByte/jarrow --signer-workflow MosheByte/jarrow/.github/workflows/nightly.yml --source-ref refs/heads/main` exited 0 for both. The verified SLSA v1 provenance names `ea0af33`, `refs/heads/main` and the run that built the file.
 
 The two runs built the same commit on fresh runners. The Linux and both macOS archives came out byte-identical, so `gh attestation verify` on the Linux archive finds both runs' attestations. The Windows zip differed between the runs. Only 24 bytes of `jarrow.exe` differ, all written by the MSVC linker: the link timestamp in the PE header and debug directory, and the PDB GUID.
+
+## Test coverage
+
+The `coverage` job in `.github/workflows/ci.yml` measures the line coverage of the Rust workspace on every pull request, in the merge queue and on every push to `main`. On Ubuntu, with the JDK, it runs the same tests as the `rust` job under `cargo llvm-cov --workspace --locked --lcov` (cargo-llvm-cov 0.9.1, installed by `taiki-e/install-action` pinned by SHA). It writes the total line coverage, and each crate's, into its job summary, and uploads `lcov.info` to Codecov with `codecov/codecov-action` (pinned by SHA) and the `CODECOV_TOKEN` secret: [app.codecov.io/gh/jarrow-dev/jarrow](https://app.codecov.io/gh/jarrow-dev/jarrow). Pull requests from forks and from Dependabot get no repository secrets, so they skip the upload; the job still measures and summarises. Codecov counts partially covered lines on its own terms, so its number can differ a little from the job summary's.
+
+Coverage is informational for now. Nothing fails on the number: `codecov.yml` marks the project status (target 80% of `crates/`) and the patch status `informational: true`, an upload error does not fail the job (`fail_ci_if_error: false`), and Codecov posts no pull request comment. The job fails only when a test fails, as the `rust` job would, and `ci-ok` needs it like every other job.
+
+**The floor: 80% line coverage of `crates/`.** It becomes enforced once the numbers settle, that is once the M1 crates have landed and the total on `main` stops moving by more than a point or two between merges. Enforcing it is one pull request with its own `D-` entry: drop `informational: true` from the project status in `codecov.yml`, and make the coverage job fail when the total for `crates/` in its summary is below 80%, so the gate does not depend on Codecov being up.

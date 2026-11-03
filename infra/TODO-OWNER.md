@@ -48,7 +48,6 @@ These items are attempted through every route when M5 starts. They move here wit
 - Homebrew, Scoop, winget and AUR credentials
 - the GitLab mirror token
 - the Sentry source-map token
-- Codecov
 - Renovate
 
 Owner-only by nature (payment or legal):
