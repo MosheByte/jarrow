@@ -1,0 +1,44 @@
+// Jarrow harness probe: one Gradle build, one subproject per loader.
+//
+//   gradle -PgameVersion=1.21.1 build                      both probes for 1.21.1
+//   gradle -PgameVersion=1.21.11 -Ploaders=neoforge build  only the NeoForge probe
+//
+// The game version and the loader list are inputs. Loader, API and Minecraft versions come
+// from research-lock.json at the repository root (see build.gradle). docs/probes.md has the rest.
+
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        maven {
+            name = 'NeoForged'
+            url = 'https://maven.neoforged.net/releases'
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    plugins {
+        id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+        id 'net.neoforged.moddev' version "${moddev_version}"
+    }
+}
+
+rootProject.name = 'jarrow-probe'
+
+// Every loader that has a probe directory here. Forge and Quilt probes are not built yet.
+def known = ['fabric', 'neoforge'].findAll { new File(settingsDir, it).isDirectory() }
+def requested = (providers.gradleProperty('loaders').getOrElse(known.join(',')))
+        .split(',')
+        .collect { it.trim() }
+        .findAll { !it.isEmpty() }
+def missing = requested.findAll { !known.contains(it) }
+if (!missing.isEmpty()) {
+    throw new GradleException(
+            "No probe for loader(s) ${missing.join(', ')} yet. Probes exist for: ${known.join(', ')}.")
+}
+if (requested.isEmpty()) {
+    throw new GradleException("-Ploaders is empty. Probes exist for: ${known.join(', ')}.")
+}
+requested.each { include it }

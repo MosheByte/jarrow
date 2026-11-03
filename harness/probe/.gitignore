@@ -1,0 +1,8 @@
+# Gradle state and build outputs of the probe. Probe jars are never committed.
+.gradle/
+.kotlin/
+build/
+run/
+out/
+logs/
+*.jar

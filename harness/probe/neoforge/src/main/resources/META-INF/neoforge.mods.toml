@@ -1,0 +1,30 @@
+# Jarrow harness probe. The placeholders are filled from research-lock.json by neoforge/build.gradle.
+modLoader = "${modLoader}"
+loaderVersion = "${loaderVersion}"
+license = "MIT"
+issueTrackerURL = "https://github.com/MosheByte/jarrow/issues"
+
+[[mods]]
+modId = "jarrow_probe"
+version = "${version}"
+displayName = "Jarrow Probe"
+displayURL = "https://jarrow.pages.dev"
+authors = "Jarrow contributors"
+credits = "Jarrow (https://github.com/MosheByte/jarrow)"
+description = '''
+Jarrow's harness probe for test servers. On server start it writes jarrow-dump.json (registries, tags, recipes, loot tables, advancements and a worldgen sample) into the server directory, then stops the server.
+'''
+
+[[dependencies.jarrow_probe]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neoforgeRange}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.jarrow_probe]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraftRange}"
+ordering = "NONE"
+side = "BOTH"
