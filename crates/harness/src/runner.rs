@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::dump::{DUMP_FILE_NAME, Dump};
+use crate::dump::{DUMP_FILE_NAME, Dump, Worldgen};
 use crate::error::HarnessError;
 use crate::eula::EulaGate;
 use crate::fetch::{Fetcher, VerifiedFile, digest_file, sha256_hex};
@@ -508,11 +508,21 @@ fn accept_dump(record: &mut RunRecord, req: &RunRequest, text: &str) -> Result<(
             "the dump says game version {}, not {}",
             dump.game_version, req.game_version
         )),
-        Ok(dump) if dump.worldgen.seed != HARNESS_SEED => Some(format!(
-            "the dump's world seed is {}, not the harness seed {HARNESS_SEED}, so server.properties was not applied",
-            dump.worldgen.seed
+        Ok(Dump {
+            worldgen: Worldgen {
+                seed: Some(seed), ..
+            },
+            ..
+        }) if seed != HARNESS_SEED => Some(format!(
+            "the dump's world seed is {seed}, not the harness seed {HARNESS_SEED}, so server.properties was not applied"
         )),
         Ok(dump) => {
+            if dump.worldgen.seed.is_none() {
+                record.notes.push(
+                    "the probe could not sample worldgen (seed is null); the dump's errors say why"
+                        .to_owned(),
+                );
+            }
             if record
                 .loader_version
                 .as_deref()
@@ -894,6 +904,61 @@ pub fn sibling(out: &Path, tag: &str) -> PathBuf {
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_default();
     out.with_file_name(format!("{stem}.{tag}.json"))
+}
+
+/// The noise file a baseline writes. `out` is the file itself when it ends in `.json` and is not
+/// a directory; otherwise it is a directory that receives `noise.json` (and, next to it, the
+/// baseline dumps and run records). Without `out`:
+/// `target/jarrow-harness/noise-<from>-<to>-<game version>.json`.
+pub fn noise_path(out: Option<&Path>, from: Loader, to: Loader, game_version: &str) -> PathBuf {
+    match out {
+        None => PathBuf::from("target/jarrow-harness")
+            .join(format!("noise-{from}-{to}-{game_version}.json")),
+        Some(path) if path.is_dir() || path.extension().is_none_or(|e| e != "json") => {
+            path.join("noise.json")
+        }
+        Some(path) => path.to_path_buf(),
+    }
+}
+
+/// The probe jar for `loader` in `dir`, as `harness/probe` names it:
+/// `jarrow-probe-<loader>-<game version>-<probe version>.jar`. Source and javadoc jars are
+/// ignored; anything but exactly one match is an error.
+pub fn find_probe(dir: &Path, loader: Loader, game_version: &str) -> Result<PathBuf, HarnessError> {
+    let prefix = format!("jarrow-probe-{loader}-{game_version}-");
+    let entries =
+        fs::read_dir(dir).map_err(|e| HarnessError::io_at("read the probe directory", dir, e))?;
+    let mut found: Vec<PathBuf> = entries
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| p.is_file())
+        .filter(|p| {
+            p.file_name().and_then(|n| n.to_str()).is_some_and(|name| {
+                name.starts_with(&prefix)
+                    && name.ends_with(".jar")
+                    && !name.ends_with("-sources.jar")
+                    && !name.ends_with("-javadoc.jar")
+            })
+        })
+        .collect();
+    found.sort();
+    match found.len() {
+        1 => Ok(found.remove(0)),
+        0 => Err(HarnessError::Usage(format!(
+            "no {prefix}*.jar in {}",
+            dir.display()
+        ))),
+        _ => Err(HarnessError::Usage(format!(
+            "several {loader} probes for {game_version} in {}: {}",
+            dir.display(),
+            found
+                .iter()
+                .filter_map(|p| p.file_name())
+                .map(|n| n.to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ))),
+    }
 }
 
 /// Runs both loaders with only their probe and learns the noise between them.
@@ -1359,6 +1424,16 @@ mod tests {
             record.reason
         );
 
+        // The probe writes a null seed when worldgen sampling failed: the run still counts.
+        let mut no_seed = dump_for(Loader::Fabric);
+        no_seed["worldgen"]["seed"] = Value::Null;
+        let host = FakeHost::new(Behaviour::Dump(no_seed));
+        let record = s
+            .run(&s.request(Loader::Fabric), &host, &open_gate())
+            .unwrap();
+        assert_eq!(record.status, SideStatus::Completed, "{}", record.reason);
+        assert!(record.notes.iter().any(|n| n.contains("seed is null")));
+
         let host = FakeHost::new(Behaviour::Dump(dump_for(Loader::NeoForge)));
         let record = s
             .run(&s.request(Loader::Fabric), &host, &open_gate())
@@ -1511,5 +1586,65 @@ mod tests {
             Path::new("cache/work/neoforge-1.21.1")
         );
         assert!(server_properties(25565).contains("\nserver-port=25565\n"));
+    }
+
+    #[test]
+    fn the_noise_out_is_a_file_or_a_directory() {
+        let tmp = TempDir::new("noise-out");
+        let (f, n) = (Loader::Fabric, Loader::NeoForge);
+        assert_eq!(
+            noise_path(None, f, n, "1.21.1"),
+            Path::new("target/jarrow-harness/noise-fabric-neoforge-1.21.1.json")
+        );
+        assert_eq!(
+            noise_path(Some(Path::new("out/n.json")), f, n, "1.21.1"),
+            Path::new("out/n.json")
+        );
+        // harness/probe/ci/baseline.sh passes a directory per game version.
+        assert_eq!(
+            noise_path(Some(Path::new("baseline/1.21.1")), f, n, "1.21.1"),
+            Path::new("baseline/1.21.1/noise.json")
+        );
+        let dir = tmp.path().join("looks.json");
+        fs::create_dir_all(&dir).unwrap();
+        assert_eq!(
+            noise_path(Some(&dir), f, n, "1.21.1"),
+            dir.join("noise.json")
+        );
+    }
+
+    #[test]
+    fn probes_are_found_by_the_names_harness_probe_builds() {
+        let tmp = TempDir::new("probe-dir");
+        let dir = tmp.path();
+        for name in [
+            "jarrow-probe-fabric-1.21.1-0.1.0.jar",
+            "jarrow-probe-fabric-1.21.1-0.1.0-sources.jar",
+            "jarrow-probe-neoforge-1.21.1-0.1.0.jar",
+            "jarrow-probe-neoforge-1.21.11-0.1.0.jar",
+            "SHA256SUMS",
+        ] {
+            fs::write(dir.join(name), b"x").unwrap();
+        }
+        assert!(
+            find_probe(dir, Loader::Fabric, "1.21.1")
+                .unwrap()
+                .ends_with("jarrow-probe-fabric-1.21.1-0.1.0.jar")
+        );
+        assert!(
+            find_probe(dir, Loader::NeoForge, "1.21.11")
+                .unwrap()
+                .ends_with("jarrow-probe-neoforge-1.21.11-0.1.0.jar")
+        );
+        let err = find_probe(dir, Loader::Forge, "1.21.1").unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("no jarrow-probe-forge-1.21.1-*.jar"),
+            "{err}"
+        );
+        fs::write(dir.join("jarrow-probe-fabric-1.21.1-0.2.0.jar"), b"x").unwrap();
+        let err = find_probe(dir, Loader::Fabric, "1.21.1").unwrap_err();
+        assert!(err.to_string().contains("several fabric probes"), "{err}");
+        assert!(find_probe(&dir.join("missing"), Loader::Fabric, "1.21.1").is_err());
     }
 }

@@ -19,7 +19,8 @@ use jarrow_harness::process::SystemHost;
 use jarrow_harness::provision::{ProvisionContext, provision};
 use jarrow_harness::runner::{
     BaselineRequest, DEFAULT_XMX, HarnessEnv, POLL_INTERVAL, RunRecord, RunRequest, STOP_GRACE,
-    default_record_path, default_work_dir, learn_noise, load_side, run, run_baseline,
+    default_record_path, default_work_dir, find_probe, learn_noise, load_side, noise_path, run,
+    run_baseline,
 };
 use jarrow_harness::{EulaGate, HarnessError, Loader, Lock, Noise, SideStatus, compare};
 
@@ -150,9 +151,15 @@ struct BaselineArgs {
     /// The Quilt probe jar.
     #[arg(long, value_name = "JAR")]
     probe_quilt: Option<PathBuf>,
-    /// Where to write the noise file
+    /// A directory holding the probe jars as harness/probe names them
+    /// (jarrow-probe-<loader>-<game version>-<version>.jar); used for every loader without its
+    /// own --probe-<loader>.
+    #[arg(long, value_name = "DIR")]
+    probe_dir: Option<PathBuf>,
+    /// The noise file (a path ending in .json), or a directory that receives noise.json; the
+    /// baseline dumps and run records go next to it
     /// [default: target/jarrow-harness/noise-<from>-<to>-<game version>.json].
-    #[arg(long, value_name = "FILE")]
+    #[arg(long, value_name = "FILE|DIR")]
     out: Option<PathBuf>,
     /// Learn from this existing reference baseline (a dump or a run record) instead of
     /// starting servers. Needs --candidate-dump.
@@ -354,12 +361,7 @@ fn baseline(
     fetcher: &LazyHttpFetcher,
     host: &SystemHost,
 ) -> Result<u8, HarnessError> {
-    let out = args.out.unwrap_or_else(|| {
-        PathBuf::from("target/jarrow-harness").join(format!(
-            "noise-{}-{}-{}.json",
-            args.from, args.to, args.game_version
-        ))
-    });
+    let out = noise_path(args.out.as_deref(), args.from, args.to, &args.game_version);
     if let (Some(reference), Some(candidate)) = (&args.reference_dump, &args.candidate_dump) {
         let noise = learn_noise(reference, candidate, &out)?;
         println!(
@@ -382,11 +384,13 @@ fn baseline(
             Loader::Forge => &args.probe_forge,
             Loader::Quilt => &args.probe_quilt,
         };
-        probe.clone().ok_or_else(|| {
-            HarnessError::Usage(format!(
-                "baseline needs --probe-{loader} for the {loader} side"
-            ))
-        })
+        match (probe, &args.probe_dir) {
+            (Some(probe), _) => Ok(probe.clone()),
+            (None, Some(dir)) => find_probe(dir, loader, &args.game_version),
+            (None, None) => Err(HarnessError::Usage(format!(
+                "baseline needs --probe-{loader} or --probe-dir for the {loader} side"
+            ))),
+        }
     };
     let lock = lock(&args.cache)?;
     let eula = EulaGate::from_env();

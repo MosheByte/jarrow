@@ -382,3 +382,76 @@ fn forge_and_quilt_say_they_are_not_built_yet() -> Result<(), Box<dyn Error>> {
     fs::remove_dir_all(&dir)?;
     Ok(())
 }
+
+/// `harness/probe/ci/baseline.sh` checks `baseline --help` for `--game-version`, `--out` and
+/// `--probe-dir`, then runs `baseline --game-version <v> --out <dir>/<v> --probe-dir <probes>`.
+#[test]
+fn baseline_takes_the_interface_the_probe_ci_script_uses() -> Result<(), Box<dyn Error>> {
+    let dir = temp("probe-ci")?;
+    let out = harness(&["baseline", "--help"], &dir)?;
+    let help = stdout(&out);
+    for flag in ["--game-version ", "--out ", "--probe-dir "] {
+        assert!(help.contains(flag), "{flag} missing from {help}");
+    }
+    let probes = dir.join("probes/probes-1.21.1");
+    fs::create_dir_all(&probes)?;
+    fs::write(
+        probes.join("jarrow-probe-fabric-1.21.1-0.1.0.jar"),
+        b"fabric probe",
+    )?;
+    fs::write(
+        probes.join("jarrow-probe-neoforge-1.21.1-0.1.0.jar"),
+        b"neoforge probe",
+    )?;
+    fs::write(probes.join("SHA256SUMS"), b"")?;
+    fs::create_dir_all(dir.join("baseline/1.21.1"))?;
+    let args = [
+        "baseline",
+        "--game-version",
+        "1.21.1",
+        "--out",
+        "baseline/1.21.1",
+        "--probe-dir",
+        "probes/probes-1.21.1",
+        "--cache",
+        "cache",
+    ];
+    // The gate is closed here, so both sides are recorded as not run and nothing starts.
+    let out = harness(&args, &dir)?;
+    assert_eq!(
+        out.status.code(),
+        Some(3),
+        "{}{}",
+        stdout(&out),
+        stderr(&out)
+    );
+    for loader in ["fabric", "neoforge"] {
+        let path = dir.join(format!("baseline/1.21.1/noise.{loader}.run.json"));
+        let record: Value = serde_json::from_str(&fs::read_to_string(path)?)?;
+        assert_eq!(record["status"], "not-run");
+        assert_eq!(
+            record["inputs"][0]["file"],
+            format!("jarrow-probe-{loader}-1.21.1-0.1.0.jar")
+        );
+    }
+    assert!(!dir.join("baseline/1.21.1/noise.json").exists());
+    assert!(!dir.join("cache").exists());
+    let out = harness(
+        &[
+            "baseline",
+            "--game-version",
+            "1.21.11",
+            "--probe-dir",
+            "probes/probes-1.21.1",
+        ],
+        &dir,
+    )?;
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        stderr(&out).contains("no jarrow-probe-fabric-1.21.11-*.jar"),
+        "{}",
+        stderr(&out)
+    );
+    fs::remove_dir_all(&dir)?;
+    Ok(())
+}

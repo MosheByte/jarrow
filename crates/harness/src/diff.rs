@@ -168,10 +168,13 @@ pub fn check_comparable(reference: &Dump, candidate: &Dump) -> Result<(), Compar
             reference.game_version, candidate.game_version
         )));
     }
-    if reference.worldgen.seed != candidate.worldgen.seed {
+    // A side whose worldgen sampling failed has no seed; its histogram is then empty and the
+    // probe's error says why, so the comparison goes on and shows the worldgen as missing.
+    if let (Some(a), Some(b)) = (reference.worldgen.seed, candidate.worldgen.seed)
+        && a != b
+    {
         return Err(CompareError::Incomparable(format!(
-            "worldgen seed {} against {}",
-            reference.worldgen.seed, candidate.worldgen.seed
+            "worldgen seed {a} against {b}"
         )));
     }
     let chunks = |d: &Dump| {
@@ -696,5 +699,21 @@ mod tests {
             diff_dumps(&a, &dump(b)).is_ok(),
             "chunk order does not matter"
         );
+    }
+
+    #[test]
+    fn a_failed_worldgen_sample_shows_as_missing_entries() {
+        let a = dump(sample(Loader::Fabric));
+        let mut b = sample(Loader::NeoForge);
+        b["worldgen"]["seed"] = Value::Null;
+        b["worldgen"]["block_histogram"] = json!({});
+        b["errors"] = json!(["worldgen: java.lang.RuntimeException: boom"]);
+        let diffs = diff_dumps(&a, &dump(b)).unwrap();
+        let worldgen = diffs
+            .iter()
+            .filter(|d| d.category == Category::Worldgen && d.kind == DiffKind::Missing)
+            .count();
+        assert_eq!(worldgen, 3);
+        assert!(diffs.iter().any(|d| d.category == Category::ProbeErrors));
     }
 }

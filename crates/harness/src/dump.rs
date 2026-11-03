@@ -26,8 +26,8 @@ pub struct ModEntry {
 /// The worldgen sample.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Worldgen {
-    /// Overworld seed.
-    pub seed: i64,
+    /// Overworld seed; `None` when the probe could not sample worldgen (its `errors` say why).
+    pub seed: Option<i64>,
     /// Chunk coordinates that were sampled.
     pub chunks: Vec<[i64; 2]>,
     /// Block state to count.
@@ -333,5 +333,28 @@ pub(crate) mod tests {
             Dump::from_value(&value).is_err(),
             "a seed beyond i64 is refused"
         );
+    }
+
+    /// What the probe in harness/probe writes when a section partly fails (docs/probes.md).
+    #[test]
+    fn the_probes_failure_shapes_are_valid() {
+        let mut value = sample(Loader::NeoForge);
+        value["worldgen"]["seed"] = Value::Null;
+        value["worldgen"]["block_histogram"] = json!({});
+        value["errors"] = json!(["worldgen: java.lang.IllegalStateException: no overworld"]);
+        value["tags"]["minecraft:worldgen/biome"] = json!({
+            "minecraft:is_overworld": ["<direct holder>", "minecraft:plains", "<direct holder>"]
+        });
+        value["log"]["errors"] =
+            json!(["[jarrow_probe] 12 more errors were logged and not recorded"]);
+        let dump = Dump::from_value(&value).unwrap();
+        assert_eq!(dump.worldgen.seed, None);
+        assert_eq!(
+            dump.tags["minecraft:worldgen/biome"]["minecraft:is_overworld"],
+            ["<direct holder>", "minecraft:plains"]
+        );
+        value["tags"]["minecraft:worldgen/biome"]["minecraft:is_overworld"] =
+            json!(["<other holder>"]);
+        assert!(Dump::from_value(&value).is_err());
     }
 }

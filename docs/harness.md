@@ -1,6 +1,6 @@
 # The parity harness
 
-**Status: M1, `crates/harness` exists.** The dump format, provisioning for Fabric and NeoForge, the EULA-gated runner, baselines, diff and score are built and tested offline. Forge and Quilt servers are not built yet (they will be driven by loader profiles). The probe mods and `.github/workflows/harness.yml` are a separate package. Until the converter exists (M2), no converted mod has been measured, so no mod is green.
+**Status: M1, `crates/harness` exists.** The dump format, provisioning for Fabric and NeoForge, the EULA-gated runner, baselines, diff and score are built and tested offline. Forge and Quilt servers are not built yet (they will be driven by loader profiles). The probe mods (`harness/probe`, [probes.md](probes.md)) and `.github/workflows/harness.yml` are a separate package. No live server has run through the harness yet, and until the converter exists (M2) no converted mod has been measured, so no mod is green.
 
 The harness is how Jarrow decides whether a conversion works. A conversion is green because the harness says so, never because the code compiled. It is built in M1, before the converter is good, so the converter is measured from its first day.
 
@@ -172,8 +172,9 @@ The server process gets a cleared environment with only `PATH`, `SystemRoot`, `S
 
 ```sh
 jarrow-harness baseline --game-version <VERSION> --probe-fabric <JAR> --probe-neoforge <JAR> \
-    [--from fabric] [--to neoforge] [--out FILE] [--timeout-secs N] [--xmx SIZE] [--cache DIR] [--lock FILE]
-jarrow-harness baseline --game-version <VERSION> --reference-dump <FILE> --candidate-dump <FILE> [--out FILE]
+    [--from fabric] [--to neoforge] [--out FILE|DIR] [--timeout-secs N] [--xmx SIZE] [--cache DIR] [--lock FILE]
+jarrow-harness baseline --game-version <VERSION> --probe-dir <DIR> [--out FILE|DIR] ...
+jarrow-harness baseline --game-version <VERSION> --reference-dump <FILE> --candidate-dump <FILE> [--out FILE|DIR]
 ```
 
 Runs the `--from` loader and the `--to` loader with only their probe, one after the other, and learns the noise between them. The second form learns it from two existing baseline dumps (or completed run records) without starting anything, so a workflow can run the two loaders in separate jobs.
@@ -183,8 +184,9 @@ Runs the `--from` loader and the `--to` loader with only their probe, one after 
 | `--game-version <VERSION>` | | A pinned game version |
 | `--from <LOADER>` | `fabric` | The reference loader (converted from) |
 | `--to <LOADER>` | `neoforge` | The candidate loader (converted to) |
-| `--probe-fabric <JAR>`, `--probe-neoforge <JAR>`, `--probe-forge <JAR>`, `--probe-quilt <JAR>` | | The probe for each loader; the ones for `--from` and `--to` are required |
-| `--out <FILE>` | `target/jarrow-harness/noise-<from>-<to>-<game version>.json` | The noise file. The baseline dumps and run records are written next to it as `<out stem>.<loader>.json` and `<out stem>.<loader>.run.json`; the runs use `<cache>/work/baseline-<loader>-<game version>` |
+| `--probe-fabric <JAR>`, `--probe-neoforge <JAR>`, `--probe-forge <JAR>`, `--probe-quilt <JAR>` | | The probe for each loader. The `--from` and `--to` loaders each need one, here or through `--probe-dir` |
+| `--probe-dir <DIR>` | | A directory with the probe jars as `harness/probe` names them, `jarrow-probe-<loader>-<game version>-<version>.jar` (source and javadoc jars are ignored). Used for each loader without its own `--probe-<loader>`; anything but exactly one match is an error |
+| `--out <FILE\|DIR>` | `target/jarrow-harness/noise-<from>-<to>-<game version>.json` | The noise file when the path ends in `.json` and is not a directory; otherwise a directory that receives `noise.json`. The baseline dumps and run records are written next to the noise file as `<noise stem>.<loader>.json` and `<noise stem>.<loader>.run.json` (with `.run.log`); the runs use `<cache>/work/baseline-<loader>-<game version>` |
 | `--reference-dump <FILE>` | | An existing reference baseline (dump or run record); needs `--candidate-dump` |
 | `--candidate-dump <FILE>` | | An existing candidate baseline (dump or run record); needs `--reference-dump` |
 
@@ -214,48 +216,44 @@ Checks a dump against `harness/dump-schema.json` and lists every problem with it
 
 ### What `harness.yml` runs
 
-The workflow belongs to the probe-mod package. These are the invocations it should run, per game version (matrix over the versions pinned in `research-lock.json`; today `1.21.1` and `1.21.11`), on `ubuntu-latest` with Temurin 21 from `actions/setup-java` (which sets `JAVA_HOME`):
+The workflow belongs to the probe-mod package ([probes.md](probes.md)). Its `baseline` job builds `jarrow-harness` (`cargo build --locked --release -p jarrow-harness`), sets up Temurin 21 (which sets `JAVA_HOME`), downloads the probe jars into `probes/probes-<game version>/`, and runs `harness/probe/ci/baseline.sh` with `MINECRAFT_EULA_ACCEPTED` from the repository secret. When the gate is open, that script runs, per game version:
 
 ```sh
-cargo build --release --locked -p jarrow-harness
+jarrow-harness baseline --game-version "$GV" --out "baseline/$GV" --probe-dir "probes/probes-$GV"
+```
+
+which provisions both servers into `target/jarrow-harness-cache`, runs Fabric and then NeoForge with only their probe, and writes `baseline/$GV/noise.json` with `noise.fabric.json`, `noise.neoforge.json`, their `.run.json` records and `.run.log` server logs next to it. Exit 0 means the noise file was written; the script counts anything else as a failed baseline. With the gate closed the script does not call the harness at all.
+
+Once there is a smoke set and a converter (M2), these are the invocations per mod, after the baseline above (`$P_FABRIC` and `$P_NEO` are the probe jars):
+
+```sh
 H=target/release/jarrow-harness
-GV=1.21.1
-P_FABRIC=<path of the built Fabric probe jar>
-P_NEO=<path of the built NeoForge probe jar>
-OUT=target/harness-out/$GV
-
-# 1. Install both servers (no EULA needed). Cache target/jarrow-harness-cache keyed on hashFiles('research-lock.json').
-$H provision --loader fabric   --game-version "$GV"
-$H provision --loader neoforge --game-version "$GV"
-
-# 2. Learn the loader noise (probe only on both loaders).
-$H baseline --game-version "$GV" --probe-fabric "$P_FABRIC" --probe-neoforge "$P_NEO" --out "$OUT/noise.json"
-
-# 3. Per mod in the smoke set: the original on Fabric, the converted jar on NeoForge, then the score.
-$H run --loader fabric   --game-version "$GV" --probe "$P_FABRIC" --mods "mods/$MOD.jar"           --out "$OUT/$MOD/fabric.json"
-$H run --loader neoforge --game-version "$GV" --probe "$P_NEO"    --mods "converted/$MOD.jar"      --out "$OUT/$MOD/neoforge.json"
+OUT=baseline/$GV
+$H run --loader fabric   --game-version "$GV" --probe "$P_FABRIC" --mods "mods/$MOD.jar"      --out "$OUT/$MOD/fabric.json"
+$H run --loader neoforge --game-version "$GV" --probe "$P_NEO"    --mods "converted/$MOD.jar" --out "$OUT/$MOD/neoforge.json"
 $H diff "$OUT/$MOD/fabric.run.json" "$OUT/$MOD/neoforge.run.json" --baseline "$OUT/noise.json" --out "$OUT/$MOD/report.json"
 ```
 
-- Until the converter exists (M2) there is no converted JAR: skip the NeoForge mod run and the diff, and record `no_converter`; steps 1 and 2 and the Fabric run still exercise the harness and the probes.
-- Treat exit statuses 1 and 3 from `run` and `baseline` as results (the run record says what happened), not as job failures; fail the job on 2.
-- Give `MINECRAFT_EULA_ACCEPTED: ${{ secrets.MINECRAFT_EULA_ACCEPTED }}` only to the `baseline` and `run` steps, never on pull requests from forks and never when `github.actor == 'dependabot[bot]'`. Without it, those steps exit 3 and every report is `not-run`, which is correct. Those steps must hold no other secret, because they run third-party mods.
-- Upload `target/harness-out/` as the evidence artifact. It holds dumps, run records, server logs and reports, never a JAR.
+- Until the converter exists there is no converted JAR: skip the NeoForge mod run and the diff, and record `no_converter`.
+- Treat exit statuses 1 and 3 from `run` as results (the run record says what happened), not as job failures; fail the job on 2. `diff` exits 0 whenever it wrote a report.
+- Give `MINECRAFT_EULA_ACCEPTED` only to the steps that start servers, never on pull requests from forks and never when `github.actor == 'dependabot[bot]'`. Without it those steps exit 3 and every report is `not-run`, which is correct. Those steps must hold no other secret, because they run third-party mods.
+- `provision` needs no EULA and can run first, so a cache of `target/jarrow-harness-cache` keyed on `hashFiles('research-lock.json')` saves the downloads.
+- Upload the output directory as evidence: dumps, run records, server logs and reports. Never upload `target/jarrow-harness-cache`, which holds the Minecraft server jar.
 
 ## The probe dump
 
-`harness/dump-schema.json` (JSON Schema 2020-12) is the contract between the probe mods and `crates/harness`; `jarrow-harness validate` checks a dump against it. What the schema cannot say:
+`harness/dump-schema.json` (JSON Schema 2020-12) is the contract between the probe mods and `crates/harness`; `jarrow-harness validate` checks a dump against it. [probes.md](probes.md) describes what the probe in `harness/probe` writes. What the schema cannot say, and what the harness relies on:
 
-- **Where.** Write `jarrow-dump.json` in the server's working directory. The harness also passes `-Djarrow.dump=<absolute path>`, which names the same file; a probe may honour either. Write it complete or not at all (write `jarrow-dump.json.tmp`, then rename); the harness waits until the file parses as JSON.
-- **When.** After the server has started and the overworld spawn chunks exist. The probe may leave the server running: the harness sends `stop` on the console once the dump is complete. A probe that stops the server itself is fine too.
+- **Where.** `jarrow-dump.json` in the server's working directory. The harness also passes `-Djarrow.dump=<absolute path>`, which names the same file, for a probe that prefers a property. The probe writes `jarrow-dump.json.tmp` and renames it; the harness also waits until the file parses as JSON, so a partial file is never read.
+- **When.** After the server has started. The probe halts the server itself (`server.halt(false)`); the harness also sends `stop` on the console once the dump is complete, and kills the server 60 s later if it is still running.
 - **`mods`**: every mod the loader lists, sorted by id, with the version the loader reports.
-- **`registries`**: every root registry (static) and every registry of the server's registry access (dynamic, data-pack), entry ids in iteration order, which for static registries is raw id order. The harness compares order only on shared entries.
-- **`tags`**: per registry, every tag with its resolved entries (no `#` references), sorted and without duplicates (a duplicate breaks the schema). The harness sorts again, so a sorting slip does not change a score.
-- **`recipes`, `loot_tables`, `advancements`**: id to the entry encoded with the game's own codec as JSON. The harness canonicalises (sorted keys, `1.0` equals `1`), so the codec's key order does not matter; array order does.
-- **`worldgen`**: the overworld seed (the harness fixes it to `20261103`; a dump with any other seed fails the run), the chunk coordinates generated and counted (a fixed list in the probe; the diff refuses two dumps whose chunk sets differ), and a histogram of block states written as `namespace:path` or `namespace:path[property=value,...]`.
-- **`log`**: one string per log event from startup until the dump: `errors` for ERROR and FATAL, `warnings` for WARN. Put the throwable's first line after a newline if there is one; the harness compares first lines.
-- **`errors`**: problems the probe itself hit (an entry its codec could not encode). An empty list means the dump is complete.
-- **`schema`** is `1`. Any incompatible change bumps it, together with `harness/dump-schema.json` and `crates/harness`.
+- **`registries`**: every registry of the server's registry access, static and dynamic, entry ids in iteration order (raw id order). Duplicates break the schema. The harness compares order only on shared entries.
+- **`tags`**: per registry, every tag (id without `#`) with its resolved members, sorted. A member without a key is the literal `<direct holder>`; the harness sorts again and removes repeats, so a sorting slip does not change a score.
+- **`recipes`, `loot_tables`, `advancements`**: id to the entry encoded with the game's own codec as JSON. The harness canonicalises (sorted keys, `1.0` equals `1`), so the codec's key order does not matter; array order does. A value JSON cannot hold (NaN) arrives as a string and is compared as one.
+- **`worldgen`**: the overworld seed, the chunk coordinates sampled (a fixed list in the probe; the diff refuses two dumps whose chunk sets differ) and a histogram of block states written as `namespace:path` or `namespace:path[property=value,...]`. The harness fixes the seed to `20261103`; a dump with another seed fails the run. `seed` is `null` when the probe could not sample worldgen; the run still counts, the record notes it, and the empty histogram shows up in the diff as missing worldgen entries.
+- **`log`**: one string per WARN (`warnings`) or ERROR and FATAL (`errors`) event after the probe loaded, written `[<logger>] <message>` plus ` (<exception>)`. The harness compares the first line after normalisation and classifies the text. For what happened before the probe loaded, the harness reads the full server log of a failed run.
+- **`errors`**: problems the probe itself hit, as `<section>: <id>: <message>`. An empty list means the dump is complete.
+- **`schema`** is `1`. Any incompatible change bumps it, together with `harness/dump-schema.json`, `crates/harness` and the probe.
 
 ## Provisioning and the cache
 

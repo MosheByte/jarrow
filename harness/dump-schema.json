@@ -51,13 +51,16 @@
       "additionalProperties": { "$ref": "#/$defs/id_list" }
     },
     "tags": {
-      "description": "Registry id to tag id to the resolved entry ids of that tag (no #references), sorted.",
+      "description": "Registry id to tag id (no #) to the resolved members of that tag, sorted. A member without a key is written <direct holder>.",
       "type": "object",
       "propertyNames": { "$ref": "#/$defs/resource_id" },
       "additionalProperties": {
         "type": "object",
         "propertyNames": { "$ref": "#/$defs/resource_id" },
-        "additionalProperties": { "$ref": "#/$defs/id_list" }
+        "additionalProperties": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tag_member" }
+        }
       }
     },
     "recipes": {
@@ -79,8 +82,8 @@
       "additionalProperties": false,
       "properties": {
         "seed": {
-          "description": "The overworld seed (a Java long). The harness fixes it in server.properties.",
-          "type": "integer"
+          "description": "The overworld seed (a Java long). The harness fixes it in server.properties. null when the probe could not sample worldgen; errors then says why.",
+          "type": ["integer", "null"]
         },
         "chunks": {
           "description": "Chunk coordinates [x, z] that were generated to full status and counted, in the order the probe visited them.",
@@ -127,6 +130,11 @@
       "description": "A namespaced id as Minecraft writes it: namespace:path.",
       "type": "string",
       "pattern": "^[a-z0-9_.-]+:[a-z0-9_./-]+$"
+    },
+    "tag_member": {
+      "description": "A tag member's id, or <direct holder> for a member that has no key.",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:[a-z0-9_./-]+|<direct holder>)$"
     },
     "block_state": {
       "description": "A block state: a block id, then its properties in brackets when it has any.",
