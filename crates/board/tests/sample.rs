@@ -181,3 +181,15 @@ fn board_samples_are_current() {
         );
     }
 }
+
+/// The in-memory JARs are byte-identical on every OS, so the sample's hashes are too.
+#[test]
+fn sample_jars_are_the_same_everywhere() {
+    let bytes = jar(&["fabric.mod.json", "META-INF/neoforge.mods.toml"]);
+    let archive = zip::ZipArchive::new(std::io::Cursor::new(bytes.clone())).unwrap();
+    assert_eq!(archive.len(), 2);
+    assert_eq!(
+        jarrow_board::hash::sha256_hex(&bytes),
+        "ba196f69b6d2032a0e66a8024eac198635baec2377efcf3d348631f88a0ea356"
+    );
+}

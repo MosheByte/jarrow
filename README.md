@@ -73,7 +73,7 @@ Every person who authored or committed a commit on main, shown by GitHub login, 
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MosheByte"><img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=80" width="80px;" alt="MosheByte"/><br /><sub><b>MosheByte</b></sub></a><br /><sub>Owner: sets direction, holds the accounts. Commits through this account are written by the agent and disclosed in their trailers.</sub><br /><sub>18 commits</sub><br /><a href="#ideas-MosheByte" title="Ideas, Planning, &amp; Feedback">🤔</a> <a href="#projectManagement-MosheByte" title="Project Management">📆</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/MosheByte"><img src="https://avatars.githubusercontent.com/u/348820118?v=4&amp;s=80" width="80px;" alt="MosheByte"/><br /><sub><b>MosheByte</b></sub></a><br /><sub>Owner: sets direction, holds the accounts. Commits through this account are written by the agent and disclosed in their trailers.</sub><br /><sub>19 commits</sub><br /><a href="#ideas-MosheByte" title="Ideas, Planning, &amp; Feedback">🤔</a> <a href="#projectManagement-MosheByte" title="Project Management">📆</a></td>
     </tr>
   </tbody>
 </table>
@@ -85,7 +85,7 @@ Agents have no GitHub account of their own here. They act through the owner's ac
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://www.anthropic.com/claude"><img src="https://avatars.githubusercontent.com/u/76263028?v=4&amp;s=80" width="80px;" alt="Claude Opus 5.5"/><br /><sub><b>Claude Opus 5.5</b></sub></a><br /><sub>Engineering: writes the code, docs and infrastructure; co-author of every commit it touches</sub><br /><sub>18 commits</sub><br /><a href="#agent-claude-opus-5-5" title="AI agent">🤖</a> <a href="#code-claude-opus-5-5" title="Code">💻</a> <a href="#doc-claude-opus-5-5" title="Documentation">📖</a> <a href="#test-claude-opus-5-5" title="Tests">⚠️</a> <a href="#infra-claude-opus-5-5" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://www.anthropic.com/claude"><img src="https://avatars.githubusercontent.com/u/76263028?v=4&amp;s=80" width="80px;" alt="Claude Opus 5.5"/><br /><sub><b>Claude Opus 5.5</b></sub></a><br /><sub>Engineering: writes the code, docs and infrastructure; co-author of every commit it touches</sub><br /><sub>19 commits</sub><br /><a href="#agent-claude-opus-5-5" title="AI agent">🤖</a> <a href="#code-claude-opus-5-5" title="Code">💻</a> <a href="#doc-claude-opus-5-5" title="Documentation">📖</a> <a href="#test-claude-opus-5-5" title="Tests">⚠️</a> <a href="#infra-claude-opus-5-5" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     </tr>
   </tbody>
 </table>
