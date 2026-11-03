@@ -73,7 +73,7 @@ A visually hidden span is one that is absolutely positioned at 1 px or clipped (
 
 `screenshots-push` uses `BOT_DEPLOY_KEY`: written to a 0600 file in `RUNNER_TEMP`, used only through `GIT_SSH_COMMAND`, removed by an exit trap, never printed. It pushes only to `pr-assets`, adds to it and never force-pushes; `main` is never touched. `design-review` uses `ANTHROPIC_API_KEY`. Neither job runs code from the pull request: the push job only moves the PNGs, and the reviewer works in a checkout of the base branch that holds only `docs/design/` and the research report, with the screenshots and the built pages beside it. It has the Read, Glob and Grep tools and nothing else, its permission rules deny it `/proc`, `/etc`, the runner's temp folder and the git configuration, and its list reaches the pull request through a workflow step that redacts anything shaped like a key or a token.
 
-Pull requests from forks and runs started by bots get no secrets: they skip `screenshots-push` and `design-review` with a notice, and `site-quality-ok` treats the skip as a pass. A maintainer who has read the change can run both with `workflow_dispatch`.
+Pull requests from forks and runs started by bots get no secrets, also when started by hand: they skip `screenshots-push` and `design-review` with a notice, the screenshots stay in the run's artifacts, and `site-quality-ok` treats the skip as a pass. A maintainer reviews such a pull request's screenshots by hand.
 
 ## Running it by hand
 

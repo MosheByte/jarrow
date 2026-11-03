@@ -141,7 +141,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "site=$site target=$target pr=${pr:-none} folder=pr/$key/$head fork=$fork bot=$bot"
           if [ "$site" = true ] && [ "$fork" = true ]; then
-            echo "::notice::This pull request comes from a fork: it gets no secrets, so screenshots-push and design-review are skipped. A maintainer can run them with workflow_dispatch after reading the change."
+            echo "::notice::This pull request comes from a fork. Forks get no secrets, so screenshots-push and design-review are skipped; the screenshots are still in this run's artifacts."
           elif [ "$site" = true ] && [ "$bot" = true ]; then
             echo "::notice::This run was started by a bot: screenshots-push and design-review are skipped."
           fi
