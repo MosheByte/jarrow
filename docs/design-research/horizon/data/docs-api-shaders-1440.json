@@ -1,0 +1,2458 @@
+{
+ "title": "Shader API · Horizon docs",
+ "desc": "Horizon has no shader packs today: the earlier implementation was removed on 2026-10-24. Two things will replace it, designed separately: a Horizon shader…",
+ "lang": "en",
+ "wordCount": 2333,
+ "docHeight": 8557,
+ "scheme": {
+  "colorSchemeMeta": "dark",
+  "themeColor": "#100a1f",
+  "htmlClass": "PZ6jEG_variable _8Li5zG_variable V5rL5a_variable h-full antialiased",
+  "htmlStyle": null,
+  "bodyBg": "rgb(16, 10, 31)",
+  "bodyColor": "rgb(244, 241, 255)",
+  "bodyFont": "Geist, \"Geist Fallback\""
+ },
+ "rootVars": {
+  "--background": "#100a1f",
+  "--foreground": "#f4f1ff",
+  "--lightningcss-light": "",
+  "--lightningcss-dark": "initial"
+ },
+ "roles": {
+  "h1": [
+   {
+    "tag": "h1",
+    "cls": "mt-3 font-display text-[clamp(2rem,4.5vw,3rem)] leading-[1.06] font-semibold tracking-[-0.03em] text-white",
+    "text": "Shader API",
+    "fontFamily": "\"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\"",
+    "fontSize": "48px",
+    "fontWeight": "600",
+    "lineHeight": "50.88px",
+    "letterSpacing": "-1.44px",
+    "color": "rgb(255, 255, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(255, 255, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 50.875,
+    "width": 600
+   }
+  ],
+  "h2": [
+   {
+    "tag": "h2",
+    "cls": "",
+    "text": "Overview: what a shader author will be able to do",
+    "fontFamily": "\"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\"",
+    "fontSize": "26px",
+    "fontWeight": "600",
+    "lineHeight": "31.2px",
+    "letterSpacing": "-0.52px",
+    "color": "rgb(255, 255, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(255, 255, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 62.375,
+    "width": 600
+   },
+   {
+    "tag": "h2",
+    "cls": "",
+    "text": "The design",
+    "fontFamily": "\"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\"",
+    "fontSize": "26px",
+    "fontWeight": "600",
+    "lineHeight": "31.2px",
+    "letterSpacing": "-0.52px",
+    "color": "rgb(255, 255, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(255, 255, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 31.1875,
+    "width": 600
+   },
+   {
+    "tag": "h2",
+    "cls": "",
+    "text": "The pack format (schema 1)",
+    "fontFamily": "\"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\"",
+    "fontSize": "26px",
+    "fontWeight": "600",
+    "lineHeight": "31.2px",
+    "letterSpacing": "-0.52px",
+    "color": "rgb(255, 255, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(255, 255, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 31.1875,
+    "width": 600
+   },
+   {
+    "tag": "h2",
+    "cls": "",
+    "text": "Guide, reference and examples",
+    "fontFamily": "\"Bricolage Grotesque\", \"Bricolage Grotesque Fallback\"",
+    "fontSize": "26px",
+    "fontWeight": "600",
+    "lineHeight": "31.2px",
+    "letterSpacing": "-0.52px",
+    "color": "rgb(255, 255, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(255, 255, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 31.1875,
+    "width": 600
+   }
+  ],
+  "h3": [],
+  "h4": [],
+  "p": [
+   {
+    "tag": "p",
+    "cls": "px-2.5 text-[13px] font-medium text-white/40",
+    "text": "Start here",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "13px",
+    "fontWeight": "500",
+    "lineHeight": "19.5px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.4)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.4)",
+    "boxShadow": "none",
+    "padding": "0px 10px",
+    "height": 19.5,
+    "width": 200
+   },
+   {
+    "tag": "p",
+    "cls": "px-2.5 text-[13px] font-medium text-white/40",
+    "text": "Playing",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "13px",
+    "fontWeight": "500",
+    "lineHeight": "19.5px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.4)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.4)",
+    "boxShadow": "none",
+    "padding": "0px 10px",
+    "height": 19.5,
+    "width": 200
+   },
+   {
+    "tag": "p",
+    "cls": "px-2.5 text-[13px] font-medium text-white/40",
+    "text": "Hosting",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "13px",
+    "fontWeight": "500",
+    "lineHeight": "19.5px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.4)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.4)",
+    "boxShadow": "none",
+    "padding": "0px 10px",
+    "height": 19.5,
+    "width": 200
+   },
+   {
+    "tag": "p",
+    "cls": "px-2.5 text-[13px] font-medium text-white/40",
+    "text": "Going further",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "13px",
+    "fontWeight": "500",
+    "lineHeight": "19.5px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.4)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.4)",
+    "boxShadow": "none",
+    "padding": "0px 10px",
+    "height": 19.5,
+    "width": 200
+   }
+  ],
+  "a": [
+   {
+    "tag": "a",
+    "cls": "flex items-center gap-2 text-white",
+    "text": "Horizon",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(255, 255, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(255, 255, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 32,
+    "width": 108.546875
+   },
+   {
+    "tag": "a",
+    "cls": "inline-flex items-center gap-1.5 transition-colors hover:text-white",
+    "text": "About",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "20px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 20,
+    "width": 38.296875
+   },
+   {
+    "tag": "a",
+    "cls": "inline-flex items-center gap-1.5 transition-colors hover:text-white",
+    "text": "Hub",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "20px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 20,
+    "width": 25.875
+   },
+   {
+    "tag": "a",
+    "cls": "inline-flex items-center gap-1.5 transition-colors hover:text-white",
+    "text": "Benchmarks",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "20px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 20,
+    "width": 80.0625
+   }
+  ],
+  "button": [
+   {
+    "tag": "button",
+    "cls": "ml-1 inline-flex size-9 items-center justify-center rounded-lg bg-white/[0.06] text-white/80 transition-colors hover:bg-",
+    "text": "",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+    "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.06)",
+    "textTransform": "none",
+    "borderRadius": "8px",
+    "border": "0px solid oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 0,
+    "width": 0
+   },
+   {
+    "tag": "button",
+    "cls": "mt-3 flex h-11 w-full items-center justify-between rounded-lg bg-white/[0.04] px-3.5 text-left text-sm text-white/80 lg:",
+    "text": "Docs menuShader API",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "20px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+    "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.04)",
+    "textTransform": "none",
+    "borderRadius": "8px",
+    "border": "0px solid oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+    "boxShadow": "none",
+    "padding": "0px 14px",
+    "height": 0,
+    "width": 0
+   },
+   {
+    "tag": "button",
+    "cls": "code-copy",
+    "text": "Copy",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "12px",
+    "fontWeight": "500",
+    "lineHeight": "20.4px",
+    "letterSpacing": "normal",
+    "color": "rgba(255, 255, 255, 0.7)",
+    "background": "rgba(255, 255, 255, 0.08)",
+    "textTransform": "none",
+    "borderRadius": "6px",
+    "border": "0px solid rgba(255, 255, 255, 0.7)",
+    "boxShadow": "none",
+    "padding": "0px 9.6px",
+    "height": 28,
+    "width": 48.203125
+   }
+  ],
+  "label": [
+   {
+    "tag": "label",
+    "cls": "sr-only",
+    "text": "Search the docs",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(244, 241, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(244, 241, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 1,
+    "width": 1
+   }
+  ],
+  "code": [
+   {
+    "tag": "code",
+    "cls": "",
+    "text": "horizon-shaders.toml",
+    "fontFamily": "\"Geist Mono\", \"Geist Mono Fallback\", ui-monospace, monospace",
+    "fontSize": "13.44px",
+    "fontWeight": "400",
+    "lineHeight": "22.848px",
+    "letterSpacing": "normal",
+    "color": "rgb(235, 229, 255)",
+    "background": "rgba(255, 255, 255, 0.07)",
+    "textTransform": "none",
+    "borderRadius": "5px",
+    "border": "0px solid rgb(235, 229, 255)",
+    "boxShadow": "none",
+    "padding": "1.6128px 5.1072px",
+    "height": 21.21875,
+    "width": 171.4375
+   },
+   {
+    "tag": "code",
+    "cls": "",
+    "text": "api",
+    "fontFamily": "\"Geist Mono\", \"Geist Mono Fallback\", ui-monospace, monospace",
+    "fontSize": "13.44px",
+    "fontWeight": "400",
+    "lineHeight": "22.848px",
+    "letterSpacing": "normal",
+    "color": "rgb(235, 229, 255)",
+    "background": "rgba(255, 255, 255, 0.07)",
+    "textTransform": "none",
+    "borderRadius": "5px",
+    "border": "0px solid rgb(235, 229, 255)",
+    "boxShadow": "none",
+    "padding": "1.6128px 5.1072px",
+    "height": 21.21875,
+    "width": 34.375
+   },
+   {
+    "tag": "code",
+    "cls": "",
+    "text": "fn material(input: TerrainInput) -> Surface",
+    "fontFamily": "\"Geist Mono\", \"Geist Mono Fallback\", ui-monospace, monospace",
+    "fontSize": "13.44px",
+    "fontWeight": "400",
+    "lineHeight": "22.848px",
+    "letterSpacing": "normal",
+    "color": "rgb(235, 229, 255)",
+    "background": "rgba(255, 255, 255, 0.07)",
+    "textTransform": "none",
+    "borderRadius": "5px",
+    "border": "0px solid rgb(235, 229, 255)",
+    "boxShadow": "none",
+    "padding": "1.6128px 5.1072px",
+    "height": 48.40625,
+    "width": 493.265625
+   },
+   {
+    "tag": "code",
+    "cls": "",
+    "text": "override",
+    "fontFamily": "\"Geist Mono\", \"Geist Mono Fallback\", ui-monospace, monospace",
+    "fontSize": "13.44px",
+    "fontWeight": "600",
+    "lineHeight": "22.848px",
+    "letterSpacing": "normal",
+    "color": "rgb(235, 229, 255)",
+    "background": "rgba(255, 255, 255, 0.07)",
+    "textTransform": "none",
+    "borderRadius": "5px",
+    "border": "0px solid rgb(235, 229, 255)",
+    "boxShadow": "none",
+    "padding": "1.6128px 5.1072px",
+    "height": 21.21875,
+    "width": 74.6875
+   }
+  ],
+  "pre": [
+   {
+    "tag": "pre",
+    "cls": "",
+    "text": "schema = 1                 # the manifest's format; a reader refuses schemas new",
+    "fontFamily": "\"Geist Mono\", \"Geist Mono Fallback\", ui-monospace, monospace",
+    "fontSize": "13.5px",
+    "fontWeight": "400",
+    "lineHeight": "22.275px",
+    "letterSpacing": "normal",
+    "color": "rgb(231, 225, 255)",
+    "background": "rgb(10, 6, 20)",
+    "textTransform": "none",
+    "borderRadius": "12px",
+    "border": "0px solid rgb(231, 225, 255)",
+    "boxShadow": "none",
+    "padding": "13.5px 15.525px",
+    "height": 2138.109375,
+    "width": 600
+   }
+  ],
+  "small": [],
+  "li": [
+   {
+    "tag": "li",
+    "cls": "",
+    "text": "What Horizon is",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(244, 241, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(244, 241, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 31.25,
+    "width": 200
+   },
+   {
+    "tag": "li",
+    "cls": "",
+    "text": "Install and first launch",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(244, 241, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(244, 241, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 31.25,
+    "width": 200
+   },
+   {
+    "tag": "li",
+    "cls": "",
+    "text": "How Horizon is built",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(244, 241, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(244, 241, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 31.25,
+    "width": 200
+   },
+   {
+    "tag": "li",
+    "cls": "",
+    "text": "Settings worth knowing",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(244, 241, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(244, 241, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 31.25,
+    "width": 200
+   }
+  ],
+  "th": [],
+  "td": [],
+  "input": [
+   {
+    "tag": "input",
+    "cls": "h-10 w-full rounded-lg bg-white/[0.06] pr-10 pl-3.5 text-sm text-white placeholder:text-white/40 outline-none transition",
+    "text": "",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "20px",
+    "letterSpacing": "normal",
+    "color": "rgb(255, 255, 255)",
+    "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.06)",
+    "textTransform": "none",
+    "borderRadius": "8px",
+    "border": "0px solid rgb(255, 255, 255)",
+    "boxShadow": "none",
+    "padding": "0px 40px 0px 14px",
+    "height": 40,
+    "width": 208
+   }
+  ],
+  "nav a": [
+   {
+    "tag": "a",
+    "cls": "inline-flex items-center gap-1.5 transition-colors hover:text-white",
+    "text": "About",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "20px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 20,
+    "width": 38.296875
+   },
+   {
+    "tag": "a",
+    "cls": "inline-flex items-center gap-1.5 transition-colors hover:text-white",
+    "text": "Hub",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "20px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 20,
+    "width": 25.875
+   },
+   {
+    "tag": "a",
+    "cls": "inline-flex items-center gap-1.5 transition-colors hover:text-white",
+    "text": "Benchmarks",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "20px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 20,
+    "width": 80.0625
+   },
+   {
+    "tag": "a",
+    "cls": "inline-flex items-center gap-1.5 transition-colors hover:text-white",
+    "text": "Mods",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "20px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 20,
+    "width": 35.5
+   }
+  ],
+  "footer": [
+   {
+    "tag": "footer",
+    "cls": "mt-auto border-t border-white/[0.08]",
+    "text": "HorizonNot an official Minecraft product. Not approved by or associated with Moj",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(244, 241, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 672,
+    "width": 1440
+   }
+  ],
+  "footer p": [
+   {
+    "tag": "p",
+    "cls": "text-[15px] leading-relaxed font-medium text-pretty text-white/80",
+    "text": "Not an official Minecraft product. Not approved by or associated with Mojang or ",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "15px",
+    "fontWeight": "500",
+    "lineHeight": "24.375px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 48.75,
+    "width": 504
+   },
+   {
+    "tag": "p",
+    "cls": "mt-3",
+    "text": "Horizon is made by Ludovic Marie; reach him through lu4ovic.com (opens in a new ",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "22.75px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 182,
+    "width": 325.328125
+   },
+   {
+    "tag": "p",
+    "cls": "mt-3",
+    "text": "Horizon's original work is under the MIT licence (opens in a new tab). The fonts",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "22.75px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 91,
+    "width": 325.328125
+   },
+   {
+    "tag": "p",
+    "cls": "mt-3",
+    "text": "This site sets no cookies, has no analytics or trackers and loads nothing from t",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "22.75px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.5)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 318.5,
+    "width": 325.34375
+   }
+  ],
+  "footer a": [
+   {
+    "tag": "a",
+    "cls": "flex shrink-0 items-center gap-2 text-white",
+    "text": "Horizon",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(255, 255, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(255, 255, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 32,
+    "width": 108.546875
+   },
+   {
+    "tag": "a",
+    "cls": "text-white/70 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-white",
+    "text": "lu4ovic.com (opens in a new tab)",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "22.75px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.7)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455677 0.0000200868 / 0.7)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 18,
+    "width": 76.703125
+   },
+   {
+    "tag": "a",
+    "cls": "text-white/70 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-white",
+    "text": "DezerX (opens in a new tab)",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "22.75px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.7)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455677 0.0000200868 / 0.7)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 18,
+    "width": 46.046875
+   },
+   {
+    "tag": "a",
+    "cls": "text-white/70 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-white",
+    "text": "MIT licence (opens in a new tab)",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "14px",
+    "fontWeight": "400",
+    "lineHeight": "22.75px",
+    "letterSpacing": "normal",
+    "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.7)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid oklab(0.999994 0.0000455677 0.0000200868 / 0.7)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 18,
+    "width": 71.890625
+   }
+  ],
+  "header": [
+   {
+    "tag": "header",
+    "cls": "fixed inset-x-0 top-0 z-50 transition-[background-color,backdrop-filter] duration-300 ",
+    "text": "HorizonAboutHubBenchmarksModsReleases9+, 40 newDocsPlayersGitHubDownload",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(244, 241, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(244, 241, 255)",
+    "boxShadow": "none",
+    "padding": "0px",
+    "height": 72,
+    "width": 1440
+   }
+  ],
+  "main": [
+   {
+    "tag": "main",
+    "cls": "mx-auto w-full max-w-6xl flex-1 px-6 pt-28 pb-24 lg:px-10 lg:pt-32",
+    "text": "Search the docs/Docs menuShader APIStart hereWhat Horizon isInstall and first la",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "lineHeight": "24px",
+    "letterSpacing": "normal",
+    "color": "rgb(244, 241, 255)",
+    "background": "rgba(0, 0, 0, 0)",
+    "textTransform": "none",
+    "borderRadius": "0px",
+    "border": "0px solid rgb(244, 241, 255)",
+    "boxShadow": "none",
+    "padding": "128px 40px 96px",
+    "height": 7885.296875,
+    "width": 1152
+   }
+  ],
+  ".tabular-nums": [
+   {
+    "tag": "span",
+    "cls": "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#a98fff] px-1 text-[10px] leading-none font-semibol",
+    "text": "9+",
+    "fontFamily": "Geist, \"Geist Fallback\"",
+    "fontSize": "10px",
+    "fontWeight": "600",
+    "lineHeight": "10px",
+    "letterSpacing": "normal",
+    "color": "rgb(16, 10, 31)",
+    "background": "rgb(169, 143, 255)",
+    "textTransform": "none",
+    "borderRadius": "3.35544e+07px",
+    "border": "0px solid rgb(16, 10, 31)",
+    "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(169, 143, 255, 0.7) 0px 0px 10px 0px",
+    "padding": "0px 4px",
+    "height": 16,
+    "width": 19.90625
+   }
+  ]
+ },
+ "body": {
+  "tag": "body",
+  "cls": "min-h-full flex flex-col",
+  "text": "HorizonAboutHubBenchmarksModsReleases9+, 40 newDocsPlayersGitHubDownloadSearch t",
+  "fontFamily": "Geist, \"Geist Fallback\"",
+  "fontSize": "16px",
+  "fontWeight": "400",
+  "lineHeight": "24px",
+  "letterSpacing": "normal",
+  "color": "rgb(244, 241, 255)",
+  "background": "rgb(16, 10, 31)",
+  "textTransform": "none",
+  "borderRadius": "0px",
+  "border": "0px solid rgb(244, 241, 255)",
+  "boxShadow": "none",
+  "padding": "0px",
+  "height": 8557.296875,
+  "width": 1440
+ },
+ "html": {
+  "tag": "html",
+  "cls": "PZ6jEG_variable _8Li5zG_variable V5rL5a_variable h-full antialiased",
+  "text": "Shader API · Horizon docsHorizonAboutHubBenchmarksModsReleases9+, 40 newDocsPlay",
+  "fontFamily": "Geist, \"Geist Fallback\"",
+  "fontSize": "16px",
+  "fontWeight": "400",
+  "lineHeight": "24px",
+  "letterSpacing": "normal",
+  "color": "rgb(255, 255, 255)",
+  "background": "rgba(0, 0, 0, 0)",
+  "textTransform": "none",
+  "borderRadius": "0px",
+  "border": "0px solid rgb(255, 255, 255)",
+  "boxShadow": "none",
+  "padding": "0px",
+  "height": 900,
+  "width": 1440
+ },
+ "sections": [
+  {
+   "tag": "DIV",
+   "cls": "lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-12",
+   "w": 1072,
+   "h": 7661.296875,
+   "words": 2333,
+   "heading": "Shader API"
+  }
+ ],
+ "h2s": [
+  {
+   "tag": "H1",
+   "html": "Shader API",
+   "text": "Shader API"
+  },
+  {
+   "tag": "H2",
+   "html": "<a class=\"heading-link\" href=\"#overview-what-a-shader-author-will-be-able-to-do\">Overview: what a shader author will be able to do</a>",
+   "text": "Overview: what a shader author will be able to do"
+  },
+  {
+   "tag": "H2",
+   "html": "<a class=\"heading-link\" href=\"#the-design\">The design</a>",
+   "text": "The design"
+  },
+  {
+   "tag": "H2",
+   "html": "<a class=\"heading-link\" href=\"#the-pack-format-schema-1\">The pack format (schema 1)</a>",
+   "text": "The pack format (schema 1)"
+  },
+  {
+   "tag": "H2",
+   "html": "<a class=\"heading-link\" href=\"#guide-reference-and-examples\">Guide, reference and examples</a>",
+   "text": "Guide, reference and examples"
+  },
+  {
+   "tag": "H2",
+   "html": "<a class=\"heading-link\" href=\"#stability\">Stability</a>",
+   "text": "Stability"
+  },
+  {
+   "tag": "H2",
+   "html": "<a class=\"heading-link\" href=\"#not-there-yet\">Not there yet</a>",
+   "text": "Not there yet"
+  },
+  {
+   "tag": "H2",
+   "html": "<a class=\"heading-link\" href=\"#changelog\">Changelog</a>",
+   "text": "Changelog"
+  },
+  {
+   "tag": "H2",
+   "html": "Who makes it",
+   "text": "Who makes it"
+  },
+  {
+   "tag": "H2",
+   "html": "Licences",
+   "text": "Licences"
+  },
+  {
+   "tag": "H2",
+   "html": "Privacy",
+   "text": "Privacy"
+  }
+ ],
+ "headings": [
+  {
+   "tag": "H1",
+   "text": "Shader API",
+   "html": "Shader API",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "Overview: what a shader author will be able to do",
+   "html": "<a class=\"heading-link\" href=\"#overview-what-a-shader-author-will-be-able-to-do\">Overview: what a shader author will be able to do</a>",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "The design",
+   "html": "<a class=\"heading-link\" href=\"#the-design\">The design</a>",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "The pack format (schema 1)",
+   "html": "<a class=\"heading-link\" href=\"#the-pack-format-schema-1\">The pack format (schema 1)</a>",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "Guide, reference and examples",
+   "html": "<a class=\"heading-link\" href=\"#guide-reference-and-examples\">Guide, reference and examples</a>",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "Stability",
+   "html": "<a class=\"heading-link\" href=\"#stability\">Stability</a>",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "Not there yet",
+   "html": "<a class=\"heading-link\" href=\"#not-there-yet\">Not there yet</a>",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "Changelog",
+   "html": "<a class=\"heading-link\" href=\"#changelog\">Changelog</a>",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "Who makes it",
+   "html": "Who makes it",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "Licences",
+   "html": "Licences",
+   "spans": []
+  },
+  {
+   "tag": "H2",
+   "text": "Privacy",
+   "html": "Privacy",
+   "spans": []
+  }
+ ],
+ "imgs": [
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 32,
+   "h": 32,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-8"
+  },
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 16,
+   "h": 16,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-4"
+  },
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 0,
+   "h": 0,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-[18px]"
+  },
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 0,
+   "h": 0,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-4 text-white/50 transition-transform "
+  },
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 0,
+   "h": 0,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-4 text-white/50 transition-transform group-open:rotate-180"
+  },
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 32,
+   "h": 32,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-8"
+  },
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 24,
+   "h": 24,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-6"
+  },
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 20,
+   "h": 20,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-5"
+  },
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 16,
+   "h": 16,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-4"
+  },
+  {
+   "tag": "svg",
+   "src": "",
+   "alt": null,
+   "role": null,
+   "ariaLabel": null,
+   "w": 16,
+   "h": 16,
+   "style": "",
+   "rendering": "auto",
+   "loading": null,
+   "cls": "size-4"
+  }
+ ],
+ "fonts": [
+  {
+   "family": "Geist",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "loaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist Fallback",
+   "weight": "normal",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "auto"
+  },
+  {
+   "family": "Geist Mono",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist Mono",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist Mono",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist Mono",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist Mono",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist Mono",
+   "weight": "100 900",
+   "style": "normal",
+   "status": "loaded",
+   "display": "swap"
+  },
+  {
+   "family": "Geist Mono Fallback",
+   "weight": "normal",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "auto"
+  },
+  {
+   "family": "Bricolage Grotesque",
+   "weight": "200 800",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Bricolage Grotesque",
+   "weight": "200 800",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "swap"
+  },
+  {
+   "family": "Bricolage Grotesque",
+   "weight": "200 800",
+   "style": "normal",
+   "status": "loaded",
+   "display": "swap"
+  },
+  {
+   "family": "Bricolage Grotesque Fallback",
+   "weight": "normal",
+   "style": "normal",
+   "status": "unloaded",
+   "display": "auto"
+  }
+ ],
+ "keyframes": [
+  {
+   "name": "rise",
+   "text": "@keyframes rise { \n  0% { opacity: 0; transform: translateY(14px); }\n}",
+   "ctx": ""
+  },
+  {
+   "name": "stat-bar",
+   "text": "@keyframes stat-bar { \n  0% { clip-path: inset(0px 100% 0px 0px round 2px); }\n}",
+   "ctx": ""
+  },
+  {
+   "name": "fade-in",
+   "text": "@keyframes fade-in { \n  0% { opacity: 0; }\n}",
+   "ctx": ""
+  },
+  {
+   "name": "overload-shake",
+   "text": "@keyframes overload-shake { \n  0%, 100% { translate: 0px; }\n  25% { translate: calc(var(--amp) * -1px) calc(var(--amp) * .6px); }\n  50% { translate: calc(var(--amp) * .8px) calc(var(--amp) * -.6px); }\n  75% { translate: calc(var(--amp) * -.5px) calc(var(--amp) * -.4px); }\n}",
+   "ctx": ""
+  },
+  {
+   "name": "overload-flow",
+   "text": "@keyframes overload-flow { \n  100% { background-position: 160px 0px; }\n}",
+   "ctx": ""
+  },
+  {
+   "name": "float",
+   "text": "@keyframes float { \n  50% { translate: 0px -8px; }\n}",
+   "ctx": ""
+  },
+  {
+   "name": "race",
+   "text": "@keyframes race { \n  0% { transform: scaleX(0); }\n}",
+   "ctx": ""
+  },
+  {
+   "name": "pulse",
+   "text": "@keyframes pulse { \n  50% { opacity: 0.5; }\n}",
+   "ctx": ""
+  }
+ ],
+ "transitions": [
+  ".stat-bar { transition: clip-path 0.45s ease-out }",
+  ".docs-lede a, .docs-prose a { transition: color 0.15s, text-decoration-color 0.15s }",
+  ".docs-prose .heading-link::after { transition: opacity 0.15s }",
+  ".docs-prose .code-copy { transition: opacity 0.15s, background-color 0.15s, color 0.15s }",
+  ".reveal, .logo-float, .rise, .stat-bar, .fps-range, .overload-shake, .overload-flow, .race-fill, .race-time { transition: none }"
+ ],
+ "animated": [
+  ".rise { animation: rise .9s cubic-bezier(.2, .7, .2, 1) var(--delay,0s) backwards }",
+  ".stat-bar { animation: stat-bar var(--dur) var(--ease,cubic-bezier(.2, .7, .2, 1)) var(--delay) backwards }",
+  ".fps-range { animation: fade-in .4s ease var(--delay,0s) backwards }",
+  ".overload-shake { animation: overload-shake var(--shake,.2s) linear infinite }",
+  ".overload-flow { animation: overload-flow var(--flow,1s) linear infinite }",
+  ".logo-float { animation: 6s ease-in-out 0s infinite normal none running float }",
+  ".race-fill { animation: race var(--dur,1s) linear both }",
+  ".race-time { animation: fade-in .35s ease var(--dur,0s) both }",
+  ".reveal, .logo-float, .rise, .stat-bar, .fps-range, .overload-shake, .overload-flow, .race-fill, .race-time { animation: auto ease 0s 1 normal none running none }"
+ ],
+ "reduced": [
+  "@media (prefers-reduced-motion: reduce) {\n  .reveal, .logo-float, .rise, .stat-bar, .fps-range, .overload-shake, .overload-flow, .race-fill, .race-time { transition: none; animation: auto ease 0s 1 normal none running none; }\n}"
+ ],
+ "mediaQs": [
+  "(hover: none)",
+  "(prefers-reduced-motion: reduce)"
+ ],
+ "scripts": [
+  "https://playhorizon.dev/_next/static/chunks/0_xceca9x8w3m.js",
+  "https://playhorizon.dev/_next/static/chunks/20box33a0_n53.js",
+  "https://playhorizon.dev/_next/static/chunks/0-8-2pf2bywtz.js",
+  "https://playhorizon.dev/_next/static/chunks/turbopack-2c3mg3r-05n1w.js",
+  "https://playhorizon.dev/_next/static/chunks/1tq6ppe__m8m-.js",
+  "https://playhorizon.dev/_next/static/chunks/1reobnq-alpb9.js",
+  "https://playhorizon.dev/_next/static/chunks/3a5nnfflnts9x.js",
+  "https://playhorizon.dev/_next/static/chunks/3-af18igvqrn8.js",
+  "https://playhorizon.dev/_next/static/chunks/0cz1d0mv5g_q7.js",
+  "https://playhorizon.dev/_next/static/chunks/2e2qzhmi6kfxn.js",
+  "https://playhorizon.dev/_next/static/chunks/36z3gw_pz2l7a.js",
+  "https://playhorizon.dev/_next/static/chunks/26bkgvkvq-keb.js",
+  "https://playhorizon.dev/_next/static/chunks/1hnsj4skepxfe.js",
+  "https://playhorizon.dev/_next/static/chunks/30d321g3-dv-s.js",
+  "https://playhorizon.dev/_next/static/chunks/17jhgilgykja-.js",
+  "https://playhorizon.dev/_next/static/chunks/0om590q-tq0l9.js"
+ ],
+ "links": [
+  {
+   "href": "https://github.com/horizon-rust/horizon",
+   "text": "GitHub",
+   "hasSvg": true,
+   "hasImg": false,
+   "svg": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-4\"><path d=\"M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0",
+   "img": null
+  },
+  {
+   "href": "https://github.com/horizon-rust/horizon/releases/download/launcher%400.2.37/horizon-launcher-linux-x86_64.tar.gz",
+   "text": "Download",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://github.com/horizon-rust/horizon/blob/main/docs/benchmark-report.md",
+   "text": "benchmark-report.md",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://github.com/horizon-rust/horizon/blob/main/docs/api/shaders-reference.md",
+   "text": "shaders-reference.md",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://github.com/horizon-rust/horizon/blob/main/docs/shaders.md",
+   "text": "The guide",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://github.com/horizon-rust/horizon/blob/main/docs/api/shaders.md",
+   "text": "Edit this page on GitHub",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://github.com/horizon-rust/horizon/issues",
+   "text": "Open an issue",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://discord.gg/HcTeMZxe5E",
+   "text": "Discord",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://lu4ovic.com/",
+   "text": "lu4ovic.com (opens in a new tab)",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://dezerx.com/",
+   "text": "DezerX (opens in a new tab)",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://github.com/horizon-rust/horizon/blob/main/LICENSE",
+   "text": "MIT licence (opens in a new tab)",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://openfontlicense.org/",
+   "text": "SIL Open Font License (opens in a new tab)",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement",
+   "text": "GitHub's privacy statement (opens in a new tab)",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://github.com/horizon-rust/horizon/blob/main/docs/telemetry.md",
+   "text": "what it can send, and how to delete it (opens in a new tab)",
+   "hasSvg": false,
+   "hasImg": false,
+   "svg": null,
+   "img": null
+  },
+  {
+   "href": "https://github.com/horizon-rust/horizon",
+   "text": "horizon-rust/horizon",
+   "hasSvg": true,
+   "hasImg": false,
+   "svg": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-4\"><path d=\"M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0",
+   "img": null
+  }
+ ],
+ "inlineSvgs": [
+  {
+   "w": 32,
+   "h": 32,
+   "viewBox": "0 0 16 16",
+   "aria": "true",
+   "parentText": "Horizon",
+   "outer": "<svg viewBox=\"0 0 16 16\" aria-hidden=\"true\" class=\"size-8\"><path class=\"fill-white\" d=\"M4 3h2v4H4zM10 3h2v4h-2z\"></path><path class=\"fill-white/40\" d=\"M4 8h2v4H4zM10 8h2v4h-2z\"></path><path class=\"fill-[#a98fff]\" d=\"M1 7h14v1H1z\"></path></svg>"
+  },
+  {
+   "w": 16,
+   "h": 16,
+   "viewBox": "0 0 16 16",
+   "aria": "true",
+   "parentText": "GitHub",
+   "outer": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-4\"><path d=\"M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08"
+  },
+  {
+   "w": 0,
+   "h": 0,
+   "viewBox": "0 0 24 24",
+   "aria": "true",
+   "parentText": "",
+   "outer": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" class=\"size-[18px]\"><path d=\"M4 7h16M4 12h16M4 17h16\"></path></svg>"
+  },
+  {
+   "w": 0,
+   "h": 0,
+   "viewBox": "0 0 24 24",
+   "aria": "true",
+   "parentText": "Docs menuShader API",
+   "outer": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" class=\"size-4 text-white/50 transition-transform \"><path d=\"m6 9 6 6 6-6\"></path></svg>"
+  },
+  {
+   "w": 0,
+   "h": 0,
+   "viewBox": "0 0 24 24",
+   "aria": "true",
+   "parentText": "On this page",
+   "outer": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" class=\"size-4 text-white/50 transition-transform group-open:rotate-180\"><path d=\"m6 9 6 6 6-6\"></path></svg>"
+  },
+  {
+   "w": 32,
+   "h": 32,
+   "viewBox": "0 0 16 16",
+   "aria": "true",
+   "parentText": "Horizon",
+   "outer": "<svg viewBox=\"0 0 16 16\" aria-hidden=\"true\" class=\"size-8\"><path class=\"fill-white\" d=\"M4 3h2v4H4zM10 3h2v4h-2z\"></path><path class=\"fill-white/40\" d=\"M4 8h2v4H4zM10 8h2v4h-2z\"></path><path class=\"fill-[#a98fff]\" d=\"M1 7h14v1H1z\"></path></svg>"
+  },
+  {
+   "w": 24,
+   "h": 24,
+   "viewBox": "0 0 24 24",
+   "aria": "true",
+   "parentText": "",
+   "outer": "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-6\"><path d=\"M12.484 2.077a3.725 3.725 0 1 0 3.725 3.726 3.725 3.725 0 0 0-3.725-3.726zm-12.23.091a.182.182 0 0 0-.181.182v6.905a.182.182 0 0 0 .182.182h1.453a.182.182 0 0 0 .182-.182V4.44a.454.454 0 0 1 .455-.454h.454a.454.454 0 0 1 .454.454v2.994a.182.182 0 0 0 .182.182h1.453a.182.182 0 0 0 .182-.182V4.44a.454.454 0 0 1 .454-.454h.453a.454.454 0 0 1 .454.454l.002 4.816a.182.182 0 0 0 .182.182h1.453a.182.182 0 0 0 .182-."
+  },
+  {
+   "w": 20,
+   "h": 20,
+   "viewBox": "0 0 24 24",
+   "aria": "true",
+   "parentText": "",
+   "outer": "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-5\"><path d=\"M0 0v11.408h11.408V0zm12.594 0v11.408H24V0zM0 12.594V24h11.408V12.594zm12.594 0V24H24V12.594z\"></path></svg>"
+  },
+  {
+   "w": 16,
+   "h": 16,
+   "viewBox": "0 0 24 24",
+   "aria": "true",
+   "parentText": "Made in the open, in Rust.",
+   "outer": "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-4\"><path d=\"M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.49-1.0761a.3437.3437 0 00-.0274-.3361.3486.3486 0 00-.3006-.154l-1.1845.0416a6.7444 6.7444 0 00-.1873-.2268l.2723-1.153a.3472.3472 0 00-.417-.4172l-1.1532.2724a14.0183 14.0183 0 00"
+  },
+  {
+   "w": 16,
+   "h": 16,
+   "viewBox": "0 0 16 16",
+   "aria": "true",
+   "parentText": "horizon-rust/horizon",
+   "outer": "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\" class=\"size-4\"><path d=\"M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08"
+  }
+ ],
+ "sliders": [],
+ "buttons": [
+  {
+   "tag": "a",
+   "cls": "hidden h-9 items-center gap-2 px-3 text-sm text-white/65 transition-colors hover:text-white sm:inline-flex",
+   "text": "GitHub",
+   "fontFamily": "Geist, \"Geist Fallback\"",
+   "fontSize": "14px",
+   "fontWeight": "400",
+   "lineHeight": "20px",
+   "letterSpacing": "normal",
+   "color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+   "background": "rgba(0, 0, 0, 0)",
+   "textTransform": "none",
+   "borderRadius": "0px",
+   "border": "0px solid oklab(0.999994 0.0000455678 0.0000200868 / 0.65)",
+   "boxShadow": "none",
+   "padding": "0px 12px",
+   "height": 36,
+   "width": 91.796875
+  },
+  {
+   "tag": "a",
+   "cls": "inline-flex h-9 items-center rounded-lg bg-white/10 px-4 text-sm font-medium text-white transition-colors hover:bg-white",
+   "text": "Download",
+   "fontFamily": "Geist, \"Geist Fallback\"",
+   "fontSize": "14px",
+   "fontWeight": "500",
+   "lineHeight": "20px",
+   "letterSpacing": "normal",
+   "color": "rgb(255, 255, 255)",
+   "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.1)",
+   "textTransform": "none",
+   "borderRadius": "8px",
+   "border": "0px solid rgb(255, 255, 255)",
+   "boxShadow": "none",
+   "padding": "0px 16px",
+   "height": 36,
+   "width": 97.640625
+  },
+  {
+   "tag": "button",
+   "cls": "ml-1 inline-flex size-9 items-center justify-center rounded-lg bg-white/[0.06] text-white/80 transition-colors hover:bg-",
+   "text": "",
+   "fontFamily": "Geist, \"Geist Fallback\"",
+   "fontSize": "16px",
+   "fontWeight": "400",
+   "lineHeight": "24px",
+   "letterSpacing": "normal",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+   "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.06)",
+   "textTransform": "none",
+   "borderRadius": "8px",
+   "border": "0px solid oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+   "boxShadow": "none",
+   "padding": "0px",
+   "height": 0,
+   "width": 0
+  },
+  {
+   "tag": "button",
+   "cls": "mt-3 flex h-11 w-full items-center justify-between rounded-lg bg-white/[0.04] px-3.5 text-left text-sm text-white/80 lg:",
+   "text": "Docs menuShader API",
+   "fontFamily": "Geist, \"Geist Fallback\"",
+   "fontSize": "14px",
+   "fontWeight": "400",
+   "lineHeight": "20px",
+   "letterSpacing": "normal",
+   "color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+   "background": "oklab(0.999994 0.0000455678 0.0000200868 / 0.04)",
+   "textTransform": "none",
+   "borderRadius": "8px",
+   "border": "0px solid oklab(0.999994 0.0000455677 0.0000200868 / 0.8)",
+   "boxShadow": "none",
+   "padding": "0px 14px",
+   "height": 0,
+   "width": 0
+  },
+  {
+   "tag": "a",
+   "cls": "",
+   "text": "benchmark-report.md",
+   "fontFamily": "Geist, \"Geist Fallback\"",
+   "fontSize": "16px",
+   "fontWeight": "400",
+   "lineHeight": "27.2px",
+   "letterSpacing": "normal",
+   "color": "rgb(196, 181, 255)",
+   "background": "rgba(0, 0, 0, 0)",
+   "textTransform": "none",
+   "borderRadius": "0px",
+   "border": "0px solid rgb(196, 181, 255)",
+   "boxShadow": "none",
+   "padding": "0px",
+   "height": 21,
+   "width": 159.1875
+  },
+  {
+   "tag": "button",
+   "cls": "code-copy",
+   "text": "Copy",
+   "fontFamily": "Geist, \"Geist Fallback\"",
+   "fontSize": "12px",
+   "fontWeight": "500",
+   "lineHeight": "20.4px",
+   "letterSpacing": "normal",
+   "color": "rgba(255, 255, 255, 0.7)",
+   "background": "rgba(255, 255, 255, 0.08)",
+   "textTransform": "none",
+   "borderRadius": "6px",
+   "border": "0px solid rgba(255, 255, 255, 0.7)",
+   "boxShadow": "none",
+   "padding": "0px 9.6px",
+   "height": 28,
+   "width": 48.203125
+  },
+  {
+   "tag": "a",
+   "cls": "",
+   "text": "shaders-reference.md",
+   "fontFamily": "Geist, \"Geist Fallback\"",
+   "fontSize": "16px",
+   "fontWeight": "400",
+   "lineHeight": "27.2px",
+   "letterSpacing": "normal",
+   "color": "rgb(196, 181, 255)",
+   "background": "rgba(0, 0, 0, 0)",
+   "textTransform": "none",
+   "borderRadius": "0px",
+   "border": "0px solid rgb(196, 181, 255)",
+   "boxShadow": "none",
+   "padding": "0px",
+   "height": 21,
+   "width": 160.46875
+  },
+  {
+   "tag": "a",
+   "cls": "",
+   "text": "The guide",
+   "fontFamily": "Geist, \"Geist Fallback\"",
+   "fontSize": "16px",
+   "fontWeight": "400",
+   "lineHeight": "27.2px",
+   "letterSpacing": "normal",
+   "color": "rgb(196, 181, 255)",
+   "background": "rgba(0, 0, 0, 0)",
+   "textTransform": "none",
+   "borderRadius": "0px",
+   "border": "0px solid rgb(196, 181, 255)",
+   "boxShadow": "none",
+   "padding": "0px",
+   "height": 21,
+   "width": 70.984375
+  }
+ ],
+ "nav": [
+  {
+   "text": "Horizon",
+   "href": "/"
+  },
+  {
+   "text": "About",
+   "href": "/#about"
+  },
+  {
+   "text": "Hub",
+   "href": "/hub"
+  },
+  {
+   "text": "Benchmarks",
+   "href": "/benchmarks"
+  },
+  {
+   "text": "Mods",
+   "href": "/mods"
+  },
+  {
+   "text": "Releases9+, 40 new",
+   "href": "/releases"
+  },
+  {
+   "text": "Docs",
+   "href": "/docs"
+  },
+  {
+   "text": "Players",
+   "href": "/stats"
+  },
+  {
+   "text": "GitHub",
+   "href": "https://github.com/horizon-rust/horizon"
+  },
+  {
+   "text": "Download",
+   "href": "https://github.com/horizon-rust/horizon/releases/download/launcher%400.2.37/horizon-launcher-linux-x86_64.tar.gz"
+  },
+  {
+   "text": "What Horizon is",
+   "href": "/docs"
+  },
+  {
+   "text": "Install and first launch",
+   "href": "/docs/install"
+  },
+  {
+   "text": "How Horizon is built",
+   "href": "/docs/how-horizon-is-built"
+  },
+  {
+   "text": "Settings worth knowing",
+   "href": "/docs/settings"
+  },
+  {
+   "text": "Multiplayer",
+   "href": "/docs/multiplayer"
+  },
+  {
+   "text": "Logs, crashes and bug reports",
+   "href": "/docs/troubleshooting"
+  },
+  {
+   "text": "Host a server",
+   "href": "/docs/hosting"
+  },
+  {
+   "text": "Modpacks",
+   "href": "/docs/modpacks"
+  },
+  {
+   "text": "Mods and data packs",
+   "href": "/docs/mods"
+  },
+  {
+   "text": "Performance",
+   "href": "/docs/performance"
+  },
+  {
+   "text": "Control Horizon with your AI agent",
+   "href": "/docs/agents"
+  },
+  {
+   "text": "Make a mod",
+   "href": "/docs/make-a-mod"
+  },
+  {
+   "text": "The bundle",
+   "href": "/docs/mod-manifest"
+  },
+  {
+   "text": "Hook points and helpers",
+   "href": "/docs/mod-code"
+  },
+  {
+   "text": "Content mods",
+   "href": "/docs/content-mods"
+  },
+  {
+   "text": "Test a mod",
+   "href": "/docs/test-a-mod"
+  },
+  {
+   "text": "Publish a mod",
+   "href": "/docs/publish-a-mod"
+  },
+  {
+   "text": "APIs at a glance",
+   "href": "/docs/apis"
+  },
+  {
+   "text": "Horizon APIs",
+   "href": "/docs/api"
+  },
+  {
+   "text": "API stability and versioning",
+   "href": "/docs/api/stability"
+  },
+  {
+   "text": "The registry index and .hpack",
+   "href": "/docs/api/mod-index"
+  },
+  {
+   "text": "Server API",
+   "href": "/docs/api/server"
+  },
+  {
+   "text": "Server reference",
+   "href": "/docs/api/server-reference"
+  },
+  {
+   "text": "Agent control API",
+   "href": "/docs/api/agent-control"
+  },
+  {
+   "text": "Launcher API",
+   "href": "/docs/api/launcher"
+  },
+  {
+   "text": "Data formats",
+   "href": "/docs/api/data-formats"
+  },
+  {
+   "text": "Shader API",
+   "href": "/docs/api/shaders"
+  },
+  {
+   "text": "Contribute",
+   "href": "/docs/contributing"
+  },
+  {
+   "text": "FAQ",
+   "href": "/docs/faq"
+  },
+  {
+   "text": "Docs",
+   "href": "/docs"
+  },
+  {
+   "text": "PreviousData formats",
+   "href": "/docs/api/data-formats"
+  },
+  {
+   "text": "NextContribute",
+   "href": "/docs/contributing"
+  },
+  {
+   "text": "Overview: what a shader author will be able to do",
+   "href": "#overview-what-a-shader-author-will-be-able-to-do"
+  },
+  {
+   "text": "The design",
+   "href": "#the-design"
+  },
+  {
+   "text": "The pack format (schema 1)",
+   "href": "#the-pack-format-schema-1"
+  },
+  {
+   "text": "Guide, reference and examples",
+   "href": "#guide-reference-and-examples"
+  },
+  {
+   "text": "Stability",
+   "href": "#stability"
+  },
+  {
+   "text": "Not there yet",
+   "href": "#not-there-yet"
+  },
+  {
+   "text": "Changelog",
+   "href": "#changelog"
+  }
+ ],
+ "footerText": "Horizon\n\nNot an official Minecraft product. Not approved by or associated with Mojang or Microsoft.\n\nWho makes it\n\nHorizon is made by Ludovic Marie; reach him through lu4ovic.com\n(opens in a new tab)\n. This site is developed by Anthony S of DezerX\n(opens in a new tab)\n, who is responsible for it. Horizon contains no Minecraft code, assets or data, and this site offers no game files: you need your own legally obtained copy of Minecraft: Java Edition. Minecraft is a trademark of Mojang Synergies AB.\n\nLicences\n\nHorizon's original work is under the MIT licence\n(opens in a new tab)\n. The fonts are Geist and Geist Mono, under the SIL Open Font License\n(opens in a new tab)\n. Every asset on this site is listed in LEGAL.md.\n\nPrivacy\n\nThis site sets no cookies, has no analytics or trackers and loads nothing from third parties except GitHub. When you open a release, the server keeps a one-way hash of your IP address so that release counts each visitor once; the address itself is never stored. To show the latest releases, patch notes, links and contributors, your browser asks api.github.com and raw.githubusercontent.com for them, and avatars.githubusercontent.com for the contributors' pictures; GitHub's privacy statement\n(opens in a new tab)\n covers those requests. The launcher sends nothing unless you allow it: what it can send, and how to delete it\n(opens in a new tab)\n.\n\nPrivacy policy\n\nMade in the open, in Rust.\n\nhorizon-rust/horizon",
+ "uppercase": [],
+ "gradients": [],
+ "focusStyles": [
+  ".fps-range:focus { outline: none; }",
+  ".fps-range:focus-visible::-webkit-slider-thumb { outline-offset: 2px; outline: rgb(169, 143, 255) solid 2px; }",
+  ".docs-prose .heading-link:hover::after, .docs-prose .heading-link:focus-visible::after, .docs-prose :target > .heading-link::after { opacity: 1; }",
+  ".docs-prose .code-block:hover .code-copy, .docs-prose .code-copy:focus-visible { opacity: 1; }",
+  ".docs-prose .code-copy:focus-visible { outline-offset: 2px; outline: rgb(169, 143, 255) solid 2px; }"
+ ],
+ "bgImages": [],
+ "masks": [
+  {
+   "tag": "SPAN",
+   "cls": "sr-only",
+   "mask": "none",
+   "clip": "inset(50%)",
+   "w": 1,
+   "h": 1
+  },
+  {
+   "tag": "LABEL",
+   "cls": "sr-only",
+   "mask": "none",
+   "clip": "inset(50%)",
+   "w": 1,
+   "h": 1
+  },
+  {
+   "tag": "SPAN",
+   "cls": "sr-only",
+   "mask": "none",
+   "clip": "inset(50%)",
+   "w": 1,
+   "h": 1
+  },
+  {
+   "tag": "SPAN",
+   "cls": "sr-only",
+   "mask": "none",
+   "clip": "inset(50%)",
+   "w": 1,
+   "h": 1
+  },
+  {
+   "tag": "SPAN",
+   "cls": "sr-only",
+   "mask": "none",
+   "clip": "inset(50%)",
+   "w": 1,
+   "h": 1
+  },
+  {
+   "tag": "SPAN",
+   "cls": "sr-only",
+   "mask": "none",
+   "clip": "inset(50%)",
+   "w": 1,
+   "h": 1
+  },
+  {
+   "tag": "SPAN",
+   "cls": "sr-only",
+   "mask": "none",
+   "clip": "inset(50%)",
+   "w": 1,
+   "h": 1
+  },
+  {
+   "tag": "SPAN",
+   "cls": "sr-only",
+   "mask": "none",
+   "clip": "inset(50%)",
+   "w": 1,
+   "h": 1
+  },
+  {
+   "tag": "SPAN",
+   "cls": "sr-only",
+   "mask": "none",
+   "clip": "inset(50%)",
+   "w": 1,
+   "h": 1
+  }
+ ],
+ "requests": [
+  {
+   "url": "https://playhorizon.dev/docs/api/shaders",
+   "status": 200,
+   "type": "document",
+   "ct": "text/html; charset=utf-8",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/1b5g4h2mnvmk2.css",
+   "status": 200,
+   "type": "stylesheet",
+   "ct": "text/css; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/1954ozk_cgkuy.css",
+   "status": 200,
+   "type": "stylesheet",
+   "ct": "text/css; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/media/07a39a8a4660cc7c-s.p.0r6juujl39pe6.woff2",
+   "status": 200,
+   "type": "font",
+   "ct": "font/woff2",
+   "len": "23108",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/media/605ce01b664af129-s.p.0wgildi0cnwt9.woff2",
+   "status": 200,
+   "type": "font",
+   "ct": "font/woff2",
+   "len": "29288",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/media/8056169c9d560660-s.p.41rroleoq1br7.woff2",
+   "status": 200,
+   "type": "font",
+   "ct": "font/woff2",
+   "len": "41236",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/0om590q-tq0l9.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/0_xceca9x8w3m.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/20box33a0_n53.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/0-8-2pf2bywtz.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/1tq6ppe__m8m-.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/1reobnq-alpb9.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/3a5nnfflnts9x.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/turbopack-2c3mg3r-05n1w.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/3-af18igvqrn8.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/manifest.webmanifest",
+   "status": 200,
+   "type": "manifest",
+   "ct": "application/manifest+json",
+   "cache": "public, max-age=0, must-revalidate"
+  },
+  {
+   "url": "https://playhorizon.dev/?_rsc=lbaGgR3EKvA6Qgg5",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/?_rsc=Bnj0haHz6cskj7Hu",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/2e2qzhmi6kfxn.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/mods?_rsc=lbaGgR3EKvA6Qgg5",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/releases?_rsc=lbaGgR3EKvA6Qgg5",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/benchmarks?_rsc=lbaGgR3EKvA6Qgg5",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/hub?_rsc=lbaGgR3EKvA6Qgg5",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=600, stale-while-revalidate=85800"
+  },
+  {
+   "url": "https://playhorizon.dev/docs?_rsc=lbaGgR3EKvA6Qgg5",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/benchmarks?_rsc=xQQJqgL79iDP-Zk9",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/hub?_rsc=OlKGNUzsE-9J7Vw9",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=600, stale-while-revalidate=85800"
+  },
+  {
+   "url": "https://playhorizon.dev/stats?_rsc=lbaGgR3EKvA6Qgg5",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/36z3gw_pz2l7a.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/26bkgvkvq-keb.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/mods?_rsc=3D_DK_Ch4F3h0DdX",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/1hnsj4skepxfe.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/releases?_rsc=5sBdv2XnSo72nYBo",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs?_rsc=PxhLgEbuBs868Kf5",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/30d321g3-dv-s.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/stats?_rsc=-9lUw1d48-0AjYrW",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/_next/static/chunks/17jhgilgykja-.js",
+   "status": 200,
+   "type": "script",
+   "ct": "application/javascript; charset=UTF-8",
+   "enc": "gzip",
+   "cache": "public, max-age=31536000, immutable"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/install?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/troubleshooting?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/multiplayer?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/settings?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/how-horizon-is-built?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/hosting?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/mods?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/modpacks?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/performance?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/agents?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/make-a-mod?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/mod-code?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/mod-manifest?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/api/data-formats?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/docs/contributing?_rsc=kZZv8cGEUGfRb8Si",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/privacy?_rsc=lbaGgR3EKvA6Qgg5",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  },
+  {
+   "url": "https://playhorizon.dev/privacy?_rsc=EqN1wtXNQft34IDR",
+   "status": 200,
+   "type": "fetch",
+   "ct": "text/x-component",
+   "enc": "gzip",
+   "cache": "s-maxage=900, stale-while-revalidate=85500"
+  }
+ ]
+}

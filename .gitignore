@@ -24,3 +24,8 @@ __pycache__/
 # Private, machine-local files: never commit (D-026)
 BUILD-BOOK.md
 START-HERE.md
+
+# Archives the design research was unpacked from (local only)
+docs/design-research/_to_delete_parts/
+# Claude Code worktrees created by parallel agents (local only)
+.claude/worktrees/

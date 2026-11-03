@@ -1,0 +1,1210 @@
+[
+ [
+  "home",
+  {
+   "title": "Horizon: Minecraft Rust Edition, Java 26.3 rewritten in Rust",
+   "desc": "Minecraft: Java Edition 26.3 rewritten in Rust. Free, open source and tested against vanilla. Get the Horizon launcher for Windows, macOS and Linux.",
+   "words": 579,
+   "h1440": 5713,
+   "h390": 10054,
+   "secs": [
+    [
+     "Horizon: The game you know,rebuilt in Rust.",
+     91,
+     900
+    ],
+    [
+     "Same inputs, identical outputs.",
+     134,
+     548
+    ],
+    [
+     "Your MinecraftServer, 24/7 Online.",
+     26,
+     384
+    ],
+    [
+     "Built in the open.",
+     69,
+     560
+    ],
+    [
+     "The same game you love, 6\u00d7 faster.",
+     25,
+     772
+    ],
+    [
+     "Built by 199 people.\u2026andClaude too",
+     50,
+     849
+    ],
+    [
+     "Every subsystem passes the harnesses that compare it.",
+     184,
+     965
+    ]
+   ],
+   "h1": [
+    "Horizon: The game you know,rebuilt in Rust."
+   ],
+   "h2": [
+    "3\u00d7 the frame rate.",
+    "Same inputs, identical outputs.",
+    "Your MinecraftServer, 24/7 Online.",
+    "Built in the open.",
+    "The same game you love, 6\u00d7 faster.",
+    "Built by 199 people.\u2026andClaude too",
+    "Every subsystem passes the harnesses that compare it.",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 208,
+   "canvases": 3,
+   "svgs": 58,
+   "reqs": 247,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": [
+    [
+     "Horizon: The game you know,rebuilt in Rust.",
+     [
+      [
+       "Horizon: ",
+       "sr-only"
+      ],
+      [
+       "The game you know,",
+       "block"
+      ],
+      [
+       "rebuilt in Rust.",
+       "text-accent block pb-1"
+      ]
+     ]
+    ],
+    [
+     "3\u00d7 the frame rate.",
+     [
+      [
+       "3\u00d7",
+       "text-accent"
+      ]
+     ]
+    ],
+    [
+     "Your MinecraftServer, 24/7 Online.",
+     [
+      [
+       "24/7 Online.",
+       "whitespace-nowrap text-[#5ccff"
+      ]
+     ]
+    ],
+    [
+     "The same game you love, 6\u00d7 faster.",
+     [
+      [
+       "6\u00d7 faster.",
+       "text-accent"
+      ]
+     ]
+    ],
+    [
+     "Built by 199 people.\u2026andClaude too",
+     [
+      [
+       "Built by 199 people.\u2026andClaude too",
+       "relative"
+      ],
+      [
+       "\u2026andClaude too",
+       "pointer-events-none absolute b"
+      ]
+     ]
+    ]
+   ]
+  }
+ ],
+ [
+  "hub",
+  {
+   "title": "Horizon hub: roadmap, progress and how to help",
+   "desc": "Where Horizon is: what is being done now, what comes next, what shipped, and how to help, in plain words or in technical detail.",
+   "words": 804,
+   "h1440": 4391,
+   "h390": 6930,
+   "secs": [
+    [
+     "Where Horizonis going.",
+     45,
+     551
+    ],
+    [
+     "Being done now",
+     759,
+     3168
+    ],
+    [
+     "Being done now",
+     751,
+     2939
+    ],
+    [
+     "Being done now",
+     180,
+     652
+    ],
+    [
+     "Next",
+     410,
+     1466
+    ],
+    [
+     "Recently shipped",
+     75,
+     339
+    ],
+    [
+     "How to help",
+     48,
+     161
+    ],
+    [
+     "Now",
+     6566,
+     0
+    ],
+    [
+     "Now",
+     782,
+     0
+    ],
+    [
+     "Next",
+     1030,
+     0
+    ],
+    [
+     "Later",
+     3558,
+     0
+    ],
+    [
+     "Help wanted",
+     159,
+     0
+    ],
+    [
+     "Recently shipped",
+     1023,
+     0
+    ],
+    [
+     "To do31",
+     3306,
+     0
+    ],
+    [
+     "To do31",
+     314,
+     0
+    ],
+    [
+     "In progress54",
+     626,
+     0
+    ],
+    [
+     "In review135",
+     1526,
+     0
+    ],
+    [
+     "Done91",
+     815,
+     0
+    ],
+    [
+     "Merged, in the next release",
+     14693,
+     0
+    ],
+    [
+     "Good first tasks",
+     782,
+     0
+    ],
+    [
+     "Good first tasks",
+     206,
+     0
+    ],
+    [
+     "Ways to help",
+     131,
+     0
+    ],
+    [
+     "Report a bug",
+     134,
+     0
+    ],
+    [
+     "The rules",
+     99,
+     0
+    ],
+    [
+     "Contributors",
+     216,
+     0
+    ],
+    [
+     "Who runs Horizon",
+     144,
+     0
+    ],
+    [
+     "Who runs Horizon",
+     144,
+     0
+    ]
+   ],
+   "h1": [
+    "Where Horizonis going."
+   ],
+   "h2": [
+    "Being done now",
+    "Next",
+    "Recently shipped",
+    "How to help",
+    "Now",
+    "Next",
+    "Later",
+    "Help wanted",
+    "Recently shipped",
+    "Good first tasks",
+    "Ways to help",
+    "Report a bug"
+   ],
+   "imgs": 210,
+   "canvases": 1,
+   "svgs": 36,
+   "reqs": 37,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": [
+    [
+     "Where Horizonis going.",
+     [
+      [
+       "Where Horizon",
+       "block"
+      ],
+      [
+       "is going.",
+       "text-accent block pb-1"
+      ]
+     ]
+    ],
+    [
+     "To do31",
+     [
+      [
+       "31",
+       "rounded-md bg-white/10 px-2 py"
+      ]
+     ]
+    ],
+    [
+     "In progress54",
+     [
+      [
+       "54",
+       "rounded-md bg-white/10 px-2 py"
+      ]
+     ]
+    ],
+    [
+     "In review135",
+     [
+      [
+       "135",
+       "rounded-md bg-white/10 px-2 py"
+      ]
+     ]
+    ],
+    [
+     "Done91",
+     [
+      [
+       "91",
+       "rounded-md bg-white/10 px-2 py"
+      ]
+     ]
+    ]
+   ]
+  }
+ ],
+ [
+  "benchmarks",
+  {
+   "title": "Horizon vs Minecraft Java benchmarks: FPS, memory, loading",
+   "desc": "Horizon against Minecraft: Java Edition 26.3 on a 2016 ThinkPad, a Mac mini and a gaming desktop: frame rates, hitches, loading and memory, measured alike.",
+   "words": 875,
+   "h1440": 4802,
+   "h390": 8501,
+   "secs": [
+    [
+     "Horizon againstJava Edition.",
+     84,
+     555
+    ],
+    [
+     "Pick a computer",
+     267,
+     1364
+    ],
+    [
+     "Hitches in a minute of play",
+     56,
+     262
+    ],
+    [
+     "Frames per second",
+     15,
+     302
+    ],
+    [
+     "Waiting",
+     20,
+     302
+    ],
+    [
+     "Memory while playing",
+     30,
+     232
+    ],
+    [
+     "Where every frame landed",
+     18,
+     232
+    ],
+    [
+     "Feel the difference",
+     114,
+     591
+    ],
+    [
+     "Where Java Edition is still faster",
+     89,
+     459
+    ],
+    [
+     "What about your computer?",
+     162,
+     650
+    ],
+    [
+     "How it was measured",
+     159,
+     511
+    ]
+   ],
+   "h1": [
+    "Horizon againstJava Edition."
+   ],
+   "h2": [
+    "Pick a computer",
+    "Feel the difference",
+    "Where Java Edition is still faster",
+    "What about your computer?",
+    "How it was measured",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 9,
+   "canvases": 1,
+   "svgs": 15,
+   "reqs": 45,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": [
+    [
+     "Horizon againstJava Edition.",
+     [
+      [
+       "Horizon against",
+       "block"
+      ],
+      [
+       "Java Edition.",
+       "text-accent block pb-1"
+      ]
+     ]
+    ]
+   ]
+  }
+ ],
+ [
+  "mods",
+  {
+   "title": "Horizon mods, modpacks and resource packs",
+   "desc": "Mods, modpacks and resource packs made for Horizon. Each one was reviewed before it was listed, and the launcher checks every file before it installs it.",
+   "words": 1278,
+   "h1440": 4933,
+   "h390": 9477,
+   "secs": [
+    [
+     "Horizon mods",
+     1278,
+     4261
+    ]
+   ],
+   "h1": [
+    "Horizon mods"
+   ],
+   "h2": [
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 23,
+   "canvases": 0,
+   "svgs": 33,
+   "reqs": 76,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": []
+  }
+ ],
+ [
+  "releases",
+  {
+   "title": "Download the Horizon launcher: releases and nightlies",
+   "desc": "Download the Horizon launcher for Windows, macOS and Linux. Every game, launcher and nightly release, with its notes and downloads, straight from GitHub.",
+   "words": 676,
+   "h1440": 5924,
+   "h390": 8700,
+   "secs": [
+    [
+     "Every release,as it ships.",
+     43,
+     765
+    ],
+    [
+     "The latest 40 releases.",
+     633,
+     4487
+    ]
+   ],
+   "h1": [
+    "Every release,as it ships.",
+    "Want to play? Download the Horizon launcher.",
+    "Do NOT run the files below. They will not work on their own.",
+    "Want to play? Download the Horizon launcher.",
+    "Do NOT run the files below. They will not work on their own."
+   ],
+   "h2": [
+    "The latest 40 releases.",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 2,
+   "svgs": 384,
+   "reqs": 38,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": [
+    [
+     "Every release,as it ships.",
+     [
+      [
+       "Every release,",
+       "block"
+      ],
+      [
+       "as it ships.",
+       "text-accent block pb-1"
+      ]
+     ]
+    ]
+   ]
+  }
+ ],
+ [
+  "docs",
+  {
+   "title": "Horizon docs: Minecraft Java Edition rewritten in Rust",
+   "desc": "Horizon is Minecraft: Java Edition 26.3 rewritten in Rust. You install it with a small launcher, and it runs on the game files from your own copy of Minecraft.",
+   "words": 628,
+   "h1440": 2946,
+   "h390": 4444,
+   "secs": [
+    [
+     "What Horizon is",
+     628,
+     2050
+    ]
+   ],
+   "h1": [
+    "What Horizon is"
+   ],
+   "h2": [
+    "In one minute",
+    "What Horizon is not",
+    "Supported systems",
+    "Where to go next",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 0,
+   "svgs": 10,
+   "reqs": 53,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": []
+  }
+ ],
+ [
+  "artists",
+  {
+   "title": "3D artists \u00b7 Horizon",
+   "desc": "Horizon welcomes 3D artists to make cosmetics for its players: hats, back items, shoulder pets, trails and emotes in a blocky style. Say hello on Discord.",
+   "words": 213,
+   "h1440": 2025,
+   "h390": 2712,
+   "secs": [
+    [
+     "We're looking for3D artists.",
+     213,
+     1353
+    ],
+    [
+     "What we'd make together",
+     53,
+     252
+    ],
+    [
+     "What fits",
+     68,
+     236
+    ],
+    [
+     "Get in touch",
+     45,
+     168
+    ]
+   ],
+   "h1": [
+    "We're looking for3D artists."
+   ],
+   "h2": [
+    "What we'd make together",
+    "What fits",
+    "Get in touch",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 0,
+   "svgs": 9,
+   "reqs": 39,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": [
+    [
+     "We're looking for3D artists.",
+     [
+      [
+       "We're looking for",
+       "block"
+      ],
+      [
+       "3D artists.",
+       "text-accent block pb-1"
+      ]
+     ]
+    ]
+   ]
+  }
+ ],
+ [
+  "stats",
+  {
+   "title": "Horizon player count: how many play right now",
+   "desc": "How many people play Horizon right now, its peaks and its history, from the anonymous ping every running game sends.",
+   "words": 268,
+   "h1440": 3101,
+   "h390": null,
+   "secs": [
+    [
+     "Who plays Horizonright now.",
+     46,
+     601
+    ],
+    [
+     "Now and the peaks",
+     222,
+     1828
+    ],
+    [
+     "Now and the peaks",
+     49,
+     320
+    ],
+    [
+     "Over time",
+     70,
+     566
+    ],
+    [
+     "The Official Horizon SMP",
+     103,
+     750
+    ]
+   ],
+   "h1": [
+    "Who plays Horizonright now."
+   ],
+   "h2": [
+    "Now and the peaks",
+    "Over time",
+    "The Official Horizon SMP",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 1,
+   "svgs": 10,
+   "reqs": 43,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": [
+    [
+     "Who plays Horizonright now.",
+     [
+      [
+       "Who plays Horizon",
+       "block"
+      ],
+      [
+       "right now.",
+       "text-accent block pb-1"
+      ]
+     ]
+    ]
+   ]
+  }
+ ],
+ [
+  "privacy",
+  {
+   "title": "Privacy \u00b7 Horizon",
+   "desc": "What this website keeps about you, and what it doesn't: no cookies for visitors, no analytics, and one hashed count of release views.",
+   "words": 617,
+   "h1440": 3131,
+   "h390": 4614,
+   "secs": [
+    [
+     "This site keepsalmost nothing.",
+     617,
+     2459
+    ],
+    [
+     "In short",
+     68,
+     228
+    ],
+    [
+     "Release views",
+     94,
+     220
+    ],
+    [
+     "What stays in your browser",
+     66,
+     252
+    ],
+    [
+     "What your browser loads from GitHub",
+     52,
+     152
+    ],
+    [
+     "Signing in",
+     97,
+     204
+    ],
+    [
+     "What the server fetches",
+     53,
+     152
+    ],
+    [
+     "The launcher, the game and Discord",
+     62,
+     126
+    ],
+    [
+     "Who is responsible, and your rights",
+     83,
+     188
+    ]
+   ],
+   "h1": [
+    "This site keepsalmost nothing."
+   ],
+   "h2": [
+    "In short",
+    "Release views",
+    "What stays in your browser",
+    "What your browser loads from GitHub",
+    "Signing in",
+    "What the server fetches",
+    "The launcher, the game and Discord",
+    "Who is responsible, and your rights",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 0,
+   "svgs": 8,
+   "reqs": 37,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": [
+    [
+     "This site keepsalmost nothing.",
+     [
+      [
+       "This site keeps",
+       "block"
+      ],
+      [
+       "almost nothing.",
+       "text-accent block pb-1"
+      ]
+     ]
+    ]
+   ]
+  }
+ ],
+ [
+  "players",
+  {
+   "title": "Horizon: Minecraft Rust Edition, Java 26.3 rewritten in Rust",
+   "desc": "Minecraft: Java Edition 26.3 rewritten in Rust. Free, open source and tested against vanilla. Get the Horizon launcher for Windows, macOS and Linux.",
+   "words": 24,
+   "h1440": 1256,
+   "h390": 1631,
+   "secs": [],
+   "h1": [
+    "Nothingat this address."
+   ],
+   "h2": [
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 0,
+   "svgs": 8,
+   "reqs": 39,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist"
+   ],
+   "headings_spans": [
+    [
+     "Nothingat this address.",
+     [
+      [
+       "Nothing",
+       "block"
+      ],
+      [
+       "at this address.",
+       "text-accent block pb-1"
+      ]
+     ]
+    ]
+   ]
+  }
+ ],
+ [
+  "docs-install",
+  {
+   "title": "Install Horizon: download the launcher and first launch",
+   "desc": "Download the launcher, let it install Horizon, then prepare the game from your own copy of Minecraft. It takes a few minutes, and you do the preparation once.",
+   "words": 932,
+   "h1440": 4016,
+   "h390": 6181,
+   "secs": [
+    [
+     "Install and first launch",
+     932,
+     3120
+    ]
+   ],
+   "h1": [
+    "Install and first launch"
+   ],
+   "h2": [
+    "What you need",
+    "Download the launcher",
+    "First launch",
+    "Updating",
+    "One version for everyone: the Nightly",
+    "The Versions page",
+    "Something went wrong",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 0,
+   "svgs": 10,
+   "reqs": 50,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist",
+    "Geist Mono"
+   ],
+   "headings_spans": []
+  }
+ ],
+ [
+  "docs-how-horizon-is-built",
+  {
+   "title": "How Horizon is built and checked against vanilla",
+   "desc": "Who writes Horizon, how changes are checked, and why it is safe to run. You can check every claim on this page in the repository, and anything not done yet is\u2026",
+   "words": 1014,
+   "h1440": 3909,
+   "h390": 6155,
+   "secs": [
+    [
+     "How Horizon is built",
+     1014,
+     3013
+    ]
+   ],
+   "h1": [
+    "How Horizon is built"
+   ],
+   "h2": [
+    "Who builds it",
+    "How changes are checked",
+    "Why it's safe to run",
+    "What it doesn't contain",
+    "Check it yourself",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 0,
+   "svgs": 10,
+   "reqs": 50,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist",
+    "Geist Mono"
+   ],
+   "headings_spans": []
+  }
+ ],
+ [
+  "docs-faq",
+  {
+   "title": "Horizon FAQ: Minecraft in Rust, mods, servers and more",
+   "desc": "Answers about Horizon, Minecraft: Java Edition rewritten in Rust: buying Minecraft, Minecraft Rust Edition, Java mods, servers, worlds, updates and more.",
+   "words": 992,
+   "h1440": 4784,
+   "h390": 6844,
+   "secs": [
+    [
+     "FAQ",
+     992,
+     3888
+    ]
+   ],
+   "h1": [
+    "FAQ"
+   ],
+   "h2": [
+    "Do I need to buy Minecraft?",
+    "Is Horizon official?",
+    "Is Horizon the same as Minecraft Rust Edition?",
+    "Will my Forge, NeoForge or Fabric mods work?",
+    "Can I join public servers?",
+    "When will Microsoft sign-in work?",
+    "Can vanilla players join my Horizon world or server?",
+    "Can I use my existing worlds?",
+    "Where are my worlds and settings?",
+    "Does it change my normal Minecraft install?",
+    "Why does preparing need Java 25?",
+    "What does \"100% vanilla parity\" mean?"
+   ],
+   "imgs": 0,
+   "canvases": 0,
+   "svgs": 10,
+   "reqs": 52,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist",
+    "Geist Mono"
+   ],
+   "headings_spans": []
+  }
+ ],
+ [
+  "docs-troubleshooting",
+  {
+   "title": "Horizon logs, crashes and bug reports",
+   "desc": "When something breaks, Horizon writes down what happened. Send us that and the bug is much easier to fix. This page says where it is and how to report it.",
+   "words": 683,
+   "h1440": 3527,
+   "h390": 5128,
+   "secs": [
+    [
+     "Logs, crashes and bug reports",
+     683,
+     2631
+    ]
+   ],
+   "h1": [
+    "Logs, crashes and bug reports"
+   ],
+   "h2": [
+    "If the game crashes",
+    "Where the files are",
+    "What to try first",
+    "Reporting a bug",
+    "Data the launcher can send",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 0,
+   "svgs": 10,
+   "reqs": 50,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist",
+    "Geist Mono"
+   ],
+   "headings_spans": []
+  }
+ ],
+ [
+  "docs-performance",
+  {
+   "title": "Horizon performance: Minecraft with less work",
+   "desc": "Horizon is built to run Minecraft with less work: less memory, no pauses from a Java runtime, and a renderer that keeps the graphics card busy.",
+   "words": 1017,
+   "h1440": 4304,
+   "h390": 6627,
+   "secs": [
+    [
+     "Performance",
+     1017,
+     3408
+    ]
+   ],
+   "h1": [
+    "Performance"
+   ],
+   "h2": [
+    "What Horizon does differently",
+    "The client",
+    "Servers",
+    "Where else to look",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 0,
+   "canvases": 0,
+   "svgs": 10,
+   "reqs": 57,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist",
+    "Geist Mono"
+   ],
+   "headings_spans": []
+  }
+ ],
+ [
+  "docs-settings",
+  {
+   "title": "Horizon settings: graphics, distant terrain, controllers",
+   "desc": "Horizon plays like vanilla out of the box. This page covers the settings that are different or new: graphics, distant terrain, resource packs, controllers and\u2026",
+   "words": 1021,
+   "h1440": 4926,
+   "h390": null,
+   "secs": [
+    [
+     "Settings worth knowing",
+     1021,
+     4030
+    ]
+   ],
+   "h1": [
+    "Settings worth knowing"
+   ],
+   "h2": [
+    "Graphics: presets, Simple and Advanced",
+    "Distant terrain (LOD)",
+    "Graphics API on Windows",
+    "Shader packs",
+    "Resource packs",
+    "Controllers",
+    "Extras",
+    "Where your settings are stored",
+    "Who makes it",
+    "Licences",
+    "Privacy"
+   ],
+   "imgs": 1,
+   "canvases": 0,
+   "svgs": 10,
+   "reqs": 51,
+   "fonts": [
+    "Bricolage Grotesque",
+    "Geist",
+    "Geist Mono"
+   ],
+   "headings_spans": []
+  }
+ ],
+ [
+  "docs-multiplayer",
+  null
+ ],
+ [
+  "docs-hosting",
+  null
+ ],
+ [
+  "docs-mods",
+  null
+ ],
+ [
+  "docs-content-mods",
+  null
+ ],
+ [
+  "docs-make-a-mod",
+  null
+ ],
+ [
+  "docs-mod-manifest",
+  null
+ ],
+ [
+  "docs-mod-code",
+  null
+ ],
+ [
+  "docs-test-a-mod",
+  null
+ ],
+ [
+  "docs-publish-a-mod",
+  null
+ ],
+ [
+  "docs-modpacks",
+  null
+ ],
+ [
+  "docs-contributing",
+  null
+ ],
+ [
+  "docs-agents",
+  null
+ ],
+ [
+  "docs-apis",
+  null
+ ],
+ [
+  "docs-api",
+  null
+ ],
+ [
+  "docs-api-launcher",
+  null
+ ],
+ [
+  "docs-api-server",
+  null
+ ],
+ [
+  "docs-api-server-reference",
+  null
+ ],
+ [
+  "docs-api-agent-control",
+  null
+ ],
+ [
+  "docs-api-data-formats",
+  null
+ ],
+ [
+  "docs-api-mod-index",
+  null
+ ],
+ [
+  "docs-api-shaders",
+  null
+ ],
+ [
+  "docs-api-stability",
+  null
+ ],
+ [
+  "mods-jei",
+  null
+ ],
+ [
+  "mods-submit",
+  null
+ ],
+ [
+  "mods-policy",
+  null
+ ]
+]
