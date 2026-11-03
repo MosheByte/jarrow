@@ -11,7 +11,7 @@ Every package is named `jarrow-<crate>` (library `jarrow_<crate>`), except the C
 | Crate | Owns | Notes | Status |
 | --- | --- | --- | --- |
 | `crates/jar` | Reading and writing JARs and manifests; signatures stripped; deterministic output | Pure Rust zip; byte-stable output so two runs give identical hashes | Planned (M1) |
-| `crates/classfile` | Java class-file parser and writer: constant pool, attributes, stack maps | Bytecode only, no decompilation. Round-trip tests on the JDK class library and the board set | Planned (M1) |
+| `crates/classfile` | Java class-file parser and writer: constant pool, attributes, stack maps | Bytecode only, no decompilation. Round-trip tests on the JDK class library and the board set | Exists (M1: parser, byte-exact writer, instruction decoder, constant-pool helpers; JDK round trip in CI, fuzzed by ClusterFuzzLite; board-set round trip not run yet; [classfile.md](classfile.md)) |
 | `crates/mappings` | Intermediary, Mojang official, Yarn, Parchment; tiny v2 and ProGuard formats; composition and inversion | Mojang mappings are fetched from the version manifest at runtime, never vendored | Planned (M1) |
 | `crates/remap` | Class, member and descriptor remapping over `classfile`, including string constants that name classes (reflection, mixin targets) | Differential-tested against tiny-remapper output | Planned (M2) |
 | `crates/manifest` | `fabric.mod.json` to `neoforge.mods.toml`, mixin configs, access wideners to access transformers, `pack.mcmeta` | Lossless where possible; the report lists every field it could not translate | Planned (M1) |
