@@ -1,0 +1,64 @@
+/*
+ * Scene canvases (src/scenes, BUILD-BOOK 8.3). The parent section must be
+ * position: relative; overflow: hidden; isolation: isolate. Every colour here is a stop of
+ * the 8.2 sky ramp (scene-components.test.ts checks it); the backgrounds are the no-JavaScript
+ * sky, which stays under the canvases until they fade in.
+ */
+
+.jw-scene {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.jw-scene > canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 700ms ease-out;
+}
+
+.jw-scene[data-ready] > canvas {
+  opacity: 1;
+}
+
+.jw-scene > .jw-scene-pixels {
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.jw-scene-sunrise {
+  background: linear-gradient(
+    to bottom,
+    #0b0f1f 0%,
+    #1a1e4a 34%,
+    #3d2a66 58%,
+    #8f466c 72%,
+    #ee8d44 81%,
+    #0b0f1f 89%
+  );
+}
+
+/* Under 1024 px the sunrise is a strip on the hero's bottom edge: clamp(0.3 x viewport height, 180 px, 320 px). */
+@media (max-width: 1023.98px) {
+  .jw-scene-sunrise {
+    top: auto;
+    height: clamp(180px, 30vh, 320px);
+    height: clamp(180px, 30svh, 320px);
+  }
+}
+
+.jw-scene-ember {
+  background: linear-gradient(to bottom, #0b0f1f 0%, #0b0f1f 42%, #2a2158 74%, #713b70 91%, #1a1e4a 100%);
+}
+
+.jw-scene-aurora {
+  background: linear-gradient(to bottom, #0b0f1f 0%, #1a1e4a 38%, #55326f 60%, #1a1e4a 72%, #0b0f1f 88%);
+}

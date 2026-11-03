@@ -1,0 +1,20 @@
+---
+/**
+ * The aurora band (BUILD-BOOK 8.3) for /authors and the community sections. Put it first inside
+ * a section that is position: relative; overflow: hidden; isolation: isolate: the band's stepped
+ * edges, cut by that overflow, are the section's divider. Without JavaScript the CSS gradient shows.
+ */
+import './scene.css';
+---
+
+<div class="jw-scene jw-scene-aurora" data-scene="aurora" aria-hidden="true">
+  <canvas class="jw-scene-smooth" data-layer="smooth" aria-hidden="true"></canvas>
+  <canvas class="jw-scene-pixels" data-layer="pixels" aria-hidden="true"></canvas>
+</div>
+
+<script>
+  import { mountAll } from '../../scenes/boot.ts';
+  import { aurora } from '../../scenes/aurora.ts';
+
+  mountAll('aurora', aurora);
+</script>

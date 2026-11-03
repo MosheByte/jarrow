@@ -1,0 +1,20 @@
+---
+/**
+ * The ember field (BUILD-BOOK 8.3) for /board. Put it first inside a hero that is
+ * position: relative; overflow: hidden; isolation: isolate. The heat starts at 30 % of the
+ * hero's height and is densest at the bottom. Without JavaScript the CSS gradient shows.
+ */
+import './scene.css';
+---
+
+<div class="jw-scene jw-scene-ember" data-scene="ember" aria-hidden="true">
+  <canvas class="jw-scene-smooth" data-layer="smooth" aria-hidden="true"></canvas>
+  <canvas class="jw-scene-pixels" data-layer="pixels" aria-hidden="true"></canvas>
+</div>
+
+<script>
+  import { mountAll } from '../../scenes/boot.ts';
+  import { ember } from '../../scenes/ember.ts';
+
+  mountAll('ember', ember);
+</script>
